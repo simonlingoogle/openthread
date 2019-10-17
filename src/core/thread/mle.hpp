@@ -360,7 +360,6 @@ private:
  * This class implements functionality required for delaying MLE responses.
  *
  */
-OT_TOOL_PACKED_BEGIN
 class DelayedResponseHeader
 {
 public:
@@ -368,7 +367,12 @@ public:
      * Default constructor for the object.
      *
      */
-    DelayedResponseHeader(void) { memset(this, 0, sizeof(*this)); }
+    DelayedResponseHeader(void)
+        : mDestination()
+        , mSendTime(0)
+    {
+        mDestination.Clear();
+    }
 
     /**
      * This constructor initializes the object with specific values.
@@ -377,10 +381,10 @@ public:
      * @param[in]  aDestination  IPv6 address of the message destination.
      *
      */
-    DelayedResponseHeader(uint32_t aSendTime, const Ip6::Address &aDestination)
+    DelayedResponseHeader(TimeMilli aSendTime, const Ip6::Address &aDestination)
+        : mDestination(aDestination)
+        , mSendTime(aSendTime)
     {
-        mSendTime    = aSendTime;
-        mDestination = aDestination;
     }
 
     /**
@@ -426,7 +430,7 @@ public:
      * @returns  A time when the message shall be sent.
      *
      */
-    uint32_t GetSendTime(void) const { return mSendTime; }
+    TimeMilli GetSendTime(void) const { return mSendTime; }
 
     /**
      * This method returns a destination of the delayed message.
@@ -443,8 +447,9 @@ public:
      *
      * @retval TRUE   If the message shall be sent before the given time.
      * @retval FALSE  Otherwise.
+     *
      */
-    bool IsEarlier(uint32_t aTime) { return (static_cast<int32_t>(aTime - mSendTime) > 0); }
+    bool IsEarlier(TimeMilli aTime) { return aTime > mSendTime; }
 
     /**
      * This method checks if the message shall be sent after the given time.
@@ -453,13 +458,14 @@ public:
      *
      * @retval TRUE   If the message shall be sent after the given time.
      * @retval FALSE  Otherwise.
+     *
      */
-    bool IsLater(uint32_t aTime) { return (static_cast<int32_t>(aTime - mSendTime) < 0); }
+    bool IsLater(TimeMilli aTime) { return aTime < mSendTime; }
 
 private:
     Ip6::Address mDestination; ///< IPv6 address of the message destination.
-    uint32_t     mSendTime;    ///< Time when the message shall be sent.
-} OT_TOOL_PACKED_END;
+    TimeMilli    mSendTime;    ///< Time when the message shall be sent.
+};
 
 /**
  * This class implements MLE functionality required by the Thread EndDevices, Router, and Leader roles.
@@ -1794,7 +1800,7 @@ private:
     bool       mParentSearchIsInBackoff : 1;
     bool       mParentSearchBackoffWasCanceled : 1;
     bool       mParentSearchRecentlyDetached : 1;
-    uint32_t   mParentSearchBackoffCancelTime;
+    TimeMilli  mParentSearchBackoffCancelTime;
     TimerMilli mParentSearchTimer;
 #endif
 

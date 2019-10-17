@@ -396,8 +396,8 @@ void MleRouter::ResetAdvertiseInterval(void)
 
     if (!mAdvertiseTimer.IsRunning())
     {
-        mAdvertiseTimer.Start(TimerMilli::SecToMsec(kAdvertiseIntervalMin),
-                              TimerMilli::SecToMsec(kAdvertiseIntervalMax), TrickleTimer::kModeNormal);
+        mAdvertiseTimer.Start(Time::SecToMsec(kAdvertiseIntervalMin), Time::SecToMsec(kAdvertiseIntervalMax),
+                              TrickleTimer::kModeNormal);
     }
 
     mAdvertiseTimer.IndicateInconsistent();
@@ -1421,132 +1421,89 @@ exit:
 void MleRouter::UpdateRoutes(const RouteTlv &aRoute, uint8_t aRouterId)
 {
     Router *neighbor;
-    uint8_t curCost;
-    uint8_t newCost;
-    uint8_t oldNextHop;
-    uint8_t cost;
-    uint8_t linkQuality;
-    bool    update;
     bool    resetAdvInterval = false;
     bool    changed          = false;
 
     neighbor = mRouterTable.GetRouter(aRouterId);
     VerifyOrExit(neighbor != NULL);
 
+    // update link quality out to neighbor
+    changed = UpdateLinkQualityOut(aRoute, *neighbor, resetAdvInterval);
+
     // update routes
-    do
+    for (uint8_t i = 0, routeCount = 0; i <= kMaxRouterId; i++)
     {
-        update = false;
+        Router *router;
+        Router *nextHop;
+        uint8_t oldNextHop;
+        uint8_t cost;
 
-        for (uint8_t i = 0, routeCount = 0; i <= kMaxRouterId; i++)
+        if (!aRoute.IsRouterIdSet(i))
         {
-            Router *router;
-            Router *nextHop;
-
-            if (!aRoute.IsRouterIdSet(i))
-            {
-                continue;
-            }
-
-            router = mRouterTable.GetRouter(i);
-
-            if (router == NULL)
-            {
-                routeCount++;
-                continue;
-            }
-
-            if (router->GetRloc16() == GetRloc16())
-            {
-                linkQuality = aRoute.GetLinkQualityIn(routeCount);
-
-                if (neighbor->GetLinkQualityOut() != linkQuality)
-                {
-                    uint8_t oldLinkCost = mRouterTable.GetLinkCost(*neighbor);
-                    neighbor->SetLinkQualityOut(linkQuality);
-                    nextHop = mRouterTable.GetRouter(neighbor->GetNextHop());
-
-                    // reset MLE advertisement timer if neighbor route cost changed to or from infinite
-                    if (nextHop == NULL &&
-                        (oldLinkCost >= kMaxRouteCost) != (mRouterTable.GetLinkCost(*neighbor) >= kMaxRouteCost))
-                    {
-                        resetAdvInterval = true;
-                    }
-                    update = true;
-                }
-            }
-            else
-            {
-                oldNextHop = router->GetNextHop();
-                nextHop    = mRouterTable.GetRouter(oldNextHop);
-
-                if (router == neighbor)
-                {
-                    cost = 0;
-                }
-                else
-                {
-                    cost = aRoute.GetRouteCost(routeCount);
-
-                    if (cost == 0)
-                    {
-                        cost = kMaxRouteCost;
-                    }
-                }
-
-                if (nextHop == NULL || nextHop == neighbor)
-                {
-                    // route has no next hop or next hop is neighbor (sender)
-
-                    if (router != neighbor)
-                    {
-                        if (cost + mRouterTable.GetLinkCost(*neighbor) <= kMaxRouteCost)
-                        {
-                            if (nextHop == NULL && mRouterTable.GetLinkCost(*router) >= kMaxRouteCost)
-                            {
-                                resetAdvInterval = true;
-                            }
-
-                            router->SetNextHop(aRouterId);
-                            router->SetCost(cost);
-                            changed = true;
-                        }
-                        else if (nextHop == neighbor)
-                        {
-                            if (mRouterTable.GetLinkCost(*router) >= kMaxRouteCost)
-                            {
-                                resetAdvInterval = true;
-                            }
-
-                            router->SetNextHop(kInvalidRouterId);
-                            router->SetCost(0);
-                            router->SetLastHeard(TimerMilli::GetNow());
-                            changed = true;
-                        }
-                    }
-                }
-                else
-                {
-                    curCost = router->GetCost() + mRouterTable.GetLinkCost(*nextHop);
-                    newCost = cost + mRouterTable.GetLinkCost(*neighbor);
-
-                    if (newCost < curCost && router != neighbor)
-                    {
-                        router->SetNextHop(aRouterId);
-                        router->SetCost(cost);
-                        changed = true;
-                    }
-                }
-
-                update |= router->GetNextHop() != oldNextHop;
-            }
-
-            routeCount++;
+            continue;
         }
 
-        changed |= update;
+        router = mRouterTable.GetRouter(i);
 
-    } while (update);
+        if (router == NULL || router->GetRloc16() == GetRloc16() || router == neighbor)
+        {
+            routeCount++;
+            continue;
+        }
+
+        oldNextHop = router->GetNextHop();
+        nextHop    = mRouterTable.GetRouter(oldNextHop);
+
+        cost = aRoute.GetRouteCost(routeCount);
+
+        if (cost == 0)
+        {
+            cost = kMaxRouteCost;
+        }
+
+        if (nextHop == NULL || nextHop == neighbor)
+        {
+            // route has no next hop or next hop is neighbor (sender)
+
+            if (cost + mRouterTable.GetLinkCost(*neighbor) < kMaxRouteCost)
+            {
+                if (nextHop == NULL && mRouterTable.GetLinkCost(*router) >= kMaxRouteCost)
+                {
+                    resetAdvInterval = true;
+                }
+
+                router->SetNextHop(aRouterId);
+                router->SetCost(cost);
+                changed = true;
+            }
+            else if (nextHop == neighbor)
+            {
+                if (mRouterTable.GetLinkCost(*router) >= kMaxRouteCost)
+                {
+                    resetAdvInterval = true;
+                }
+
+                router->SetNextHop(kInvalidRouterId);
+                router->SetCost(0);
+                router->SetLastHeard(TimerMilli::GetNow());
+                changed = true;
+            }
+        }
+        else
+        {
+            uint8_t curCost = router->GetCost() + mRouterTable.GetLinkCost(*nextHop);
+            uint8_t newCost = cost + mRouterTable.GetLinkCost(*neighbor);
+
+            if (newCost < curCost)
+            {
+                router->SetNextHop(aRouterId);
+                router->SetCost(cost);
+                changed = true;
+            }
+        }
+
+        routeCount++;
+    }
 
     if (resetAdvInterval)
     {
@@ -1567,10 +1524,49 @@ void MleRouter::UpdateRoutes(const RouteTlv &aRoute, uint8_t aRouterId)
                      router.GetLinkInfo().GetLinkQuality(), router.GetLinkQualityOut());
     }
 
+#else
+    OT_UNUSED_VARIABLE(changed);
 #endif
 
 exit:
     return;
+}
+
+bool MleRouter::UpdateLinkQualityOut(const RouteTlv &aRoute, Router &aNeighbor, bool &aResetAdvInterval)
+{
+    bool    changed = false;
+    uint8_t linkQuality;
+    uint8_t myRouterId;
+    uint8_t myRouteCount;
+    uint8_t oldLinkCost;
+    Router *nextHop;
+
+    myRouterId = GetRouterId(GetRloc16());
+    VerifyOrExit(aRoute.IsRouterIdSet(myRouterId));
+
+    myRouteCount = 0;
+    for (uint8_t i = 0; i < myRouterId; i++)
+    {
+        myRouteCount += aRoute.IsRouterIdSet(i);
+    }
+
+    linkQuality = aRoute.GetLinkQualityIn(myRouteCount);
+    VerifyOrExit(aNeighbor.GetLinkQualityOut() != linkQuality);
+
+    oldLinkCost = mRouterTable.GetLinkCost(aNeighbor);
+
+    aNeighbor.SetLinkQualityOut(linkQuality);
+    nextHop = mRouterTable.GetRouter(aNeighbor.GetNextHop());
+
+    // reset MLE advertisement timer if neighbor route cost changed to or from infinite
+    if (nextHop == NULL && (oldLinkCost >= kMaxRouteCost) != (mRouterTable.GetLinkCost(aNeighbor) >= kMaxRouteCost))
+    {
+        aResetAdvInterval = true;
+    }
+    changed = true;
+
+exit:
+    return changed;
 }
 
 otError MleRouter::HandleParentRequest(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo)
@@ -1650,8 +1646,6 @@ otError MleRouter::HandleParentRequest(const Message &aMessage, const Ip6::Messa
     {
         VerifyOrExit((child = mChildTable.GetNewChild()) != NULL);
 
-        memset(child, 0, sizeof(*child));
-
         // MAC Address
         child->SetExtAddress(macAddr);
         child->GetLinkInfo().Clear();
@@ -1669,7 +1663,7 @@ otError MleRouter::HandleParentRequest(const Message &aMessage, const Ip6::Messa
         }
 #endif
     }
-    else if (TimerMilli::Elapsed(child->GetLastHeard()) < kParentRequestRouterTimeout - kParentRequestDuplicateMargin)
+    else if (TimerMilli::GetNow() - child->GetLastHeard() < kParentRequestRouterTimeout - kParentRequestDuplicateMargin)
     {
         ExitNow(error = OT_ERROR_DUPLICATED);
     }
@@ -1677,7 +1671,7 @@ otError MleRouter::HandleParentRequest(const Message &aMessage, const Ip6::Messa
     if (!child->IsStateValidOrRestoring())
     {
         child->SetLastHeard(TimerMilli::GetNow());
-        child->SetTimeout(TimerMilli::MsecToSec(kMaxChildIdRequestTimeout));
+        child->SetTimeout(Time::MsecToSec(kMaxChildIdRequestTimeout));
     }
 
     SendParentResponse(child, challenge, !scanMask.IsEndDeviceFlagSet());
@@ -1752,8 +1746,8 @@ void MleRouter::HandleStateUpdateTimer(void)
             {
                 SendAdvertisement();
 
-                mAdvertiseTimer.Start(TimerMilli::SecToMsec(kReedAdvertiseInterval),
-                                      TimerMilli::SecToMsec(kReedAdvertiseInterval + kReedAdvertiseJitter),
+                mAdvertiseTimer.Start(Time::SecToMsec(kReedAdvertiseInterval),
+                                      Time::SecToMsec(kReedAdvertiseInterval + kReedAdvertiseJitter),
                                       TrickleTimer::kModePlainTimer);
             }
 
@@ -1801,7 +1795,7 @@ void MleRouter::HandleStateUpdateTimer(void)
         case Neighbor::kStateValid:
         case Neighbor::kStateRestored:
         case Neighbor::kStateChildUpdateRequest:
-            timeout = TimerMilli::SecToMsec(child.GetTimeout());
+            timeout = Time::SecToMsec(child.GetTimeout());
             break;
 
         case Neighbor::kStateParentResponse:
@@ -1810,7 +1804,7 @@ void MleRouter::HandleStateUpdateTimer(void)
             break;
         }
 
-        if (TimerMilli::Elapsed(child.GetLastHeard()) >= timeout)
+        if (TimerMilli::GetNow() - child.GetLastHeard() >= timeout)
         {
             otLogInfoMle("Child timeout expired");
             RemoveNeighbor(child);
@@ -1834,13 +1828,13 @@ void MleRouter::HandleStateUpdateTimer(void)
             continue;
         }
 
-        age = TimerMilli::Elapsed(router.GetLastHeard());
+        age = TimerMilli::GetNow() - router.GetLastHeard();
 
         if (router.GetState() == Neighbor::kStateValid)
         {
 #if OPENTHREAD_CONFIG_MLE_SEND_LINK_REQUEST_ON_ADV_TIMEOUT == 0
 
-            if (age >= TimerMilli::SecToMsec(kMaxNeighborAge))
+            if (age >= Time::SecToMsec(kMaxNeighborAge))
             {
                 otLogInfoMle("Router timeout expired");
                 RemoveNeighbor(router);
@@ -1849,9 +1843,9 @@ void MleRouter::HandleStateUpdateTimer(void)
 
 #else
 
-            if (age >= TimerMilli::SecToMsec(kMaxNeighborAge))
+            if (age >= Time::SecToMsec(kMaxNeighborAge))
             {
-                if (age < TimerMilli::SecToMsec(kMaxNeighborAge) + kMaxTransmissionCount * kUnicastRetransmissionDelay)
+                if (age < Time::SecToMsec(kMaxNeighborAge) + kMaxTransmissionCount * kUnicastRetransmissionDelay)
                 {
                     otLogInfoMle("Router timeout expired");
                     SendLinkRequest(&router);
@@ -1878,8 +1872,7 @@ void MleRouter::HandleStateUpdateTimer(void)
         if (GetRole() == OT_DEVICE_ROLE_LEADER)
         {
             if (mRouterTable.GetRouter(router.GetNextHop()) == NULL &&
-                mRouterTable.GetLinkCost(router) >= kMaxRouteCost &&
-                age >= TimerMilli::SecToMsec(kMaxLeaderToRouterTimeout))
+                mRouterTable.GetLinkCost(router) >= kMaxRouteCost && age >= Time::SecToMsec(kMaxLeaderToRouterTimeout))
             {
                 otLogInfoMle("Router ID timeout expired (no route)");
                 mRouterTable.Release(router.GetRouterId());
@@ -3532,7 +3525,7 @@ void MleRouter::RestoreChildren(void)
             foundDuplicate = true;
         }
 
-        memset(child, 0, sizeof(*child));
+        child->Clear();
 
         child->SetExtAddress(*static_cast<const Mac::ExtAddress *>(&childInfo.mExtAddress));
         child->GetLinkInfo().Clear();
@@ -3618,7 +3611,7 @@ otError MleRouter::GetChildInfo(Child &aChild, otChildInfo &aChildInfo)
     aChildInfo.mRloc16             = aChild.GetRloc16();
     aChildInfo.mChildId            = GetChildId(aChild.GetRloc16());
     aChildInfo.mNetworkDataVersion = aChild.GetNetworkDataVersion();
-    aChildInfo.mAge                = TimerMilli::MsecToSec(TimerMilli::Elapsed(aChild.GetLastHeard()));
+    aChildInfo.mAge                = Time::MsecToSec(TimerMilli::GetNow() - aChild.GetLastHeard());
     aChildInfo.mLinkQualityIn      = aChild.GetLinkInfo().GetLinkQuality();
     aChildInfo.mAverageRssi        = aChild.GetLinkInfo().GetAverageRss();
     aChildInfo.mLastRssi           = aChild.GetLinkInfo().GetLastRss();
@@ -3641,7 +3634,7 @@ exit:
 void MleRouter::GetNeighborInfo(Neighbor &aNeighbor, otNeighborInfo &aNeighInfo)
 {
     aNeighInfo.mExtAddress       = aNeighbor.GetExtAddress();
-    aNeighInfo.mAge              = TimerMilli::MsecToSec(TimerMilli::Elapsed(aNeighbor.GetLastHeard()));
+    aNeighInfo.mAge              = Time::MsecToSec(TimerMilli::GetNow() - aNeighbor.GetLastHeard());
     aNeighInfo.mRloc16           = aNeighbor.GetRloc16();
     aNeighInfo.mLinkFrameCounter = aNeighbor.GetLinkFrameCounter();
     aNeighInfo.mMleFrameCounter  = aNeighbor.GetMleFrameCounter();

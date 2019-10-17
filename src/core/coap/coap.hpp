@@ -88,7 +88,6 @@ enum
  * This class implements metadata required for CoAP retransmission.
  *
  */
-OT_TOOL_PACKED_BEGIN
 class CoapMetadata
 {
     friend class CoapBase;
@@ -166,8 +165,9 @@ public:
      *
      * @retval TRUE   If the message shall be sent before the given time.
      * @retval FALSE  Otherwise.
+     *
      */
-    bool IsEarlier(uint32_t aTime) const { return (static_cast<int32_t>(aTime - mNextTimerShot) >= 0); }
+    bool IsEarlier(TimeMilli aTime) const { return aTime >= mNextTimerShot; }
 
     /**
      * This method checks if the message shall be sent after the given time.
@@ -176,8 +176,9 @@ public:
      *
      * @retval TRUE   If the message shall be sent after the given time.
      * @retval FALSE  Otherwise.
+     *
      */
-    bool IsLater(uint32_t aTime) const { return (static_cast<int32_t>(aTime - mNextTimerShot) < 0); }
+    bool IsLater(TimeMilli aTime) const { return aTime < mNextTimerShot; }
 
 private:
     Ip6::Address          mSourceAddress;         ///< IPv6 address of the message source.
@@ -185,12 +186,12 @@ private:
     uint16_t              mDestinationPort;       ///< UDP port of the message destination.
     otCoapResponseHandler mResponseHandler;       ///< A function pointer that is called on response reception.
     void *                mResponseContext;       ///< A pointer to arbitrary context information.
-    uint32_t              mNextTimerShot;         ///< Time when the timer should shoot for this message.
+    TimeMilli             mNextTimerShot;         ///< Time when the timer should shoot for this message.
     uint32_t              mRetransmissionTimeout; ///< Delay that is applied to next retransmission.
     uint8_t               mRetransmissionCount;   ///< Number of retransmissions.
     bool                  mAcknowledged : 1;      ///< Information that request was acknowledged.
     bool                  mConfirmable : 1;       ///< Information that message is confirmable.
-} OT_TOOL_PACKED_END;
+};
 
 /**
  * This class implements CoAP resource handling.
@@ -268,7 +269,7 @@ public:
      *
      */
     explicit EnqueuedResponseHeader(const Ip6::MessageInfo &aMessageInfo)
-        : mDequeueTime(TimerMilli::GetNow() + TimerMilli::SecToMsec(kExchangeLifetime))
+        : mDequeueTime(TimerMilli::GetNow() + Time::SecToMsec(kExchangeLifetime))
         , mMessageInfo(aMessageInfo)
     {
     }
@@ -305,7 +306,7 @@ public:
      * @retval FALSE  Otherwise.
      *
      */
-    bool IsEarlier(uint32_t aTime) const { return (static_cast<int32_t>(aTime - mDequeueTime) >= 0); }
+    bool IsEarlier(TimeMilli aTime) const { return aTime >= mDequeueTime; }
 
     /**
      * This method returns number of milliseconds in which the message should be sent.
@@ -324,7 +325,7 @@ public:
     const Ip6::MessageInfo &GetMessageInfo(void) const { return mMessageInfo; }
 
 private:
-    uint32_t               mDequeueTime;
+    TimeMilli              mDequeueTime;
     const Ip6::MessageInfo mMessageInfo;
 };
 
@@ -395,6 +396,17 @@ private:
     {
         kMaxCachedResponses = OPENTHREAD_CONFIG_COAP_SERVER_MAX_CACHED_RESPONSES,
     };
+
+    /**
+     * Check if CoAP response exists in the cache that matches given Message ID and source endpoint.
+     *
+     * @param[in]  aRequest      The CoAP message containing Message ID.
+     * @param[in]  aMessageInfo  The message info containing source endpoint address and port.
+     *
+     * @returns Matching cached response or NULL if not found.
+     *
+     */
+    const Message *FindMatchedResponse(const Message &aRequest, const Ip6::MessageInfo &aMessageInfo) const;
 
     void DequeueResponse(Message &aMessage)
     {

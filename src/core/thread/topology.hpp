@@ -40,6 +40,7 @@
 
 #include "common/message.hpp"
 #include "common/random.hpp"
+#include "common/timer.hpp"
 #include "mac/mac_frame.hpp"
 #include "net/ip6.hpp"
 #include "thread/device_mode.hpp"
@@ -168,14 +169,6 @@ public:
      * @returns A reference to the Extended Address.
      *
      */
-    Mac::ExtAddress &GetExtAddress(void) { return mMacAddr; }
-
-    /**
-     * This method returns the Extended Address.
-     *
-     * @returns A reference to the Extended Address.
-     *
-     */
     const Mac::ExtAddress &GetExtAddress(void) const { return mMacAddr; }
 
     /**
@@ -208,7 +201,7 @@ public:
      * @returns The last heard time.
      *
      */
-    uint32_t GetLastHeard(void) const { return mLastHeard; }
+    TimeMilli GetLastHeard(void) const { return mLastHeard; }
 
     /**
      * This method sets the last heard time.
@@ -216,7 +209,7 @@ public:
      * @param[in]  aLastHeard  The last heard time.
      *
      */
-    void SetLastHeard(uint32_t aLastHeard) { mLastHeard = aLastHeard; }
+    void SetLastHeard(TimeMilli aLastHeard) { mLastHeard = aLastHeard; }
 
     /**
      * This method gets the link frame counter value.
@@ -344,7 +337,7 @@ public:
 
 private:
     Mac::ExtAddress mMacAddr;   ///< The IEEE 802.15.4 Extended Address
-    uint32_t        mLastHeard; ///< Time when last heard.
+    TimeMilli       mLastHeard; ///< Time when last heard.
     union
     {
         struct
@@ -432,6 +425,12 @@ public:
 
         otChildIp6AddressIterator mIndex;
     };
+
+    /**
+     * This method clears the child entry.
+     *
+     */
+    void Clear(void);
 
     /**
      * This method indicates if the child state is valid or being attached or being restored.
@@ -653,6 +652,12 @@ private:
 class Router : public Neighbor
 {
 public:
+    /**
+     * This method clears the router entry.
+     *
+     */
+    void Clear(void);
+
     /**
      * This method gets the router ID of the next hop to this router.
      *

@@ -30,7 +30,7 @@ language: python
 python: "3.6"
 
 sudo: required
-dist: xenial
+dist: bionic
 
 before_install:
   - travis_retry .travis/before_install.sh
@@ -64,7 +64,7 @@ jobs:
     - env: BUILD_TARGET="android-build" VERBOSE=1
       os: linux
       dist: trusty
-      python: "2.7"
+      python: "2.7" # The old Android build system only supports python2
       script: .travis/script.sh
     - env: BUILD_TARGET="posix-distcheck" VERBOSE=1 VIRTUAL_TIME=1
       os: linux
@@ -73,12 +73,10 @@ jobs:
     - env: BUILD_TARGET="posix-32-bit" VERBOSE=1 VIRTUAL_TIME=1
       os: linux
       compiler: gcc
-      python: "2.7"
       script: .travis/script.sh
     - env: BUILD_TARGET="posix-32-bit" VERBOSE=1 VIRTUAL_TIME=1 TIME_SYNC=1
       os: linux
       compiler: gcc
-      python: "2.7"
       script: .travis/script.sh
     - env: BUILD_TARGET="posix-ncp" VERBOSE=1 VIRTUAL_TIME=1
       os: linux
@@ -117,8 +115,6 @@ jobs:
       compiler: gcc
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
           packages:
             - gcc-5
             - g++-5
@@ -128,8 +124,6 @@ jobs:
       compiler: gcc
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
           packages:
             - gcc-6
             - g++-6
@@ -139,8 +133,6 @@ jobs:
       compiler: gcc
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
           packages:
             - gcc-7
             - g++-7
@@ -150,8 +142,6 @@ jobs:
       compiler: gcc
       addons:
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
           packages:
             - gcc-8
             - g++-8
@@ -162,7 +152,7 @@ jobs:
       addons:
         apt:
           sources:
-            - ubuntu-toolchain-r-test
+            - sourceline: "ppa:ubuntu-toolchain-r/test"
           packages:
             - gcc-9
             - g++-9
@@ -178,7 +168,6 @@ jobs:
     - env: BUILD_TARGET="toranj-test-framework" VERBOSE=1 TORANJ_POSIX_APP_RCP_MODEL=1
       os: linux
       compiler: gcc
-      python: "2.7"
       script: .travis/script.sh
     - env: BUILD_TARGET="osx" VERBOSE=1
       os: osx
@@ -189,9 +178,6 @@ jobs:
       os: linux
       addons:
         apt:
-          sources:
-            - llvm-toolchain-xenial-6.0
-            - ubuntu-toolchain-r-test
           packages:
             - clang-format-6.0
       script: .travis/check-pretty

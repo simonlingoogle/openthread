@@ -48,6 +48,49 @@
 namespace ot {
 namespace Sntp {
 
+Header::Header(void)
+    : mFlags(kNtpVersion << kVersionOffset | kModeClient << kModeOffset)
+    , mStratum(0)
+    , mPoll(0)
+    , mPrecision(0)
+    , mRootDelay(0)
+    , mRootDispersion(0)
+    , mReferenceId(0)
+    , mReferenceTimestampSeconds(0)
+    , mReferenceTimestampFraction(0)
+    , mOriginateTimestampSeconds(0)
+    , mOriginateTimestampFraction(0)
+    , mReceiveTimestampSeconds(0)
+    , mReceiveTimestampFraction(0)
+    , mTransmitTimestampSeconds(0)
+    , mTransmitTimestampFraction(0)
+{
+}
+
+QueryMetadata::QueryMetadata(void)
+    : mTransmitTimestamp(0)
+    , mResponseHandler(NULL)
+    , mResponseContext(NULL)
+    , mTransmissionTime(0)
+    , mDestinationPort(0)
+    , mRetransmissionCount(0)
+{
+    mSourceAddress.Clear();
+    mDestinationAddress.Clear();
+}
+
+QueryMetadata::QueryMetadata(otSntpResponseHandler aHandler, void *aContext)
+    : mTransmitTimestamp(0)
+    , mResponseHandler(aHandler)
+    , mResponseContext(aContext)
+    , mTransmissionTime(0)
+    , mDestinationPort(0)
+    , mRetransmissionCount(0)
+{
+    mSourceAddress.Clear();
+    mDestinationAddress.Clear();
+}
+
 Client::Client(Ip6::Netif &aNetif)
     : mSocket(aNetif.Get<Ip6::Udp>())
     , mRetransmissionTimer(aNetif.GetInstance(), &Client::HandleRetransmissionTimer, this)
@@ -98,14 +141,14 @@ otError Client::Query(const otSntpQuery *aQuery, otSntpResponseHandler aHandler,
     VerifyOrExit(aQuery->mMessageInfo != NULL, error = OT_ERROR_INVALID_ARGS);
 
     // Originate timestamp is used only as a unique token.
-    header.SetTransmitTimestampSeconds(TimerMilli::GetNow() / 1000 + kTimeAt1970);
+    header.SetTransmitTimestampSeconds(TimerMilli::GetNow().GetValue() / 1000 + kTimeAt1970);
 
     VerifyOrExit((message = NewMessage(header)) != NULL, error = OT_ERROR_NO_BUFS);
 
     messageInfo = static_cast<const Ip6::MessageInfo *>(aQuery->mMessageInfo);
 
     queryMetadata.mTransmitTimestamp   = header.GetTransmitTimestampSeconds();
-    queryMetadata.mTransmissionTime    = TimerMilli::GetNow() + kResponseTimeout;
+    queryMetadata.mTransmissionTime    = TimerMilli::GetNow() + static_cast<uint32_t>(kResponseTimeout);
     queryMetadata.mSourceAddress       = messageInfo->GetSockAddr();
     queryMetadata.mDestinationPort     = messageInfo->GetPeerPort();
     queryMetadata.mDestinationAddress  = messageInfo->GetPeerAddr();
@@ -146,10 +189,10 @@ exit:
 
 Message *Client::CopyAndEnqueueMessage(const Message &aMessage, const QueryMetadata &aQueryMetadata)
 {
-    otError  error       = OT_ERROR_NONE;
-    uint32_t now         = TimerMilli::GetNow();
-    Message *messageCopy = NULL;
-    uint32_t nextTransmissionTime;
+    otError   error       = OT_ERROR_NONE;
+    TimeMilli now         = TimerMilli::GetNow();
+    Message * messageCopy = NULL;
+    TimeMilli nextTransmissionTime;
 
     // Create a message copy for further retransmissions.
     VerifyOrExit((messageCopy = aMessage.Clone()) != NULL, error = OT_ERROR_NO_BUFS);
@@ -268,8 +311,8 @@ void Client::HandleRetransmissionTimer(Timer &aTimer)
 
 void Client::HandleRetransmissionTimer(void)
 {
-    uint32_t         now       = TimerMilli::GetNow();
-    uint32_t         nextDelta = TimerMilli::kForeverDt;
+    TimeMilli        now       = TimerMilli::GetNow();
+    uint32_t         nextDelta = TimeMilli::kMaxDuration;
     QueryMetadata    queryMetadata;
     Message *        message     = mPendingQueries.GetHead();
     Message *        nextMessage = NULL;
@@ -282,7 +325,7 @@ void Client::HandleRetransmissionTimer(void)
 
         if (queryMetadata.IsLater(now))
         {
-            uint32_t diff = TimerMilli::Elapsed(now, queryMetadata.mTransmissionTime);
+            uint32_t diff = queryMetadata.mTransmissionTime - now;
 
             // Calculate the next delay and choose the lowest.
             if (diff < nextDelta)
@@ -299,7 +342,7 @@ void Client::HandleRetransmissionTimer(void)
             queryMetadata.mTransmissionTime = now + kResponseTimeout;
             queryMetadata.UpdateIn(*message);
 
-            diff = TimerMilli::Elapsed(now, queryMetadata.mTransmissionTime);
+            diff = kResponseTimeout;
 
             // Check if retransmission time is lower than current lowest.
             if (diff < nextDelta)
@@ -323,7 +366,7 @@ void Client::HandleRetransmissionTimer(void)
         message = nextMessage;
     }
 
-    if (nextDelta != TimerMilli::kForeverDt)
+    if (nextDelta != TimeMilli::kMaxDuration)
     {
         mRetransmissionTimer.Start(nextDelta);
     }

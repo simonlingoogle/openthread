@@ -183,7 +183,7 @@ void RouterTable::UpdateAllocation(void)
 
             if (router.GetRouterId() != routerId)
             {
-                memset(&router, 0, sizeof(router));
+                router.Clear();
                 router.SetRloc16(Mle::Mle::GetRloc16(routerId));
                 router.SetNextHop(Mle::kInvalidRouterId);
             }
@@ -194,7 +194,7 @@ void RouterTable::UpdateAllocation(void)
     for (uint8_t index = mActiveRouterCount; index < Mle::kMaxRouters; index++)
     {
         Router &router = mRouters[index];
-        memset(&router, 0, sizeof(router));
+        router.Clear();
         router.SetRloc16(0xffff);
     }
 }
@@ -441,7 +441,7 @@ otError RouterTable::GetRouterInfo(uint16_t aRouterId, otRouterInfo &aRouterInfo
     aRouterInfo.mPathCost        = router->GetCost();
     aRouterInfo.mLinkQualityIn   = router->GetLinkInfo().GetLinkQuality();
     aRouterInfo.mLinkQualityOut  = router->GetLinkQualityOut();
-    aRouterInfo.mAge = static_cast<uint8_t>(TimerMilli::MsecToSec(TimerMilli::Elapsed(router->GetLastHeard())));
+    aRouterInfo.mAge             = static_cast<uint8_t>(Time::MsecToSec(TimerMilli::GetNow() - router->GetLastHeard()));
 
 exit:
     return error;
@@ -454,8 +454,7 @@ Router *RouterTable::GetLeader(void)
 
 uint32_t RouterTable::GetLeaderAge(void) const
 {
-    return (mActiveRouterCount > 0) ? TimerMilli::MsecToSec(TimerMilli::Elapsed(mRouterIdSequenceLastUpdated))
-                                    : 0xffffffff;
+    return (mActiveRouterCount > 0) ? Time::MsecToSec(TimerMilli::GetNow() - mRouterIdSequenceLastUpdated) : 0xffffffff;
 }
 
 uint8_t RouterTable::GetNeighborCount(void) const

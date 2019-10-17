@@ -770,7 +770,7 @@ class Frame : public otRadioFrame
 public:
     enum
     {
-        kMTU                 = 127,
+        kMtu                 = OT_RADIO_FRAME_MAX_SIZE,
         kFcfSize             = sizeof(uint16_t),
         kDsnSize             = sizeof(uint8_t),
         kSecurityControlSize = sizeof(uint8_t),
@@ -959,6 +959,7 @@ public:
      * @param[out]  aPanId  The Destination PAN Identifier.
      *
      * @retval OT_ERROR_NONE   Successfully retrieved the Destination PAN Identifier.
+     * @retval OT_ERROR_PARSE  Failed to parse the PAN Identifier.
      *
      */
     otError GetDstPanId(PanId &aPanId) const;
@@ -1379,7 +1380,7 @@ public:
      * @returns The maximum transmission unit (MTU).
      *
      */
-    uint16_t GetMtu(void) const;
+    uint16_t GetMtu(void) const { return kMtu; }
 
     /**
      * This method returns the FCS size.
@@ -1387,7 +1388,7 @@ public:
      * @returns This method returns the FCS size.
      *
      */
-    uint16_t GetFcsSize(void) const;
+    uint16_t GetFcsSize(void) const { return kFcsSize; }
 
     /**
      * This method returns information about the frame object as an `InfoString` object.

@@ -137,22 +137,18 @@ public:
     /**
      * This method gets the Provisioning URL.
      *
-     * @param[out]   aLength     A reference to `uint16_t` to return the length (number of chars) in the URL string.
-     *
-     * Note that the returned URL string buffer is not necessarily null-terminated.
-     *
      * @returns A pointer to char buffer containing the URL string.
      *
      */
-    const char *GetProvisioningUrl(uint16_t &aLength) const;
+    const char *GetProvisioningUrl(void) const { return mProvisioningUrl; }
 
     /**
      * This method sets the Provisioning URL.
      *
-     * @param[in]  aProvisioningUrl  A pointer to the Provisioning URL (may be NULL).
+     * @param[in]  aProvisioningUrl  A pointer to the Provisioning URL (may be NULL to set URL to empty string).
      *
-     * @retval OT_ERROR_NONE          Successfully added the Joiner.
-     * @retval OT_ERROR_INVALID_ARGS  @p aProvisioningUrl is invalid.
+     * @retval OT_ERROR_NONE          Successfully set the Provisioning URL.
+     * @retval OT_ERROR_INVALID_ARGS  @p aProvisioningUrl is invalid (too long).
      *
      */
     otError SetProvisioningUrl(const char *aProvisioningUrl);
@@ -163,7 +159,7 @@ public:
      * @returns The Commissioner Session ID.
      *
      */
-    uint16_t GetSessionId(void) const;
+    uint16_t GetSessionId(void) const { return mSessionId; }
 
     /**
      * This method indicates whether or not the Commissioner role is active.
@@ -183,7 +179,7 @@ public:
      * @retval OT_COMMISSIONER_STATE_ACTIVE    Commissioner enabled.
      *
      */
-    otCommissionerState GetState(void) const;
+    otCommissionerState GetState(void) const { return mState; }
 
     /**
      * This method sends MGMT_COMMISSIONER_GET.
@@ -327,10 +323,12 @@ private:
     void SetState(otCommissionerState aState);
     void SignalJoinerEvent(otCommissionerJoinerEvent aEvent, const Mac::ExtAddress &aJoinerId);
 
+    static const char *StateToString(otCommissionerState aState);
+
     struct Joiner
     {
         Mac::ExtAddress mEui64;
-        uint32_t        mExpirationTime;
+        TimeMilli       mExpirationTime;
         char            mPsk[Dtls::kPskMaxLength + 1];
         bool            mValid : 1;
         bool            mAny : 1;
@@ -340,12 +338,11 @@ private:
     uint8_t    mJoinerIid[Ip6::Address::kInterfaceIdentifierSize];
     uint16_t   mJoinerPort;
     uint16_t   mJoinerRloc;
-    uint8_t    mJoinerIndex;
-    TimerMilli mJoinerExpirationTimer;
-
-    TimerMilli mTimer;
     uint16_t   mSessionId;
+    uint8_t    mJoinerIndex;
     uint8_t    mTransmitAttempts;
+    TimerMilli mJoinerExpirationTimer;
+    TimerMilli mTimer;
 
     Coap::Resource mRelayReceive;
     Coap::Resource mDatasetChanged;
@@ -357,7 +354,7 @@ private:
 
     Ip6::NetifUnicastAddress mCommissionerAloc;
 
-    ProvisioningUrlTlv mProvisioningUrl;
+    char mProvisioningUrl[OT_PROVISIONING_URL_MAX_SIZE + 1]; // + 1 is for null char at end of string.
 
     otCommissionerStateCallback  mStateCallback;
     otCommissionerJoinerCallback mJoinerCallback;

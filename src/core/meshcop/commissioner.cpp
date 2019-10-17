@@ -58,10 +58,11 @@ Commissioner::Commissioner(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mJoinerPort(0)
     , mJoinerRloc(0)
+    , mSessionId(0)
+    , mJoinerIndex(0)
+    , mTransmitAttempts(0)
     , mJoinerExpirationTimer(aInstance, HandleJoinerExpirationTimer, this)
     , mTimer(aInstance, HandleTimer, this)
-    , mSessionId(0)
-    , mTransmitAttempts(0)
     , mRelayReceive(OT_URI_PATH_RELAY_RX, &Commissioner::HandleRelayReceive, this)
     , mDatasetChanged(OT_URI_PATH_DATASET_CHANGED, &Commissioner::HandleDatasetChanged, this)
     , mJoinerFinalize(OT_URI_PATH_JOINER_FINALIZE, &Commissioner::HandleJoinerFinalize, this)
@@ -80,12 +81,15 @@ Commissioner::Commissioner(Instance &aInstance)
     mCommissionerAloc.mValid              = true;
     mCommissionerAloc.mScopeOverride      = Ip6::Address::kRealmLocalScope;
     mCommissionerAloc.mScopeOverrideValid = true;
-    mProvisioningUrl.Init();
+
+    mProvisioningUrl[0] = '\0';
 }
 
 void Commissioner::SetState(otCommissionerState aState)
 {
     VerifyOrExit(mState != aState);
+
+    otLogInfoMeshCoP("Commissioner State: %s -> %s", StateToString(mState), StateToString(aState));
 
     mState = aState;
 
@@ -205,21 +209,21 @@ otError Commissioner::SendCommissionerSet(void)
     steeringData.Init();
     steeringData.Clear();
 
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(mJoiners); i++)
+    for (Joiner *joiner = &mJoiners[0]; joiner < OT_ARRAY_END(mJoiners); joiner++)
     {
-        if (!mJoiners[i].mValid)
+        if (!joiner->mValid)
         {
             continue;
         }
 
-        if (mJoiners[i].mAny)
+        if (joiner->mAny)
         {
             steeringData.SetLength(1);
             steeringData.Set();
             break;
         }
 
-        ComputeJoinerId(mJoiners[i].mEui64, joinerId);
+        ComputeJoinerId(joiner->mEui64, joinerId);
         steeringData.ComputeBloomFilter(joinerId);
     }
 
@@ -236,9 +240,9 @@ exit:
 
 void Commissioner::ClearJoiners(void)
 {
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(mJoiners); i++)
+    for (Joiner *joiner = &mJoiners[0]; joiner < OT_ARRAY_END(mJoiners); joiner++)
     {
-        mJoiners[i].mValid = false;
+        joiner->mValid = false;
     }
 
     SendCommissionerSet();
@@ -253,26 +257,26 @@ otError Commissioner::AddJoiner(const Mac::ExtAddress *aEui64, const char *aPskd
     VerifyOrExit(strlen(aPskd) <= Dtls::kPskMaxLength, error = OT_ERROR_INVALID_ARGS);
     RemoveJoiner(aEui64, 0); // remove immediately
 
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(mJoiners); i++)
+    for (Joiner *joiner = &mJoiners[0]; joiner < OT_ARRAY_END(mJoiners); joiner++)
     {
-        if (mJoiners[i].mValid)
+        if (joiner->mValid)
         {
             continue;
         }
 
         if (aEui64 != NULL)
         {
-            mJoiners[i].mEui64 = *aEui64;
-            mJoiners[i].mAny   = false;
+            joiner->mEui64 = *aEui64;
+            joiner->mAny   = false;
         }
         else
         {
-            mJoiners[i].mAny = true;
+            joiner->mAny = true;
         }
 
-        (void)strlcpy(mJoiners[i].mPsk, aPskd, sizeof(mJoiners[i].mPsk));
-        mJoiners[i].mValid          = true;
-        mJoiners[i].mExpirationTime = TimerMilli::GetNow() + TimerMilli::SecToMsec(aTimeout);
+        (void)strlcpy(joiner->mPsk, aPskd, sizeof(joiner->mPsk));
+        joiner->mValid          = true;
+        joiner->mExpirationTime = TimerMilli::GetNow() + Time::SecToMsec(aTimeout);
 
         UpdateJoinerExpirationTimer();
 
@@ -321,33 +325,32 @@ otError Commissioner::RemoveJoiner(const Mac::ExtAddress *aEui64, uint32_t aDela
 
     VerifyOrExit(mState == OT_COMMISSIONER_STATE_ACTIVE, error = OT_ERROR_INVALID_STATE);
 
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(mJoiners); i++)
+    for (Joiner *joiner = &mJoiners[0]; joiner < OT_ARRAY_END(mJoiners); joiner++)
     {
-        if (!mJoiners[i].mValid)
+        if (!joiner->mValid)
         {
             continue;
         }
 
         if (aEui64 != NULL)
         {
-            if (mJoiners[i].mEui64 != *aEui64)
+            if (joiner->mEui64 != *aEui64)
             {
                 continue;
             }
         }
-        else if (!mJoiners[i].mAny)
+        else if (!joiner->mAny)
         {
             continue;
         }
 
         if (aDelay > 0)
         {
-            uint32_t now = TimerMilli::GetNow();
+            TimeMilli now = TimerMilli::GetNow();
 
-            if ((static_cast<int32_t>(mJoiners[i].mExpirationTime - now) > 0) &&
-                (static_cast<uint32_t>(mJoiners[i].mExpirationTime - now) > TimerMilli::SecToMsec(aDelay)))
+            if ((joiner->mExpirationTime > now) && (joiner->mExpirationTime - now > Time::SecToMsec(aDelay)))
             {
-                mJoiners[i].mExpirationTime = now + TimerMilli::SecToMsec(aDelay);
+                joiner->mExpirationTime = now + Time::SecToMsec(aDelay);
                 UpdateJoinerExpirationTimer();
             }
         }
@@ -355,13 +358,13 @@ otError Commissioner::RemoveJoiner(const Mac::ExtAddress *aEui64, uint32_t aDela
         {
             Mac::ExtAddress joinerId;
 
-            mJoiners[i].mValid = false;
+            joiner->mValid = false;
             UpdateJoinerExpirationTimer();
             SendCommissionerSet();
 
             otLogInfoMeshCoP("Removed Joiner (%s)", (aEui64 != NULL) ? aEui64->ToString().AsCString() : "*");
 
-            ComputeJoinerId(mJoiners[i].mEui64, joinerId);
+            ComputeJoinerId(joiner->mEui64, joinerId);
             SignalJoinerEvent(OT_COMMISSIONER_JOINER_REMOVED, joinerId);
         }
 
@@ -372,37 +375,26 @@ exit:
     return error;
 }
 
-const char *Commissioner::GetProvisioningUrl(uint16_t &aLength) const
-{
-    aLength = mProvisioningUrl.GetLength();
-
-    return mProvisioningUrl.GetProvisioningUrl();
-}
-
 otError Commissioner::SetProvisioningUrl(const char *aProvisioningUrl)
 {
     otError error = OT_ERROR_NONE;
+    uint8_t len;
 
-    if (aProvisioningUrl != NULL)
+    if (aProvisioningUrl == NULL)
     {
-        size_t len = strnlen(aProvisioningUrl, MeshCoP::ProvisioningUrlTlv::kMaxLength + 1);
-        VerifyOrExit(len <= MeshCoP::ProvisioningUrlTlv::kMaxLength, error = OT_ERROR_INVALID_ARGS);
+        mProvisioningUrl[0] = '\0';
+        ExitNow();
     }
 
-    mProvisioningUrl.SetProvisioningUrl(aProvisioningUrl);
+    len = static_cast<uint8_t>(strnlen(aProvisioningUrl, sizeof(mProvisioningUrl)));
+
+    VerifyOrExit(len < sizeof(mProvisioningUrl), error = OT_ERROR_INVALID_ARGS);
+
+    memcpy(mProvisioningUrl, aProvisioningUrl, len);
+    mProvisioningUrl[len] = '\0';
 
 exit:
     return error;
-}
-
-uint16_t Commissioner::GetSessionId(void) const
-{
-    return mSessionId;
-}
-
-otCommissionerState Commissioner::GetState(void) const
-{
-    return mState;
 }
 
 void Commissioner::HandleTimer(Timer &aTimer)
@@ -434,20 +426,20 @@ void Commissioner::HandleJoinerExpirationTimer(Timer &aTimer)
 
 void Commissioner::HandleJoinerExpirationTimer(void)
 {
-    uint32_t now = TimerMilli::GetNow();
+    TimeMilli now = TimerMilli::GetNow();
 
     // Remove Joiners.
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(mJoiners); i++)
+    for (Joiner *joiner = &mJoiners[0]; joiner < OT_ARRAY_END(mJoiners); joiner++)
     {
-        if (!mJoiners[i].mValid)
+        if (!joiner->mValid)
         {
             continue;
         }
 
-        if (static_cast<int32_t>(now - mJoiners[i].mExpirationTime) >= 0)
+        if (now >= joiner->mExpirationTime)
         {
             otLogDebgMeshCoP("removing joiner due to timeout or successfully joined");
-            RemoveJoiner(&mJoiners[i].mEui64, 0); // remove immediately
+            RemoveJoiner(&joiner->mEui64, 0); // remove immediately
         }
     }
 
@@ -456,32 +448,34 @@ void Commissioner::HandleJoinerExpirationTimer(void)
 
 void Commissioner::UpdateJoinerExpirationTimer(void)
 {
-    uint32_t now         = TimerMilli::GetNow();
-    uint32_t nextTimeout = TimerMilli::kForeverDt;
+    TimeMilli now         = TimerMilli::GetNow();
+    uint32_t  nextTimeout = TimeMilli::kMaxDuration;
 
     // Check if timer should be set for next Joiner.
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(mJoiners); i++)
+    for (Joiner *joiner = &mJoiners[0]; joiner < OT_ARRAY_END(mJoiners); joiner++)
     {
-        int32_t diff;
+        uint32_t diff;
 
-        if (!mJoiners[i].mValid)
+        if (!joiner->mValid)
         {
             continue;
         }
 
-        diff = TimerMilli::Diff(now, mJoiners[i].mExpirationTime);
-        if (diff <= 0)
+        if (now >= joiner->mExpirationTime)
         {
             nextTimeout = 0;
             break;
         }
-        else if (static_cast<uint32_t>(diff) < nextTimeout)
+
+        diff = joiner->mExpirationTime - now;
+
+        if (diff < nextTimeout)
         {
-            nextTimeout = static_cast<uint32_t>(diff);
+            nextTimeout = diff;
         }
     }
 
-    if (nextTimeout != TimerMilli::kForeverDt)
+    if (nextTimeout != TimeMilli::kMaxDuration)
     {
         // Update the timer to the timeout of the next Joiner.
         mJoinerExpirationTimer.Start(nextTimeout);
@@ -731,7 +725,7 @@ void Commissioner::HandleLeaderPetitionResponse(Coap::Message *         aMessage
     SetState(OT_COMMISSIONER_STATE_ACTIVE);
 
     mTransmitAttempts = 0;
-    mTimer.Start(TimerMilli::SecToMsec(kKeepAliveTimeout) / 2);
+    mTimer.Start(Time::SecToMsec(kKeepAliveTimeout) / 2);
 
 exit:
 
@@ -743,7 +737,7 @@ exit:
         }
         else
         {
-            mTimer.Start(TimerMilli::SecToMsec(kPetitionRetryDelay));
+            mTimer.Start(Time::SecToMsec(kPetitionRetryDelay));
         }
     }
 }
@@ -815,7 +809,7 @@ void Commissioner::HandleLeaderKeepAliveResponse(Coap::Message *         aMessag
 
     VerifyOrExit(state.GetState() == StateTlv::kAccept, SetState(OT_COMMISSIONER_STATE_DISABLED));
 
-    mTimer.Start(TimerMilli::SecToMsec(kKeepAliveTimeout) / 2);
+    mTimer.Start(Time::SecToMsec(kKeepAliveTimeout) / 2);
 
 exit:
 
@@ -870,21 +864,21 @@ void Commissioner::HandleRelayReceive(Coap::Message &aMessage, const Ip6::Messag
         receivedId.Set(mJoinerIid);
         receivedId.ToggleLocal();
 
-        for (uint8_t i = 0; i < OT_ARRAY_LENGTH(mJoiners); i++)
+        for (Joiner *joiner = &mJoiners[0]; joiner < OT_ARRAY_END(mJoiners); joiner++)
         {
-            if (!mJoiners[i].mValid)
+            if (!joiner->mValid)
             {
                 continue;
             }
 
-            ComputeJoinerId(mJoiners[i].mEui64, joinerId);
+            ComputeJoinerId(joiner->mEui64, joinerId);
 
-            if (mJoiners[i].mAny || (joinerId == receivedId))
+            if (joiner->mAny || (joinerId == receivedId))
             {
-                error = Get<Coap::CoapSecure>().SetPsk(reinterpret_cast<const uint8_t *>(mJoiners[i].mPsk),
-                                                       static_cast<uint8_t>(strlen(mJoiners[i].mPsk)));
+                error = Get<Coap::CoapSecure>().SetPsk(reinterpret_cast<const uint8_t *>(joiner->mPsk),
+                                                       static_cast<uint8_t>(strlen(joiner->mPsk)));
                 SuccessOrExit(error);
-                mJoinerIndex = i;
+                mJoinerIndex = static_cast<uint8_t>(joiner - mJoiners);
                 enableJoiner = true;
 
                 otLogInfoMeshCoP("found joiner, starting new session");
@@ -958,9 +952,10 @@ void Commissioner::HandleJoinerFinalize(Coap::Message &aMessage, const Ip6::Mess
 
     if (Tlv::GetTlv(aMessage, Tlv::kProvisioningUrl, sizeof(provisioningUrl), provisioningUrl) == OT_ERROR_NONE)
     {
-        if (provisioningUrl.GetProvisioningUrlLength() != mProvisioningUrl.GetProvisioningUrlLength() ||
-            memcmp(provisioningUrl.GetProvisioningUrl(), mProvisioningUrl.GetProvisioningUrl(),
-                   provisioningUrl.GetProvisioningUrlLength()) != 0)
+        uint8_t len = static_cast<uint8_t>(strnlen(mProvisioningUrl, sizeof(mProvisioningUrl)));
+
+        if ((provisioningUrl.GetProvisioningUrlLength() != len) ||
+            !memcmp(provisioningUrl.GetProvisioningUrl(), mProvisioningUrl, len))
         {
             state = StateTlv::kReject;
         }
@@ -1132,6 +1127,36 @@ otError Commissioner::GeneratePskc(const char *              aPassPhrase,
 exit:
     return error;
 }
+
+// LCOV_EXCL_START
+
+#if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_MLE == 1)
+
+const char *Commissioner::StateToString(otCommissionerState aState)
+{
+    const char *str = "Unknown";
+
+    switch (aState)
+    {
+    case OT_COMMISSIONER_STATE_DISABLED:
+        str = "disabled";
+        break;
+    case OT_COMMISSIONER_STATE_PETITION:
+        str = "petition";
+        break;
+    case OT_COMMISSIONER_STATE_ACTIVE:
+        str = "active";
+        break;
+    default:
+        break;
+    }
+
+    return str;
+}
+
+#endif // (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_MLE == 1)
+
+// LCOV_EXCL_STOP
 
 } // namespace MeshCoP
 } // namespace ot
