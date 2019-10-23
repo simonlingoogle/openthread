@@ -30,6 +30,8 @@
 
 #if OPENTHREAD_FTD
 
+#include <openthread/platform/otns.h>
+
 #include "common/code_utils.hpp"
 #include "common/instance.hpp"
 #include "common/locator-getters.hpp"
@@ -104,6 +106,7 @@ void RouterTable::ClearNeighbors(void)
         if (router.IsStateValid())
         {
             Get<Mle::MleRouter>().Signal(OT_NEIGHBOR_TABLE_EVENT_ROUTER_REMOVED, router);
+            OTNS_STATUS_PUSH("router_removed=%s", router.GetExtAddress().ToString().AsCString());
         }
 
         router.SetState(Neighbor::kStateInvalid);

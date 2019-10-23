@@ -329,6 +329,30 @@ otError otThreadSetExtendedPanId(otInstance *aInstance, const otExtendedPanId *a
 otError otThreadGetLeaderRloc(otInstance *aInstance, otIp6Address *aLeaderRloc);
 
 /**
+ * This function returns the Leader's RLOC16.
+ *
+ * @param[in]   aInstance    A pointer to an OpenThread instance.
+ *
+ * @retval OT_ERROR_NONE          The Leader's RLOC was successfully written to @p aLeaderRloc.
+ * @retval OT_ERROR_DETACHED      Not currently attached to a Thread Partition.
+ *
+ */
+uint16_t otThreadGetLeaderRloc16(otInstance *aInstance);
+
+/**
+ * This function returns a pointer to the Leader's ALOC.
+ *
+ * @param[in]   aInstance    A pointer to an OpenThread instance.
+ * @param[out]  aLeaderRloc  A pointer to the Leader's ALOC.
+ *
+ * @retval OT_ERROR_NONE          The Leader's ALOC was successfully written to @p aLeaderRloc.
+ * @retval OT_ERROR_INVALID_ARGS  @p aLeaderRloc was NULL.
+ * @retval OT_ERROR_DETACHED      Not currently attached to a Thread Partition.
+ *
+ */
+otError otThreadGetLeaderAloc(otInstance *aInstance, otIp6Address *aLeaderRloc);
+
+/**
  * Get the MLE Link Mode configuration.
  *
  * @param[in]  aInstance A pointer to an OpenThread instance.

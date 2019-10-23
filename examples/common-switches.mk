@@ -66,6 +66,7 @@ SLAAC               ?= 1
 SNTP_CLIENT         ?= 0
 TIME_SYNC           ?= 0
 UDP_FORWARD         ?= 0
+OTNS				?= 0
 
 
 ifeq ($(BIG_ENDIAN),1)
@@ -231,6 +232,10 @@ ifeq ($(SETTINGS_RAM),1)
 COMMONCFLAGS += -DOPENTHREAD_SETTINGS_RAM=1
 else
 COMMONCFLAGS += -DOPENTHREAD_SETTINGS_RAM=0
+endif
+
+ifeq ($(OTNS),1)
+COMMONCFLAGS += -DOPENTHREAD_CONFIG_OTNS_ENABLE=1
 endif
 
 ifeq ($(FULL_LOGS),1)

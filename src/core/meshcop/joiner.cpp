@@ -35,6 +35,7 @@
 
 #include <stdio.h>
 
+#include <openthread/platform/otns.h>
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
 #include "common/encoding.hpp"
@@ -78,6 +79,7 @@ void Joiner::SetState(otJoinerState aState)
     VerifyOrExit(aState != mState);
 
     otLogInfoMeshCoP("JoinerState: %s -> %s", JoinerStateToString(mState), JoinerStateToString(aState));
+    OTNS_STATUS_PUSH("joiner_state=%s", JoinerStateToString(aState));
     mState = aState;
 
 exit:

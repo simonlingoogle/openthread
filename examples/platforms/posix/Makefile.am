@@ -52,6 +52,7 @@ PLATFORM_SOURCES                          = \
     uart-posix.c                            \
     sim/alarm-sim.c                         \
     sim/platform-sim.c                      \
+    sim/otns.c                              \
     $(NULL)
 
 libopenthread_posix_a_SOURCES             = \

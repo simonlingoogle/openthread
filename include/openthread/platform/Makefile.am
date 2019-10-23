@@ -45,6 +45,7 @@ ot_platform_headers                     = \
     settings.h                            \
     messagepool.h                         \
     toolchain.h                           \
+    otns.h                                \
     $(NULL)
 
 noinst_HEADERS                          = \

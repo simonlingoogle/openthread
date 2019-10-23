@@ -61,6 +61,7 @@
 
 #include <openthread/diag.h>
 #include <openthread/icmp6.h>
+#include <openthread/platform/otns.h>
 #include <openthread/platform/uart.h>
 
 #include "common/new.hpp"
@@ -218,6 +219,9 @@ const struct Command Interpreter::sCommands[] = {
     {"thread", &Interpreter::ProcessThread},
     {"txpower", &Interpreter::ProcessTxPower},
     {"udp", &Interpreter::ProcessUdp},
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    {"otns", &Interpreter::ProcessOTNS},
+#endif
     {"version", &Interpreter::ProcessVersion},
 };
 
@@ -239,6 +243,9 @@ Interpreter::Interpreter(Instance *aInstance)
     , mSntpQueryingInProgress(false)
 #endif
     , mUdp(*this)
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    , mOtns(*this)
+#endif
     , mDataset(*this)
 #if OPENTHREAD_CONFIG_COAP_API_ENABLE
     , mCoap(*this)
@@ -1993,13 +2000,14 @@ void Interpreter::HandleIcmpReceive(otMessage *          aMessage,
                                     const otMessageInfo *aMessageInfo,
                                     const otIcmp6Header *aIcmpHeader)
 {
-    uint32_t timestamp;
+    uint32_t timestamp = 0;
+    uint16_t datasize;
 
     VerifyOrExit(aIcmpHeader->mType == OT_ICMP6_TYPE_ECHO_REPLY);
     VerifyOrExit((mPingIdentifier != 0) && (mPingIdentifier == HostSwap16(aIcmpHeader->mData.m16[0])));
 
-    mServer->OutputFormat("%u bytes from ", otMessageGetLength(aMessage) - otMessageGetOffset(aMessage) +
-                                                static_cast<uint16_t>(sizeof(otIcmp6Header)));
+    datasize = otMessageGetLength(aMessage) - otMessageGetOffset(aMessage)
+    mServer->OutputFormat("%u bytes from ", datasize + static_cast<uint16_t>(sizeof(otIcmp6Header)));
 
     OutputIp6Address(aMessageInfo->mPeerAddr);
 
@@ -2011,6 +2019,8 @@ void Interpreter::HandleIcmpReceive(otMessage *          aMessage,
     }
 
     mServer->OutputFormat("\r\n");
+    OTNS_STATUS_PUSH("ping_reply=%s$%u$%lld$%d", aMessageInfo.GetPeerAddr().ToString().AsCString(), datasize,
+                     HostSwap32(timestamp), aMessageInfo.mHopLimit);
 
 exit:
     return;
@@ -2115,6 +2125,8 @@ void Interpreter::SendPing(void)
     SuccessOrExit(otMessageAppend(message, &timestamp, sizeof(timestamp)));
     SuccessOrExit(otMessageSetLength(message, mPingLength));
     SuccessOrExit(otIcmp6SendEchoRequest(mInstance, message, &messageInfo, mPingIdentifier));
+    OTNS_STATUS_PUSH("ping_request=%s$%d$%lld", mMessageInfo.GetPeerAddr().ToString().AsCString(), mLength,
+                     int64_t(HostSwap32(timestamp)));
 
     message = NULL;
 
@@ -3184,6 +3196,15 @@ void Interpreter::ProcessUdp(int argc, char *argv[])
     error = mUdp.Process(argc, argv);
     AppendResult(error);
 }
+
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+void Interpreter::ProcessOTNS(int argc, char **argv)
+{
+    otError error;
+    error = mOtns.Process(argc, argv);
+    AppendResult(error);
+}
+#endif
 
 void Interpreter::ProcessVersion(int argc, char *argv[])
 {

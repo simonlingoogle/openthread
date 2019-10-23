@@ -97,6 +97,23 @@ otError otThreadGetLeaderRloc(otInstance *aInstance, otIp6Address *aLeaderRloc)
     return instance.Get<Mle::MleRouter>().GetLeaderAddress(*static_cast<Ip6::Address *>(aLeaderRloc));
 }
 
+uint16_t otThreadGetLeaderRloc16(otInstance *aInstance)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+    uint8_t   leaderId = instance.Get<Mle::MleRouter>().GetLeaderId();
+
+    return instance.Get<Mle::MleRouter>().GetRloc16(leaderId);
+}
+
+otError otThreadGetLeaderAloc(otInstance *aInstance, otIp6Address *aLeaderAloc)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    assert(aLeaderAloc != NULL);
+
+    return instance.Get<Mle::MleRouter>().GetLeaderAloc(*static_cast<Ip6::Address *>(aLeaderAloc));
+}
+
 otLinkModeConfig otThreadGetLinkMode(otInstance *aInstance)
 {
     otLinkModeConfig config;

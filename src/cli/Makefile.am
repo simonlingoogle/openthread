@@ -160,6 +160,7 @@ SOURCES_COMMON =                      \
     cli_server.cpp                    \
     cli_uart.cpp                      \
     cli_udp.cpp                       \
+    cli_otns.cpp                      \
     $(NULL)
 
 libopenthread_cli_ftd_a_SOURCES =     \
@@ -182,6 +183,7 @@ noinst_HEADERS                      = \
     cli_server.hpp                    \
     cli_uart.hpp                      \
     cli_udp.hpp                       \
+    cli_otns.hpp                      \
     x509_cert_key.hpp                 \
     $(NULL)
 

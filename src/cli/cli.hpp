@@ -47,6 +47,7 @@
 #include "cli/cli_commissioner.hpp"
 #include "cli/cli_dataset.hpp"
 #include "cli/cli_joiner.hpp"
+#include "cli/cli_otns.hpp"
 #include "cli/cli_udp.hpp"
 
 #if OPENTHREAD_CONFIG_COAP_API_ENABLE
@@ -101,6 +102,7 @@ class Interpreter
     friend class Dataset;
     friend class Joiner;
     friend class UdpExample;
+    friend class OTNS;
 
 public:
     /**
@@ -333,6 +335,7 @@ private:
     void ProcessDataset(int argc, char *argv[]);
     void ProcessTxPower(int argc, char *argv[]);
     void ProcessUdp(int argc, char *argv[]);
+    void ProcessOTNS(int argc, char **argv);
     void ProcessVersion(int argc, char *argv[]);
 #if OPENTHREAD_CONFIG_MAC_FILTER_ENABLE
     void    ProcessMacFilter(int argc, char *argv[]);
@@ -402,7 +405,12 @@ private:
 #endif
 
     UdpExample mUdp;
-    Dataset    mDataset;
+
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    OTNS mOtns;
+#endif
+
+    Dataset mDataset;
 
 #if OPENTHREAD_CONFIG_COAP_API_ENABLE
     Coap mCoap;
