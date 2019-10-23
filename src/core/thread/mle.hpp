@@ -999,6 +999,18 @@ public:
     }
 
     /**
+     * This method derives RLOC from a given RLOC16.
+     *
+     * @param[out]  aRloc    The RLOC corresponding to RLOC16.
+     * @param[in]   aRloc16  The RLOC16 value.
+     *
+     * @retval OT_ERROR_NONE      Successfully derived RLOC.
+     * @retval OT_ERROR_DETACHED  Not currently attached to a Thread Partition.
+     *
+     */
+    otError GetRlocAddress(Ip6::Address &aRloc, uint16_t aRloc16) const;
+
+    /**
      * This method indicates whether or not @p aRloc16 refers to an active router.
      *
      * @param[in]  aRloc16  The RLOC16 value.

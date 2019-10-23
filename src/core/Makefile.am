@@ -438,6 +438,7 @@ HEADERS_COMMON                             = \
     utils/child_supervision.hpp              \
     utils/heap.hpp                           \
     utils/jam_detector.hpp                   \
+    utils/otns.hpp                           \
     utils/parse_cmdline.hpp                  \
     utils/slaac_address.hpp                  \
     utils/static_assert.hpp                  \

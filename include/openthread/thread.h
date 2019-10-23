@@ -329,6 +329,20 @@ otError otThreadSetExtendedPanId(otInstance *aInstance, const otExtendedPanId *a
 otError otThreadGetLeaderRloc(otInstance *aInstance, otIp6Address *aLeaderRloc);
 
 /**
+ * This function derives a RLOC corresponding to a given RLOC16.
+ *
+ * @param[in]   aInstance  A pointer to an OpenThread instance.
+ * @param[in]   aRloc16    The RLOC16 value.
+ * @param[out]  aRloc      A pointer to the RLOC.
+ *
+ * @retval OT_ERROR_NONE          The RLOC was successfully derived from @p aRloc16.
+ * @retval OT_ERROR_INVALID_ARGS  @p aRloc was NULL.
+ * @retval OT_ERROR_DETACHED      Not currently attached to a Thread Partition.
+ *
+ */
+otError otThreadGetRlocFromRloc16(otInstance *aInstance, uint16_t aRloc16, otIp6Address *aRloc);
+
+/**
  * Get the MLE Link Mode configuration.
  *
  * @param[in]  aInstance A pointer to an OpenThread instance.

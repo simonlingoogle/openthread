@@ -54,6 +54,7 @@
 #include "thread/mle_router.hpp"
 #include "thread/thread_netif.hpp"
 #include "thread/time_sync_service.hpp"
+#include "utils/otns.hpp"
 
 using ot::Encoding::BigEndian::HostSwap16;
 
@@ -349,6 +350,8 @@ void Mle::SetRole(otDeviceRole aRole)
     {
         mParent.SetState(Neighbor::kStateInvalid);
     }
+
+    OtnsStatusPush("role=%d", mRole);
 
 #if OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
     if (IsAttached())
@@ -1008,6 +1011,8 @@ void Mle::SetRloc16(uint16_t aRloc16)
         Get<AddressResolver>().RestartAddressQueries();
 #endif
     }
+
+    OtnsStatusPush("rloc16=%d", aRloc16);
 }
 
 void Mle::SetLeaderData(uint32_t aPartitionId, uint8_t aWeighting, uint8_t aLeaderRouterId)
@@ -1026,19 +1031,23 @@ void Mle::SetLeaderData(uint32_t aPartitionId, uint8_t aWeighting, uint8_t aLead
     mLeaderData.SetPartitionId(aPartitionId);
     mLeaderData.SetWeighting(aWeighting);
     mLeaderData.SetLeaderRouterId(aLeaderRouterId);
+
+    OtnsStatusPush("parid=%x;lrid=%x", aPartitionId, aLeaderRouterId);
 }
 
 otError Mle::GetLeaderAddress(Ip6::Address &aAddress) const
+{
+    return GetRlocAddress(aAddress, mLeaderData.GetLeaderRouterId());
+}
+
+otError Mle::GetRlocAddress(Ip6::Address &aRloc, uint16_t aRloc16) const
 {
     otError error = OT_ERROR_NONE;
 
     VerifyOrExit(GetRloc16() != Mac::kShortAddrInvalid, error = OT_ERROR_DETACHED);
 
-    memcpy(&aAddress, &mMeshLocal16.GetAddress(), 8);
-    aAddress.mFields.m16[4] = HostSwap16(0x0000);
-    aAddress.mFields.m16[5] = HostSwap16(0x00ff);
-    aAddress.mFields.m16[6] = HostSwap16(0xfe00);
-    aAddress.mFields.m16[7] = HostSwap16(Rloc16FromRouterId(mLeaderData.GetLeaderRouterId()));
+    memcpy(&aRloc, &mMeshLocal16.GetAddress(), 14);
+    aRloc.mFields.m16[7] = HostSwap16(aRloc16);
 
 exit:
     return error;
@@ -3514,6 +3523,7 @@ otError Mle::HandleChildIdResponse(const Message &         aMessage,
     mParentCandidate.Clear();
 
     mParent.SetRloc16(sourceAddress.GetRloc16());
+    OtnsStatusPush("parent=%s", mParent.GetExtAddress().ToString().AsCString());
 
     Get<NetworkData::Leader>().SetNetworkData(leaderData.GetDataVersion(), leaderData.GetStableDataVersion(),
                                               !IsFullNetworkData(), aMessage, networkDataOffset);

@@ -69,6 +69,7 @@ SNTP_CLIENT         ?= 0
 THREAD_VERSION      ?= 1.1
 TIME_SYNC           ?= 0
 UDP_FORWARD         ?= 0
+OTNS                ?= 0
 
 
 ifeq ($(BIG_ENDIAN),1)
@@ -248,6 +249,15 @@ ifeq ($(SETTINGS_RAM),1)
 COMMONCFLAGS += -DOPENTHREAD_SETTINGS_RAM=1
 else
 COMMONCFLAGS += -DOPENTHREAD_SETTINGS_RAM=0
+endif
+
+ifeq ($(OTNS),1)
+
+ifneq ($(VIRTUAL_TIME),1)
+$(error OTNS only supports virtual time simulation.)
+endif
+
+COMMONCFLAGS += -DOPENTHREAD_CONFIG_OTNS_ENABLE=1
 endif
 
 ifeq ($(FULL_LOGS),1)

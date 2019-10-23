@@ -39,6 +39,7 @@
 #include "thread/mle_router.hpp"
 #include "thread/network_data_leader.hpp"
 #include "thread/thread_netif.hpp"
+#include "utils/otns.hpp"
 
 namespace ot {
 
@@ -109,6 +110,7 @@ void RouterTable::ClearNeighbors(void)
         if (router.IsStateValid())
         {
             Get<Mle::MleRouter>().Signal(OT_NEIGHBOR_TABLE_EVENT_ROUTER_REMOVED, router);
+            OtnsStatusPush("router_removed=%s", router.GetExtAddress().ToString().AsCString());
         }
 
         router.SetState(Neighbor::kStateInvalid);

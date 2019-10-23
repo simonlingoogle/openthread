@@ -66,6 +66,8 @@ enum
     OT_SIM_EVENT_RADIO_RECEIVED     = 1,
     OT_SIM_EVENT_UART_WRITE         = 2,
     OT_SIM_EVENT_RADIO_SPINEL_WRITE = 3,
+    OT_SIM_EVENT_POST_CMD           = 4,
+    OT_SIM_EVENT_OTNS_STATUS_PUSH   = 5,
     OT_EVENT_DATA_MAX_SIZE          = 1024,
 };
 
@@ -80,7 +82,11 @@ struct Event
 
 enum
 {
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    WELLKNOWN_NODE_ID = 1000, ///< Well-known Unique ID used by a simulated radio that supports promiscuous mode.
+#else
     WELLKNOWN_NODE_ID = 34, ///< Well-known Unique ID used by a simulated radio that supports promiscuous mode.
+#endif
 };
 
 /**

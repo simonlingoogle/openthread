@@ -71,6 +71,7 @@ set(COMMON_SOURCES
     cli_server.cpp
     cli_uart.cpp
     cli_udp.cpp
+    cli_otns.cpp
 )
 
 target_include_directories(openthread-cli-ftd PUBLIC ${OT_PUBLIC_INCLUDES} PRIVATE ${COMMON_INCLUDES})
