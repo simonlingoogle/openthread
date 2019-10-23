@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2018, The OpenThread Authors.
+ *  Copyright (c) 2019, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -26,78 +26,31 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * @file
- *   This file includes the platform-specific configuration.
- *
- */
-
-/**
- * @def OPENTHREAD_SIMULATION_UART_BAUDRATE
- *
- * This setting configures the baud rate of the UART.
- *
- */
-#ifndef OPENTHREAD_SIMULATION_UART_BAUDRATE
-#define OPENTHREAD_SIMULATION_UART_BAUDRATE B115200
-#endif
-
-/**
- * @def OPENTHREAD_SIMULATION_VIRTUAL_TIME
- *
- * This setting configures whether to use virtual time (used for simulation) in simulation platform.
- *
- */
-#ifndef OPENTHREAD_SIMULATION_VIRTUAL_TIME
-#define OPENTHREAD_SIMULATION_VIRTUAL_TIME 0
-#endif
-
-/**
- * @def OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
- *
- * This setting configures whether to use virtual time for UART.
- *
- */
-#ifndef OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
-#define OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART 0
-#endif
-
-/**
- * @def OPENTHREAD_PLATFORM_USE_PSEUDO_RESET
- *
- * Define as 1 to enable pseudo-reset.
- *
- */
-#ifndef OPENTHREAD_PLATFORM_USE_PSEUDO_RESET
-#define OPENTHREAD_PLATFORM_USE_PSEUDO_RESET 0
-#endif
-
-/**
- * @def OPENTHREAD_CONFIG_NCP_SPI_ENABLE
- *
- * Define as 1 to enable SPI NCP interface.
- *
- */
-#ifndef OPENTHREAD_CONFIG_NCP_SPI_ENABLE
-#define OPENTHREAD_CONFIG_NCP_SPI_ENABLE 0
-#endif
+#include "platform-simulation.h"
 
 #if OPENTHREAD_CONFIG_OTNS_ENABLE
 
-/**
- * Make sure VIRTUAL_TIME=1 for OTNS
- *
- */
-#if !OPENTHREAD_SIMULATION_VIRTUAL_TIME
-#error "OTNS requires virtual time simulations."
-#endif
+#include <stdio.h>
+#include <openthread/platform/alarm-micro.h>
 
-/**
- * Make sure VIRTUAL_TIME_UART=0 for OTNS
- *
- */
-#if OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
-#error "OTNS does not support virtual time UART yet."
-#endif
+void otPlatOtnsStatusPush(const char *aFmt, ...)
+{
+    int          n;
+    struct Event event;
+
+    va_list ap;
+    va_start(ap, aFmt);
+
+    n = vsnprintf((char *)(&event.mData[0]), sizeof(event.mData), aFmt, ap);
+    assert(n >= 0);
+
+    va_end(ap);
+
+    event.mDelay      = 0;
+    event.mEvent      = OT_SIM_EVENT_OTNS_STATUS_PUSH;
+    event.mDataLength = (uint16_t)n;
+
+    otSimSendEvent(&event);
+}
 
 #endif // OPENTHREAD_CONFIG_OTNS_ENABLE

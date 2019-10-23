@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2018, The OpenThread Authors.
+ *  Copyright (c) 2019, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,76 +28,50 @@
 
 /**
  * @file
- *   This file includes the platform-specific configuration.
+ * @brief
+ *   This file includes the abstraction for the platform OTNS utilities.
+ */
+
+#ifndef OPENTHREAD_PLATFORM_OTNS_H_
+#define OPENTHREAD_PLATFORM_OTNS_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @addtogroup plat-otns
+ *
+ * @brief
+ *   This module includes the platform abstraction for OTNS.
+ *
+ * @{
  *
  */
 
 /**
- * @def OPENTHREAD_SIMULATION_UART_BAUDRATE
+ * OpenThread uses `OtnsStatusPush` to push node status to OTNS.
+ * Each call to `OtnsStatusPush` can send multiple statuses, separated by ';', e.x. parid=577fbc37;lrid=5.
+ * Each status contains key and value separated by '='.
+ * Status value can be further separated into multiple fields using ',',
+ * e.x. ping_request=fdde:ad00:beef:0:459e:d7b4:b65e:5480,4,112000.
  *
- * This setting configures the baud rate of the UART.
+ * New statuses should follow these conventions.
  *
+ * @param[in]  aFmt   A pointer to the format string.
+ * @param[in]  ...    A matching list of arguments.
+ *
+ * Currently, OTNS only supports virtual time simulation.
  */
-#ifndef OPENTHREAD_SIMULATION_UART_BAUDRATE
-#define OPENTHREAD_SIMULATION_UART_BAUDRATE B115200
-#endif
+void otPlatOtnsStatusPush(const char *aFmt, ...);
 
 /**
- * @def OPENTHREAD_SIMULATION_VIRTUAL_TIME
- *
- * This setting configures whether to use virtual time (used for simulation) in simulation platform.
+ * @}
  *
  */
-#ifndef OPENTHREAD_SIMULATION_VIRTUAL_TIME
-#define OPENTHREAD_SIMULATION_VIRTUAL_TIME 0
+
+#ifdef __cplusplus
+} // extern "C"
 #endif
 
-/**
- * @def OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
- *
- * This setting configures whether to use virtual time for UART.
- *
- */
-#ifndef OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
-#define OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART 0
-#endif
-
-/**
- * @def OPENTHREAD_PLATFORM_USE_PSEUDO_RESET
- *
- * Define as 1 to enable pseudo-reset.
- *
- */
-#ifndef OPENTHREAD_PLATFORM_USE_PSEUDO_RESET
-#define OPENTHREAD_PLATFORM_USE_PSEUDO_RESET 0
-#endif
-
-/**
- * @def OPENTHREAD_CONFIG_NCP_SPI_ENABLE
- *
- * Define as 1 to enable SPI NCP interface.
- *
- */
-#ifndef OPENTHREAD_CONFIG_NCP_SPI_ENABLE
-#define OPENTHREAD_CONFIG_NCP_SPI_ENABLE 0
-#endif
-
-#if OPENTHREAD_CONFIG_OTNS_ENABLE
-
-/**
- * Make sure VIRTUAL_TIME=1 for OTNS
- *
- */
-#if !OPENTHREAD_SIMULATION_VIRTUAL_TIME
-#error "OTNS requires virtual time simulations."
-#endif
-
-/**
- * Make sure VIRTUAL_TIME_UART=0 for OTNS
- *
- */
-#if OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
-#error "OTNS does not support virtual time UART yet."
-#endif
-
-#endif // OPENTHREAD_CONFIG_OTNS_ENABLE
+#endif // OPENTHREAD_PLATFORM_OTNS_H_

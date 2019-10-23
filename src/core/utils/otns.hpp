@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2018, The OpenThread Authors.
+ *  Copyright (c) 2020, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,76 +28,26 @@
 
 /**
  * @file
- *   This file includes the platform-specific configuration.
- *
+ *   This file wraps the calls to platform OTNS abstrations.
  */
 
-/**
- * @def OPENTHREAD_SIMULATION_UART_BAUDRATE
- *
- * This setting configures the baud rate of the UART.
- *
- */
-#ifndef OPENTHREAD_SIMULATION_UART_BAUDRATE
-#define OPENTHREAD_SIMULATION_UART_BAUDRATE B115200
-#endif
+#ifndef UTILS_OTNS_HPP_
+#define UTILS_OTNS_HPP_
 
-/**
- * @def OPENTHREAD_SIMULATION_VIRTUAL_TIME
- *
- * This setting configures whether to use virtual time (used for simulation) in simulation platform.
- *
- */
-#ifndef OPENTHREAD_SIMULATION_VIRTUAL_TIME
-#define OPENTHREAD_SIMULATION_VIRTUAL_TIME 0
-#endif
+#include "openthread-core-config.h"
 
-/**
- * @def OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
- *
- * This setting configures whether to use virtual time for UART.
- *
- */
-#ifndef OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
-#define OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART 0
-#endif
+#include <openthread/platform/otns.h>
 
-/**
- * @def OPENTHREAD_PLATFORM_USE_PSEUDO_RESET
- *
- * Define as 1 to enable pseudo-reset.
- *
- */
-#ifndef OPENTHREAD_PLATFORM_USE_PSEUDO_RESET
-#define OPENTHREAD_PLATFORM_USE_PSEUDO_RESET 0
-#endif
-
-/**
- * @def OPENTHREAD_CONFIG_NCP_SPI_ENABLE
- *
- * Define as 1 to enable SPI NCP interface.
- *
- */
-#ifndef OPENTHREAD_CONFIG_NCP_SPI_ENABLE
-#define OPENTHREAD_CONFIG_NCP_SPI_ENABLE 0
-#endif
+namespace ot {
+namespace Utils {
 
 #if OPENTHREAD_CONFIG_OTNS_ENABLE
-
-/**
- * Make sure VIRTUAL_TIME=1 for OTNS
- *
- */
-#if !OPENTHREAD_SIMULATION_VIRTUAL_TIME
-#error "OTNS requires virtual time simulations."
+#define OtnsStatusPush otPlatOtnsStatusPush
+#else
+#define OtnsStatusPush(...) ((void)0)
 #endif
 
-/**
- * Make sure VIRTUAL_TIME_UART=0 for OTNS
- *
- */
-#if OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
-#error "OTNS does not support virtual time UART yet."
-#endif
+} // namespace Utils
+} // namespace ot
 
-#endif // OPENTHREAD_CONFIG_OTNS_ENABLE
+#endif // UTILS_OTNS_HPP_

@@ -54,6 +54,7 @@
 #include "thread/mle_router.hpp"
 #include "thread/thread_netif.hpp"
 #include "thread/time_sync_service.hpp"
+#include "utils/otns.hpp"
 
 using ot::Encoding::BigEndian::HostSwap16;
 
@@ -345,6 +346,8 @@ void Mle::SetRole(otDeviceRole aRole)
     {
         mParent.SetState(Neighbor::kStateInvalid);
     }
+
+    OtnsStatusPush("role=%d", mRole);
 
 #if OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
     if (IsAttached())
@@ -1000,6 +1003,8 @@ void Mle::SetRloc16(uint16_t aRloc16)
         Get<AddressResolver>().RestartAddressQueries();
 #endif
     }
+
+    OtnsStatusPush("rloc16=%d", aRloc16);
 }
 
 void Mle::SetLeaderData(uint32_t aPartitionId, uint8_t aWeighting, uint8_t aLeaderRouterId)
@@ -1018,6 +1023,8 @@ void Mle::SetLeaderData(uint32_t aPartitionId, uint8_t aWeighting, uint8_t aLead
     mLeaderData.SetPartitionId(aPartitionId);
     mLeaderData.SetWeighting(aWeighting);
     mLeaderData.SetLeaderRouterId(aLeaderRouterId);
+
+    OtnsStatusPush("parid=%x;lrid=%x", aPartitionId, aLeaderRouterId);
 }
 
 otError Mle::GetLeaderAddress(Ip6::Address &aAddress) const
@@ -3453,6 +3460,7 @@ otError Mle::HandleChildIdResponse(const Message &         aMessage,
     mParentCandidate.Clear();
 
     mParent.SetRloc16(sourceAddress);
+    OtnsStatusPush("parent=%s", mParent.GetExtAddress().ToString().AsCString());
 
     Get<NetworkData::Leader>().SetNetworkData(leaderData.GetDataVersion(), leaderData.GetStableDataVersion(),
                                               !IsFullNetworkData(), aMessage, networkDataOffset);

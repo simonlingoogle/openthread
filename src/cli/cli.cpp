@@ -65,6 +65,7 @@
 
 #include "common/new.hpp"
 #include "net/ip6.hpp"
+#include "utils/otns.hpp"
 
 #include "cli_dataset.hpp"
 
@@ -1995,13 +1996,14 @@ void Interpreter::HandleIcmpReceive(otMessage *          aMessage,
                                     const otMessageInfo *aMessageInfo,
                                     const otIcmp6Header *aIcmpHeader)
 {
-    uint32_t timestamp;
+    uint32_t timestamp = 0;
+    uint16_t datasize;
 
     VerifyOrExit(aIcmpHeader->mType == OT_ICMP6_TYPE_ECHO_REPLY);
     VerifyOrExit((mPingIdentifier != 0) && (mPingIdentifier == HostSwap16(aIcmpHeader->mData.m16[0])));
 
-    mServer->OutputFormat("%u bytes from ", otMessageGetLength(aMessage) - otMessageGetOffset(aMessage) +
-                                                static_cast<uint16_t>(sizeof(otIcmp6Header)));
+    datasize = otMessageGetLength(aMessage) - otMessageGetOffset(aMessage);
+    mServer->OutputFormat("%u bytes from ", datasize + static_cast<uint16_t>(sizeof(otIcmp6Header)));
 
     OutputIp6Address(aMessageInfo->mPeerAddr);
 
@@ -2013,6 +2015,9 @@ void Interpreter::HandleIcmpReceive(otMessage *          aMessage,
     }
 
     mServer->OutputFormat("\r\n");
+    OtnsStatusPush("ping_reply=%s,%u,%lu,%d",
+                   static_cast<const Ip6::MessageInfo *>(aMessageInfo)->GetPeerAddr().ToString().AsCString(), datasize,
+                   HostSwap32(timestamp), aMessageInfo->mHopLimit);
 
 exit:
     return;
@@ -2114,6 +2119,9 @@ void Interpreter::SendPing(void)
     SuccessOrExit(otMessageAppend(message, &timestamp, sizeof(timestamp)));
     SuccessOrExit(otMessageSetLength(message, mPingLength));
     SuccessOrExit(otIcmp6SendEchoRequest(mInstance, message, &messageInfo, mPingIdentifier));
+    OtnsStatusPush("ping_request=%s,%d,%lu",
+                   static_cast<Ip6::MessageInfo *>(&messageInfo)->GetPeerAddr().ToString().AsCString(), mPingLength,
+                   HostSwap32(timestamp));
 
     message = NULL;
 

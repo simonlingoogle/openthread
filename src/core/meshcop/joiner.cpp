@@ -45,6 +45,7 @@
 #include "radio/radio.hpp"
 #include "thread/thread_netif.hpp"
 #include "thread/thread_uri_paths.hpp"
+#include "utils/otns.hpp"
 
 #if OPENTHREAD_CONFIG_JOINER_ENABLE
 
@@ -78,6 +79,7 @@ void Joiner::SetState(otJoinerState aState)
     VerifyOrExit(aState != mState);
 
     otLogInfoMeshCoP("JoinerState: %s -> %s", JoinerStateToString(mState), JoinerStateToString(aState));
+    OtnsStatusPush("joiner_state=%s", JoinerStateToString(aState));
     mState = aState;
 
 exit:
