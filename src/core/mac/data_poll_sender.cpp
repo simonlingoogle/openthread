@@ -199,10 +199,13 @@ void DataPollSender::HandlePollSent(Mac::TxFrame &aFrame, otError aError)
 
     VerifyOrExit(mEnabled);
 
-    aFrame.GetDstAddr(macDest);
-    Get<MeshForwarder>().UpdateNeighborOnSentFrame(aFrame, aError, macDest);
+    if (!aFrame.IsEmpty())
+    {
+        aFrame.GetDstAddr(macDest);
+        Get<MeshForwarder>().UpdateNeighborOnSentFrame(aFrame, aError, macDest);
+    }
 
-    if (Get<Mle::MleRouter>().GetParentCandidate()->GetState() == Neighbor::kStateInvalid)
+    if (Get<Mle::MleRouter>().GetParentCandidate()->IsStateInvalid())
     {
         StopPolling();
         Get<Mle::MleRouter>().BecomeDetached();

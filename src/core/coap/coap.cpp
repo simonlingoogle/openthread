@@ -144,17 +144,17 @@ otError CoapBase::SendMessage(Message &               aMessage,
     Message *    storedCopy = NULL;
     uint16_t     copyLength = 0;
 
-    if ((aMessage.GetType() == OT_COAP_TYPE_ACKNOWLEDGMENT || aMessage.GetType() == OT_COAP_TYPE_RESET) &&
-        aMessage.GetCode() != OT_COAP_CODE_EMPTY)
+    switch (aMessage.GetType())
     {
+    case OT_COAP_TYPE_ACKNOWLEDGMENT:
         mResponsesQueue.EnqueueResponse(aMessage, aMessageInfo);
-    }
-
-    // Set Message Id if it was not already set.
-    if (aMessage.GetMessageId() == 0 &&
-        (aMessage.GetType() == OT_COAP_TYPE_CONFIRMABLE || aMessage.GetType() == OT_COAP_TYPE_NON_CONFIRMABLE))
-    {
+        break;
+    case OT_COAP_TYPE_RESET:
+        assert(aMessage.GetCode() == OT_COAP_CODE_EMPTY);
+        break;
+    default:
         aMessage.SetMessageId(mMessageId++);
+        break;
     }
 
     aMessage.Finish();
@@ -231,7 +231,6 @@ otError CoapBase::SendHeaderResponse(Message::Code aCode, const Message &aReques
 
     case OT_COAP_TYPE_NON_CONFIRMABLE:
         message->Init(OT_COAP_TYPE_NON_CONFIRMABLE, aCode);
-        message->SetMessageId(mMessageId++);
         break;
 
     default:
@@ -260,41 +259,33 @@ void CoapBase::HandleRetransmissionTimer(Timer &aTimer)
 
 void CoapBase::HandleRetransmissionTimer(void)
 {
-    TimeMilli        now       = TimerMilli::GetNow();
-    uint32_t         nextDelta = TimeMilli::kMaxDuration;
+    TimeMilli        now      = TimerMilli::GetNow();
+    TimeMilli        nextTime = now.GetDistantFuture();
     CoapMetadata     coapMetadata;
-    Message *        message     = static_cast<Message *>(mPendingRequests.GetHead());
-    Message *        nextMessage = NULL;
+    Message *        message;
+    Message *        nextMessage;
     Ip6::MessageInfo messageInfo;
 
-    while (message != NULL)
+    for (message = static_cast<Message *>(mPendingRequests.GetHead()); message != NULL; message = nextMessage)
     {
         nextMessage = static_cast<Message *>(message->GetNext());
+
         coapMetadata.ReadFrom(*message);
 
-        if (coapMetadata.IsLater(now))
+        if (now >= coapMetadata.mNextTimerShot)
         {
-            uint32_t diff = coapMetadata.mNextTimerShot - now;
-
-            // Calculate the next delay and choose the lowest.
-            if (diff < nextDelta)
+            if (!coapMetadata.mConfirmable || (coapMetadata.mRetransmissionCount >= kMaxRetransmit))
             {
-                nextDelta = diff;
+                // No expected response or acknowledgment.
+                FinalizeCoapTransaction(*message, coapMetadata, NULL, NULL, OT_ERROR_RESPONSE_TIMEOUT);
+                continue;
             }
-        }
-        else if ((coapMetadata.mConfirmable) && (coapMetadata.mRetransmissionCount < kMaxRetransmit))
-        {
+
             // Increment retransmission counter and timer.
             coapMetadata.mRetransmissionCount++;
             coapMetadata.mRetransmissionTimeout *= 2;
             coapMetadata.mNextTimerShot = now + coapMetadata.mRetransmissionTimeout;
             coapMetadata.UpdateIn(*message);
-
-            // Check if retransmission time is lower than current lowest.
-            if (coapMetadata.mRetransmissionTimeout < nextDelta)
-            {
-                nextDelta = coapMetadata.mRetransmissionTimeout;
-            }
 
             // Retransmit
             if (!coapMetadata.mAcknowledged)
@@ -306,18 +297,16 @@ void CoapBase::HandleRetransmissionTimer(void)
                 SendCopy(*message, messageInfo);
             }
         }
-        else
-        {
-            // No expected response or acknowledgment.
-            FinalizeCoapTransaction(*message, coapMetadata, NULL, NULL, OT_ERROR_RESPONSE_TIMEOUT);
-        }
 
-        message = nextMessage;
+        if (nextTime > coapMetadata.mNextTimerShot)
+        {
+            nextTime = coapMetadata.mNextTimerShot;
+        }
     }
 
-    if (nextDelta != TimeMilli::kMaxDuration)
+    if (nextTime < now.GetDistantFuture())
     {
-        mRetransmissionTimer.Start(nextDelta);
+        mRetransmissionTimer.FireAt(nextTime);
     }
 }
 
@@ -370,23 +359,7 @@ Message *CoapBase::CopyAndEnqueueMessage(const Message &     aMessage,
     // Append the copy with retransmission data.
     SuccessOrExit(error = aCoapMetadata.AppendTo(*messageCopy));
 
-    // Setup the timer.
-    if (mRetransmissionTimer.IsRunning())
-    {
-        TimeMilli alarmFireTime;
-
-        // If timer is already running, check if it should be restarted with earlier fire time.
-        alarmFireTime = mRetransmissionTimer.GetFireTime();
-
-        if (aCoapMetadata.IsEarlier(alarmFireTime))
-        {
-            mRetransmissionTimer.Start(aCoapMetadata.mRetransmissionTimeout);
-        }
-    }
-    else
-    {
-        mRetransmissionTimer.Start(aCoapMetadata.mRetransmissionTimeout);
-    }
+    mRetransmissionTimer.FireAtIfEarlier(aCoapMetadata.mNextTimerShot);
 
     // Enqueue the message.
     mPendingRequests.Enqueue(*messageCopy);
@@ -836,7 +809,7 @@ void ResponsesQueue::HandleTimer(void)
     {
         enqueuedResponseHeader.ReadFrom(*message);
 
-        if (enqueuedResponseHeader.IsEarlier(TimerMilli::GetNow()))
+        if (TimerMilli::GetNow() >= enqueuedResponseHeader.mDequeueTime)
         {
             DequeueResponse(*message);
         }

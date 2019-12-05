@@ -39,6 +39,7 @@ OpenThread test scripts use the CLI to execute test cases.
 * [leaderweight](#leaderweight)
 * [linkquality](#linkquality-extaddr)
 * [logfilename](#logfilename-filename)
+* [mac](#mac-retries-direct)
 * [macfilter](#macfilter)
 * [masterkey](#masterkey)
 * [mode](#mode)
@@ -110,6 +111,26 @@ Set the IEEE 802.15.4 Channel value.
 
 ```bash
 > channel 11
+Done
+```
+
+### channel preferred
+
+Get preferred channel mask.
+
+```bash
+> channel preferred
+0x7fff800
+Done
+```
+
+### channel supported
+
+Get supported channel mask.
+
+```bash
+> channel supported
+0x7fff800
 Done
 ```
 
@@ -226,7 +247,7 @@ Done
 Get the supported counter names.
 
 ```bash
->counters
+> counters
 mac
 mle
 Done
@@ -280,6 +301,17 @@ Attach Attempts: 1
 Partition Id Changes: 1
 Better Partition Attach Attempts: 0
 Parent Changes: 0
+Done
+```
+
+### counters \<countername\> reset
+
+Reset the counter value.
+
+```bash
+> counters mac reset
+Done
+> counters mle reset
 Done
 ```
 
@@ -1350,6 +1382,44 @@ Print the build version information.
 ```bash
 > version
 OPENTHREAD/gf4f2f04; Jul  1 2016 17:00:09
+Done
+```
+
+### mac retries direct
+
+Get the number of direct TX retries on the MAC layer.
+
+```bash
+> mac retries direct
+3
+Done
+```
+
+### mac retries direct \<number\>
+
+Set the number of direct TX retries on the MAC layer.
+
+```bash
+> mac retries direct 5
+Done
+```
+
+### mac retries indirect
+
+Get the number of indirect TX retries on the MAC layer.
+
+```bash
+> mac retries indirect
+3
+Done
+```
+
+### mac retries indirect \<number\>
+
+Set the number of indirect TX retries on the MAC layer.
+
+```bash
+> mac retries indirect 5
 Done
 ```
 
