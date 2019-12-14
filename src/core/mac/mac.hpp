@@ -567,7 +567,7 @@ public:
      * This method resets mac counters
      *
      */
-    void ResetCounters(void);
+    void ResetCounters(void) { memset(&mCounters, 0, sizeof(mCounters)); }
 
     /**
      * This method returns the MAC counter.
@@ -661,7 +661,6 @@ private:
     bool    IsJoinable(void) const;
     void    BeginTransmit(void);
     bool    HandleMacCommand(RxFrame &aFrame);
-    Frame * GetOperationFrame(void);
 
     static void HandleTimer(Timer &aTimer);
     void        HandleTimer(void);
