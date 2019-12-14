@@ -77,19 +77,6 @@ exit:
     return error;
 }
 
-otError otNetDataGetNextService(otInstance *aInstance, otNetworkDataIterator *aIterator, otServiceConfig *aConfig)
-{
-    otError   error    = OT_ERROR_NONE;
-    Instance &instance = *static_cast<Instance *>(aInstance);
-
-    VerifyOrExit(aIterator && aConfig, error = OT_ERROR_INVALID_ARGS);
-
-    error = instance.Get<NetworkData::Leader>().GetNextService(*aIterator, *aConfig);
-
-exit:
-    return error;
-}
-
 uint8_t otNetDataGetVersion(otInstance *aInstance)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);

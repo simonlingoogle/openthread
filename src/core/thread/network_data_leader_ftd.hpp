@@ -159,6 +159,7 @@ public:
      */
     void UpdateContextsAfterReset(void);
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     /**
      * This method scans network data for given service ID and returns pointer to the respective TLV, if present.
      *
@@ -167,6 +168,7 @@ public:
      *
      */
     ServiceTlv *FindServiceById(uint8_t aServiceId);
+#endif
 
 private:
     static void HandleServerData(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
@@ -181,8 +183,10 @@ private:
     otError AddBorderRouter(PrefixTlv &aPrefix, BorderRouterTlv &aBorderRouter);
     otError AddNetworkData(uint8_t *aTlvs, uint8_t aTlvsLength, uint8_t *aOldTlvs, uint8_t aOldTlvsLength);
     otError AddPrefix(PrefixTlv &aPrefix);
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     otError AddServer(ServiceTlv &aService, ServerTlv &aServer, uint8_t *aOldTlvs, uint8_t aOldTlvsLength);
     otError AddService(ServiceTlv &aService, uint8_t *aOldTlvs, uint8_t aOldTlvsLength);
+#endif
 
     int  AllocateContext(void);
     void FreeContext(uint8_t aContextId);
@@ -196,7 +200,9 @@ private:
 
     void RemoveRloc(uint16_t aRloc16, MatchMode aMatchMode);
     void RemoveRloc(PrefixTlv &aPrefix, uint16_t aRloc16, MatchMode aMatchMode);
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     void RemoveRloc(ServiceTlv &aService, uint16_t aRloc16, MatchMode aMatchMode);
+#endif
     void RemoveRloc(PrefixTlv &aPrefix, HasRouteTlv &aHasRoute, uint16_t aRloc16, MatchMode aMatchMode);
     void RemoveRloc(PrefixTlv &aPrefix, BorderRouterTlv &aBorderRouter, uint16_t aRloc16, MatchMode aMatchMode);
 

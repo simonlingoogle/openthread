@@ -107,11 +107,13 @@ typedef otBorderRouterConfig OnMeshPrefixConfig;
  */
 typedef otExternalRouteConfig ExternalRouteConfig;
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 /**
  * This type represents a Service configuration.
  *
  */
 typedef otServiceConfig ServiceConfig;
+#endif
 
 /**
  * This class implements Network Data processing.
@@ -214,6 +216,7 @@ public:
      */
     otError GetNextExternalRoute(Iterator &aIterator, uint16_t aRloc16, ExternalRouteConfig &aConfig);
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     /**
      * This method provides the next service in the Thread Network Data.
      *
@@ -251,6 +254,7 @@ public:
      *
      */
     otError GetNextServiceId(Iterator &aIterator, uint16_t aRloc16, uint8_t &aServiceId);
+#endif
 
     /**
      * This method indicates whether or not the Thread Network Data contains all of the on mesh prefix information
@@ -278,6 +282,7 @@ public:
      */
     bool ContainsExternalRoutes(NetworkData &aCompare, uint16_t aRloc16);
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     /**
      * This method indicates whether or not the Thread Network Data contains all of the service information
      * in @p aCompare associated with @p aRloc16.
@@ -303,6 +308,7 @@ public:
      *
      */
     bool ContainsService(uint8_t aServiceId, uint16_t aRloc16);
+#endif
 
     /**
      * This method cancels the data resubmit delay timer.
@@ -387,6 +393,7 @@ protected:
      */
     PrefixTlv *FindPrefix(const uint8_t *aPrefix, uint8_t aPrefixLength, uint8_t *aTlvs, uint8_t aTlvsLength);
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     /**
      * This method returns a pointer to a matching Service TLV.
      *
@@ -416,6 +423,7 @@ protected:
                             uint8_t        aServiceDataLength,
                             uint8_t *      aTlvs,
                             uint8_t        aTlvsLength);
+#endif
 
     /**
      * This method inserts bytes into the Network Data.
@@ -456,6 +464,7 @@ protected:
      */
     void RemoveTemporaryData(uint8_t *aData, uint8_t &aDataLength, PrefixTlv &aPrefix);
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     /**
      * This method strips non-stable Sub-TLVs from a Service TLV.
      *
@@ -466,6 +475,7 @@ protected:
      *
      */
     void RemoveTemporaryData(uint8_t *aData, uint8_t &aDataLength, ServiceTlv &aService);
+#endif
 
     /**
      * This method computes the number of IPv6 Prefix bits that match.

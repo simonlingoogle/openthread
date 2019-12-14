@@ -431,8 +431,10 @@ otError Leader::RlocLookup(uint16_t  aRloc16,
     HasRouteTlv *      hasRoute;
     BorderRouterEntry *borderRouterEntry;
     HasRouteEntry *    hasRouteEntry;
-    ServiceTlv *       service;
-    ServerTlv *        server;
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+    ServiceTlv *service;
+    ServerTlv * server;
+#endif
 
     while (cur < end)
     {
@@ -518,6 +520,8 @@ otError Leader::RlocLookup(uint16_t  aRloc16,
         }
         break;
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+
         case NetworkDataTlv::kTypeService:
         {
             service = static_cast<ServiceTlv *>(cur);
@@ -569,6 +573,8 @@ otError Leader::RlocLookup(uint16_t  aRloc16,
             break;
         }
 
+#endif
+
         default:
             break;
         }
@@ -585,7 +591,9 @@ bool Leader::IsStableUpdated(uint8_t *aTlvs, uint8_t aTlvsLength, uint8_t *aTlvs
     bool            rval = false;
     NetworkDataTlv *cur  = reinterpret_cast<NetworkDataTlv *>(aTlvs);
     NetworkDataTlv *end  = reinterpret_cast<NetworkDataTlv *>(aTlvs + aTlvsLength);
-    ServiceTlv *    service;
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+    ServiceTlv *service;
+#endif
 
     while (cur < end)
     {
@@ -635,6 +643,8 @@ bool Leader::IsStableUpdated(uint8_t *aTlvs, uint8_t aTlvsLength, uint8_t *aTlvs
 
             break;
         }
+
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 
         case NetworkDataTlv::kTypeService:
             service = static_cast<ServiceTlv *>(cur);
@@ -705,6 +715,7 @@ bool Leader::IsStableUpdated(uint8_t *aTlvs, uint8_t aTlvsLength, uint8_t *aTlvs
             }
 
             break;
+#endif
 
         default:
             break;
@@ -774,6 +785,11 @@ exit:
 
 otError Leader::AddNetworkData(uint8_t *aTlvs, uint8_t aTlvsLength, uint8_t *aOldTlvs, uint8_t aOldTlvsLength)
 {
+#if !OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+    OT_UNUSED_VARIABLE(aOldTlvs);
+    OT_UNUSED_VARIABLE(aOldTlvsLength);
+#endif
+
     otError         error = OT_ERROR_NONE;
     NetworkDataTlv *cur   = reinterpret_cast<NetworkDataTlv *>(aTlvs);
     NetworkDataTlv *end   = reinterpret_cast<NetworkDataTlv *>(aTlvs + aTlvsLength);
@@ -789,10 +805,13 @@ otError Leader::AddNetworkData(uint8_t *aTlvs, uint8_t aTlvsLength, uint8_t *aOl
             otDumpDebgNetData("add prefix done", mTlvs, mLength);
             break;
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+
         case NetworkDataTlv::kTypeService:
             SuccessOrExit(error = AddService(*static_cast<ServiceTlv *>(cur), aOldTlvs, aOldTlvsLength));
             otDumpDebgNetData("add service done", mTlvs, mLength);
             break;
+#endif
 
         default:
             break;
@@ -842,6 +861,7 @@ exit:
     return error;
 }
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 otError Leader::AddService(ServiceTlv &aService, uint8_t *aOldTlvs, uint8_t aOldTlvsLength)
 {
     otError         error = OT_ERROR_NONE;
@@ -872,6 +892,7 @@ otError Leader::AddService(ServiceTlv &aService, uint8_t *aOldTlvs, uint8_t aOld
 exit:
     return error;
 }
+#endif
 
 otError Leader::AddHasRoute(PrefixTlv &aPrefix, HasRouteTlv &aHasRoute)
 {
@@ -935,6 +956,7 @@ exit:
     return error;
 }
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 otError Leader::AddServer(ServiceTlv &aService, ServerTlv &aServer, uint8_t *aOldTlvs, uint8_t aOldTlvsLength)
 {
     otError     error               = OT_ERROR_NONE;
@@ -1048,6 +1070,7 @@ ServiceTlv *Leader::FindServiceById(uint8_t aServiceId)
 exit:
     return compare;
 }
+#endif
 
 otError Leader::AddBorderRouter(PrefixTlv &aPrefix, BorderRouterTlv &aBorderRouter)
 {
@@ -1204,7 +1227,9 @@ void Leader::RemoveRloc(uint16_t aRloc16, MatchMode aMatchMode)
     NetworkDataTlv *cur = reinterpret_cast<NetworkDataTlv *>(mTlvs);
     NetworkDataTlv *end;
     PrefixTlv *     prefix;
-    ServiceTlv *    service;
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+    ServiceTlv *service;
+#endif
 
     while (1)
     {
@@ -1232,6 +1257,8 @@ void Leader::RemoveRloc(uint16_t aRloc16, MatchMode aMatchMode)
             break;
         }
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
+
         case NetworkDataTlv::kTypeService:
         {
             service = static_cast<ServiceTlv *>(cur);
@@ -1247,6 +1274,8 @@ void Leader::RemoveRloc(uint16_t aRloc16, MatchMode aMatchMode)
 
             break;
         }
+
+#endif
 
         default:
             break;
@@ -1323,6 +1352,7 @@ void Leader::RemoveRloc(PrefixTlv &aPrefix, uint16_t aRloc16, MatchMode aMatchMo
     }
 }
 
+#if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 void Leader::RemoveRloc(ServiceTlv &aService, uint16_t aRloc16, MatchMode aMatchMode)
 {
     NetworkDataTlv *cur = aService.GetSubTlvs();
@@ -1361,6 +1391,7 @@ void Leader::RemoveRloc(ServiceTlv &aService, uint16_t aRloc16, MatchMode aMatch
         cur = cur->GetNext();
     }
 }
+#endif
 
 void Leader::RemoveRloc(PrefixTlv &aPrefix, HasRouteTlv &aHasRoute, uint16_t aRloc16, MatchMode aMatchMode)
 {
