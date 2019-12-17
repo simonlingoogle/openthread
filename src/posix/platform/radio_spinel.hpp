@@ -55,12 +55,10 @@ public:
     /**
      * Initialize this radio transceiver.
      *
-     * @param[in]   aRadioFile    The path to either a uart device or an executable.
-     * @param[in]   aRadioConfig  Parameters given to the device or executable.
-     * @param[in]   aReset        Whether to reset RCP when initializing.
+     * @param[in]  aPlatformConfig  Platform configuration structure.
      *
      */
-    void Init(const char *aRadioFile, const char *aRadioConfig, bool aReset);
+    void Init(const otPlatformConfig &aPlatformConfig);
 
     /**
      * Deinitialize this radio transceiver.
@@ -626,8 +624,7 @@ private:
      */
     bool IsSafeToHandleNow(spinel_prop_key_t aKey) const
     {
-        return !((mWaitingKey != SPINEL_PROP_LAST_STATUS) &&
-                 (aKey == SPINEL_PROP_STREAM_RAW || aKey == SPINEL_PROP_MAC_ENERGY_SCAN_RESULT));
+        return !(aKey == SPINEL_PROP_STREAM_RAW || aKey == SPINEL_PROP_MAC_ENERGY_SCAN_RESULT);
     }
 
     void HandleNotification(HdlcInterface::RxFrameBuffer &aFrameBuffer);

@@ -374,7 +374,7 @@
 extern "C" {
 #endif
 
-typedef enum
+enum
 {
     SPINEL_STATUS_OK                       = 0,  ///< Operation has completed successfully.
     SPINEL_STATUS_FAILURE                  = 1,  ///< Operation has failed for some undefined reason.
@@ -469,7 +469,9 @@ typedef enum
 
     SPINEL_STATUS_EXPERIMENTAL__BEGIN = 2000000,
     SPINEL_STATUS_EXPERIMENTAL__END   = 2097152,
-} spinel_status_t;
+};
+
+typedef uint32_t spinel_status_t;
 
 typedef enum
 {
@@ -656,7 +658,6 @@ typedef struct
 typedef int          spinel_ssize_t;
 typedef unsigned int spinel_size_t;
 typedef uint8_t      spinel_tid_t;
-typedef unsigned int spinel_cid_t;
 
 enum
 {
@@ -992,6 +993,8 @@ enum
     SPINEL_CMD_EXPERIMENTAL__END   = 2097152,
 };
 
+typedef uint32_t spinel_command_t;
+
 enum
 {
     SPINEL_CAP_LOCK       = 1,
@@ -1079,6 +1082,8 @@ enum
     SPINEL_CAP_EXPERIMENTAL__END   = 2097152,
 };
 
+typedef uint32_t spinel_capability_t;
+
 /**
  * Property Keys
  *
@@ -1106,7 +1111,7 @@ enum
  *    Experimental |          2,000,000 - 2,097,151 | Experimental use only
  *
  */
-typedef enum
+enum
 {
     /// Last Operation Status
     /** Format: `i` - Read-only
@@ -3900,7 +3905,9 @@ typedef enum
 
     SPINEL_PROP_EXPERIMENTAL__BEGIN = 2000000,
     SPINEL_PROP_EXPERIMENTAL__END   = 2097152,
-} spinel_prop_key_t;
+};
+
+typedef uint32_t spinel_prop_key_t;
 
 // ----------------------------------------------------------------------------
 
@@ -4073,17 +4080,17 @@ SPINEL_API_EXTERN const char *spinel_next_packed_datatype(const char *pack_forma
 
 // ----------------------------------------------------------------------------
 
-SPINEL_API_EXTERN const char *spinel_command_to_cstr(unsigned int command);
+SPINEL_API_EXTERN const char *spinel_command_to_cstr(spinel_command_t command);
 
 SPINEL_API_EXTERN const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key);
 
 SPINEL_API_EXTERN const char *spinel_net_role_to_cstr(uint8_t net_role);
 
-SPINEL_API_EXTERN const char *spinel_mcu_power_state_to_cstr(spinel_mcu_power_state_t mcu_power_state);
+SPINEL_API_EXTERN const char *spinel_mcu_power_state_to_cstr(uint8_t mcu_power_state);
 
 SPINEL_API_EXTERN const char *spinel_status_to_cstr(spinel_status_t status);
 
-SPINEL_API_EXTERN const char *spinel_capability_to_cstr(unsigned int capability);
+SPINEL_API_EXTERN const char *spinel_capability_to_cstr(spinel_capability_t capability);
 
 // ----------------------------------------------------------------------------
 

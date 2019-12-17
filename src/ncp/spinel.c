@@ -1116,7 +1116,7 @@ spinel_ssize_t spinel_datatype_vpack(uint8_t *     data_out,
 
 // LCOV_EXCL_START
 
-const char *spinel_command_to_cstr(unsigned int command)
+const char *spinel_command_to_cstr(spinel_command_t command)
 {
     const char *ret = "UNKNOWN";
 
@@ -1405,6 +1405,10 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
 
     case SPINEL_PROP_CHANNEL_MONITOR_CHANNEL_OCCUPANCY:
         ret = "CHANNEL_MONITOR_CHANNEL_OCCUPANCY";
+        break;
+
+    case SPINEL_PROP_RADIO_CAPS:
+        ret = "RADIO_CAPS";
         break;
 
     case SPINEL_PROP_RADIO_COEX_METRICS:
@@ -2239,7 +2243,7 @@ const char *spinel_net_role_to_cstr(uint8_t net_role)
     return ret;
 }
 
-const char *spinel_mcu_power_state_to_cstr(spinel_mcu_power_state_t mcu_power_state)
+const char *spinel_mcu_power_state_to_cstr(uint8_t mcu_power_state)
 {
     const char *ret = "MCU_POWER_STATE_UNKNOWN";
 
@@ -2255,6 +2259,9 @@ const char *spinel_mcu_power_state_to_cstr(spinel_mcu_power_state_t mcu_power_st
 
     case SPINEL_MCU_POWER_STATE_OFF:
         ret = "MCU_POWER_STATE_OFF";
+        break;
+
+    default:
         break;
     }
 
@@ -2422,7 +2429,7 @@ const char *spinel_status_to_cstr(spinel_status_t status)
     return ret;
 }
 
-const char *spinel_capability_to_cstr(unsigned int capability)
+const char *spinel_capability_to_cstr(spinel_capability_t capability)
 {
     const char *ret = "UNKNOWN";
 

@@ -1079,23 +1079,26 @@ exit:
     }
 }
 
-void Interpreter::HandleDnsResponse(void *        aContext,
-                                    const char *  aHostname,
-                                    otIp6Address *aAddress,
-                                    uint32_t      aTtl,
-                                    otError       aResult)
+void Interpreter::HandleDnsResponse(void *              aContext,
+                                    const char *        aHostname,
+                                    const otIp6Address *aAddress,
+                                    uint32_t            aTtl,
+                                    otError             aResult)
 {
-    static_cast<Interpreter *>(aContext)->HandleDnsResponse(aHostname, *static_cast<Ip6::Address *>(aAddress), aTtl,
-                                                            aResult);
+    static_cast<Interpreter *>(aContext)->HandleDnsResponse(aHostname, static_cast<const Ip6::Address *>(aAddress),
+                                                            aTtl, aResult);
 }
 
-void Interpreter::HandleDnsResponse(const char *aHostname, Ip6::Address &aAddress, uint32_t aTtl, otError aResult)
+void Interpreter::HandleDnsResponse(const char *aHostname, const Ip6::Address *aAddress, uint32_t aTtl, otError aResult)
 {
     mServer->OutputFormat("DNS response for %s - ", aHostname);
 
     if (aResult == OT_ERROR_NONE)
     {
-        OutputIp6Address(aAddress);
+        if (aAddress != NULL)
+        {
+            OutputIp6Address(*aAddress);
+        }
         mServer->OutputFormat(" TTL: %d\r\n", aTtl);
     }
     else
@@ -2034,6 +2037,7 @@ void Interpreter::ProcessPing(int argc, char *argv[])
 
     VerifyOrExit(!mPingTimer.IsRunning(), error = OT_ERROR_BUSY);
 
+    mMessageInfo = Ip6::MessageInfo();
     SuccessOrExit(error = mMessageInfo.GetPeerAddr().FromString(argv[0]));
 
     mLength   = 8;
@@ -2058,6 +2062,16 @@ void Interpreter::ProcessPing(int argc, char *argv[])
             SuccessOrExit(error = ParsePingInterval(argv[index], interval));
             VerifyOrExit(0 < interval && interval <= Timer::kMaxDelay, error = OT_ERROR_INVALID_ARGS);
             mInterval = interval;
+            break;
+
+        case 4:
+            SuccessOrExit(error = ParseLong(argv[index], value));
+            VerifyOrExit(0 <= value && value <= 255, error = OT_ERROR_INVALID_ARGS);
+            mMessageInfo.mHopLimit = static_cast<uint8_t>(value);
+            if (value == 0)
+            {
+                mMessageInfo.mAllowZeroHopLimit = true;
+            }
             break;
 
         default:
