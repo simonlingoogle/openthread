@@ -355,7 +355,6 @@ LOCAL_CFLAGS                                                                := \
     $(NULL)
 
 LOCAL_CPPFLAGS                                                              := \
-    -std=c++03                                                                 \
     -Wno-non-virtual-dtor                                                      \
     $(NULL)
 
