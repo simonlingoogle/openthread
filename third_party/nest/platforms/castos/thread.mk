@@ -12,6 +12,7 @@ PRODUCT_PACKAGES += \
   ot-ncp-app.bin \
   otbr-agent \
   otbr-agent.conf \
+  spi-hdlc-adapter \
   thread-defines \
   wpanctl \
   wpantund \
