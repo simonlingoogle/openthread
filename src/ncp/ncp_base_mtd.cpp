@@ -610,8 +610,6 @@ exit:
     return error;
 }
 
-#if OPENTHREAD_CONFIG_ENABLE_TX_ERROR_RATE_TRACKING
-
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_NEIGHBOR_TABLE_ERROR_RATES>(void)
 {
     otError                error = OT_ERROR_NONE;
@@ -635,8 +633,6 @@ template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_NEIGHBOR_TABLE
 exit:
     return error;
 }
-
-#endif // OPENTHREAD_CONFIG_ENABLE_TX_ERROR_RATE_TRACKING
 
 template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_THREAD_ASSISTING_PORTS>(void)
 {
@@ -1038,8 +1034,8 @@ otError NcpBase::EncodeOperationalDataset(const otOperationalDataset &aDataset)
 
         SuccessOrExit(mEncoder.OpenStruct());
         SuccessOrExit(mEncoder.WriteUintPacked(SPINEL_PROP_IPV6_ML_PREFIX));
-        SuccessOrExit(error = mEncoder.WriteIp6Address(addr)); // Mesh local prefix
-        SuccessOrExit(error = mEncoder.WriteUint8(64));        // Prefix length (in bits)
+        SuccessOrExit(error = mEncoder.WriteIp6Address(addr));             // Mesh local prefix
+        SuccessOrExit(error = mEncoder.WriteUint8(OT_IP6_PREFIX_BITSIZE)); // Prefix length (in bits)
         SuccessOrExit(mEncoder.CloseStruct());
     }
 
@@ -1227,7 +1223,7 @@ otError NcpBase::DecodeOperationalDataset(otOperationalDataset &aDataset,
 
                 SuccessOrExit(error = mDecoder.ReadIp6Address(addr));
                 SuccessOrExit(error = mDecoder.ReadUint8(prefixLen));
-                VerifyOrExit(prefixLen == 64, error = OT_ERROR_INVALID_ARGS);
+                VerifyOrExit(prefixLen == OT_IP6_PREFIX_BITSIZE, error = OT_ERROR_INVALID_ARGS);
                 memcpy(aDataset.mMeshLocalPrefix.m8, addr, OT_MESH_LOCAL_PREFIX_SIZE);
             }
 
@@ -1561,8 +1557,8 @@ template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_IPV6_ML_PREFIX>(void)
     // Zero out the last 8 bytes.
     memset(addr.mFields.m8 + 8, 0, 8);
 
-    SuccessOrExit(error = mEncoder.WriteIp6Address(addr)); // Mesh local prefix
-    SuccessOrExit(error = mEncoder.WriteUint8(64));        // Prefix length (in bits)
+    SuccessOrExit(error = mEncoder.WriteIp6Address(addr));             // Mesh local prefix
+    SuccessOrExit(error = mEncoder.WriteUint8(OT_IP6_PREFIX_BITSIZE)); // Prefix length (in bits)
 
 exit:
     return error;
@@ -1576,7 +1572,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_IPV6_ML_PREFIX>(void)
 
     SuccessOrExit(error = mDecoder.ReadIp6Address(meshLocalPrefix));
     SuccessOrExit(error = mDecoder.ReadUint8(prefixLength));
-    VerifyOrExit(prefixLength == 64, error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(prefixLength == OT_IP6_PREFIX_BITSIZE, error = OT_ERROR_INVALID_ARGS);
 
     error = otThreadSetMeshLocalPrefix(mInstance, reinterpret_cast<const otMeshLocalPrefix *>(meshLocalPrefix));
 
@@ -2445,6 +2441,8 @@ template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_CNTR_ALL_MAC_COUNTERS
     SuccessOrExit(error = mEncoder.WriteUint32(counters->mTxErrCca));
     SuccessOrExit(error = mEncoder.WriteUint32(counters->mTxErrAbort));
     SuccessOrExit(error = mEncoder.WriteUint32(counters->mTxErrBusyChannel));
+    SuccessOrExit(error = mEncoder.WriteUint32(counters->mTxDirectMaxRetryExpiry));
+    SuccessOrExit(error = mEncoder.WriteUint32(counters->mTxIndirectMaxRetryExpiry));
     SuccessOrExit(error = mEncoder.CloseStruct());
 
     // Encode Rx related counters
@@ -2529,6 +2527,49 @@ template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_CNTR_ALL_IP_COUNTERS>
 exit:
     return error;
 }
+
+#if OPENTHREAD_CONFIG_MAC_RETRY_SUCCESS_HISTOGRAM_ENABLE
+template <> otError NcpBase::HandlePropertyGet<SPINEL_PROP_CNTR_MAC_RETRY_HISTOGRAM>(void)
+{
+    otError         error = OT_ERROR_NONE;
+    const uint32_t *histogramDirect;
+    const uint32_t *histogramIndirect;
+    uint8_t         histogramDirectEntries;
+    uint8_t         histogramIndirectEntries;
+
+    histogramDirect   = otLinkGetTxDirectRetrySuccessHistogram(mInstance, &histogramDirectEntries);
+    histogramIndirect = otLinkGetTxIndirectRetrySuccessHistogram(mInstance, &histogramIndirectEntries);
+
+    assert((histogramDirectEntries == 0) || (histogramDirect != NULL));
+    assert((histogramIndirectEntries == 0) || (histogramIndirect != NULL));
+
+    // Encode direct message retries histogram
+    SuccessOrExit(error = mEncoder.OpenStruct());
+    for (uint8_t i = 0; i < histogramDirectEntries; i++)
+    {
+        SuccessOrExit(error = mEncoder.WriteUint32(histogramDirect[i]));
+    }
+    SuccessOrExit(error = mEncoder.CloseStruct());
+
+    // Encode indirect message retries histogram
+    SuccessOrExit(error = mEncoder.OpenStruct());
+    for (uint8_t i = 0; i < histogramIndirectEntries; i++)
+    {
+        SuccessOrExit(error = mEncoder.WriteUint32(histogramIndirect[i]));
+    }
+    SuccessOrExit(error = mEncoder.CloseStruct());
+
+exit:
+    return error;
+}
+
+template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_CNTR_MAC_RETRY_HISTOGRAM>(void)
+{
+    otLinkResetTxRetrySuccessHistogram(mInstance);
+
+    return OT_ERROR_NONE;
+}
+#endif // OPENTHREAD_CONFIG_MAC_RETRY_SUCCESS_HISTOGRAM_ENABLE
 
 template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_CNTR_ALL_IP_COUNTERS>(void)
 {
@@ -2900,6 +2941,9 @@ exit:
 template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_CNTR_RESET>(void)
 {
     otLinkResetCounters(mInstance);
+#if OPENTHREAD_CONFIG_MAC_RETRY_SUCCESS_HISTOGRAM_ENABLE
+    otLinkResetTxRetrySuccessHistogram(mInstance);
+#endif
     otThreadResetIp6Counters(mInstance);
     otThreadResetMleCounters(mInstance);
     ResetCounters();

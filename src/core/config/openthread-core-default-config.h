@@ -6,7 +6,7 @@
  *  modification, are permitted provided that the following conditions are met:
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- >*  2. Redistributions in binary form must reproduce the above copyright
+ *  2. Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. Neither the name of the copyright holder nor the
@@ -34,6 +34,8 @@
 
 #ifndef OPENTHREAD_CORE_DEFAULT_CONFIG_H_
 #define OPENTHREAD_CORE_DEFAULT_CONFIG_H_
+
+#include "config/coap.h"
 
 /**
  * @def OPENTHREAD_CONFIG_STACK_VENDOR_OUI
@@ -73,26 +75,6 @@
  */
 #ifndef OPENTHREAD_CONFIG_STACK_VERSION_MINOR
 #define OPENTHREAD_CONFIG_STACK_VERSION_MINOR 1
-#endif
-
-/**
- * @def OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
- *
- * Define to 1 to enable the Border Agent service.
- *
- */
-#ifndef OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
-#define OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE 0
-#endif
-
-/**
- * @def OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
- *
- * Define to 1 to enable the Border Router service.
- *
- */
-#ifndef OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
-#define OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE 0
 #endif
 
 /**
@@ -282,6 +264,16 @@
  */
 #ifndef OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE_NO_DTLS
 #define OPENTHREAD_CONFIG_HEAP_INTERNAL_SIZE_NO_DTLS 384
+#endif
+
+/**
+ * @def OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
+ *
+ * Enable the external heap.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE
+#define OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE 0
 #endif
 
 /**

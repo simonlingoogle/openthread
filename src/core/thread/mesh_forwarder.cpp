@@ -140,7 +140,7 @@ exit:
 void MeshForwarder::RemoveMessage(Message &aMessage)
 {
 #if OPENTHREAD_FTD
-    for (ChildTable::Iterator iter(GetInstance(), ChildTable::kInStateAnyExceptInvalid); !iter.IsDone(); iter++)
+    for (ChildTable::Iterator iter(GetInstance(), Child::kInStateAnyExceptInvalid); !iter.IsDone(); iter++)
     {
         IgnoreReturnValue(mIndirectSender.RemoveMessageFromSleepyChild(aMessage, *iter.GetChild()));
     }
@@ -796,7 +796,7 @@ start:
 
         // copy IPv6 Payload
         aMessage.Read(aMessage.GetOffset(), payloadLength, payload);
-        aFrame.SetPayloadLength(static_cast<uint8_t>(headerLength + payloadLength));
+        aFrame.SetPayloadLength(headerLength + payloadLength);
 
         nextOffset = aMessage.GetOffset() + payloadLength;
         aMessage.SetOffset(0);
@@ -826,7 +826,7 @@ start:
 
         // Copy IPv6 Payload
         aMessage.Read(aMessage.GetOffset(), payloadLength, payload);
-        aFrame.SetPayloadLength(static_cast<uint8_t>(headerLength + payloadLength));
+        aFrame.SetPayloadLength(headerLength + payloadLength);
 
         nextOffset = aMessage.GetOffset() + payloadLength;
     }

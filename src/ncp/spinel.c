@@ -84,6 +84,22 @@
 #define ENOMEM 1
 #endif
 
+#ifndef SPINEL_PLATFORM_SHOULD_LOG_ASSERTS
+#define SPINEL_PLATFORM_SHOULD_LOG_ASSERTS 0
+#endif
+
+#ifndef SPINEL_PLATFORM_DOESNT_IMPLEMENT_ERRNO_VAR
+#define SPINEL_PLATFORM_DOESNT_IMPLEMENT_ERRNO_VAR 0
+#endif
+
+#ifndef SPINEL_PLATFORM_DOESNT_IMPLEMENT_FPRINTF
+#define SPINEL_PLATFORM_DOESNT_IMPLEMENT_FPRINTF 0
+#endif
+
+#ifndef SPINEL_SELF_TEST
+#define SPINEL_SELF_TEST 0
+#endif
+
 #if defined(errno) && SPINEL_PLATFORM_DOESNT_IMPLEMENT_ERRNO_VAR
 #error "SPINEL_PLATFORM_DOESNT_IMPLEMENT_ERRNO_VAR is set but errno is already defined."
 #endif
@@ -2183,6 +2199,10 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
         ret = "CNTR_ALL_IP_COUNTERS";
         break;
 
+    case SPINEL_PROP_CNTR_MAC_RETRY_HISTOGRAM:
+        ret = "CNTR_MAC_RETRY_HISTOGRAM";
+        break;
+
     case SPINEL_PROP_NEST_STREAM_MFG:
         ret = "NEST_STREAM_MFG";
         break;
@@ -2605,6 +2625,10 @@ const char *spinel_capability_to_cstr(spinel_capability_t capability)
 
     case SPINEL_CAP_RADIO_COEX:
         ret = "RADIO_COEX";
+        break;
+
+    case SPINEL_CAP_MAC_RETRY_HISTOGRAM:
+        ret = "MAC_RETRY_HISTOGRAM";
         break;
 
     case SPINEL_CAP_ERROR_RATE_TRACKING:
