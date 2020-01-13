@@ -187,14 +187,14 @@
 /**
  * @def OPENTHREAD_CONFIG_LOG_LEVEL
  *
- * The log level (used at compile time). If `OPENTHREAD_CONFIG_ENABLE_DYNAMIC_LOG_LEVEL`
+ * The log level (used at compile time). If `OPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE`
  * is set, this defines the most verbose log level possible.
  *
  */
 #define OPENTHREAD_CONFIG_LOG_LEVEL OT_LOG_LEVEL_INFO
 
 /**
- * @def OPENTHREAD_CONFIG_ENABLE_DYNAMIC_LOG_LEVEL
+ * @def OPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE
  *
  * Define as 1 to enable dynamic log level control.
  *
@@ -203,7 +203,7 @@
  * decreasing the log level from the compile time value.
  *
  */
-#define OPENTHREAD_CONFIG_ENABLE_DYNAMIC_LOG_LEVEL 1
+#define OPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE 1
 
 /**
  * @def OPENTHREAD_CONFIG_LOG_OUTPUT
