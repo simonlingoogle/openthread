@@ -140,7 +140,7 @@ static const RAIL_IEEE802154_Config_t sRailIeee802154Config = {
     .ackConfig =
         {
             .enable     = true,
-            .ackTimeout = 894,
+            .ackTimeout = 864,
             .rxTransitions =
                 {
                     .success = RAIL_RF_STATE_RX,
@@ -169,6 +169,8 @@ static const RAIL_IEEE802154_Config_t sRailIeee802154Config = {
 RAIL_DECLARE_TX_POWER_VBAT_CURVES(piecewiseSegments, curvesSg, curves24Hp, curves24Lp);
 
 static int8_t sTxPowerDbm = OPENTHREAD_CONFIG_DEFAULT_TRANSMIT_POWER;
+
+static int8_t sCcaThresholdDbm = -75; // default -75dBm energy detect threshold
 
 static efr32BandConfig *sCurrentBandConfig = NULL;
 
@@ -398,11 +400,8 @@ void otPlatRadioSetPanId(otInstance *aInstance, uint16_t aPanId)
 
     utilsSoftSrcMatchSetPanId(aPanId);
 
-    for (uint8_t i = 0; i < EFR32_NUM_BAND_CONFIGS; i++)
-    {
-        status = RAIL_IEEE802154_SetPanId(gRailHandle, aPanId, 0);
-        assert(status == RAIL_STATUS_NO_ERROR);
-    }
+    status = RAIL_IEEE802154_SetPanId(gRailHandle, aPanId, 0);
+    assert(status == RAIL_STATUS_NO_ERROR);
 }
 
 void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aAddress)
@@ -414,11 +413,8 @@ void otPlatRadioSetExtendedAddress(otInstance *aInstance, const otExtAddress *aA
     otLogInfoPlat("ExtAddr=%X%X%X%X%X%X%X%X", aAddress->m8[7], aAddress->m8[6], aAddress->m8[5], aAddress->m8[4],
                   aAddress->m8[3], aAddress->m8[2], aAddress->m8[1], aAddress->m8[0]);
 
-    for (uint8_t i = 0; i < EFR32_NUM_BAND_CONFIGS; i++)
-    {
-        status = RAIL_IEEE802154_SetLongAddress(gRailHandle, (uint8_t *)aAddress->m8, 0);
-        assert(status == RAIL_STATUS_NO_ERROR);
-    }
+    status = RAIL_IEEE802154_SetLongAddress(gRailHandle, (uint8_t *)aAddress->m8, 0);
+    assert(status == RAIL_STATUS_NO_ERROR);
 }
 
 void otPlatRadioSetShortAddress(otInstance *aInstance, uint16_t aAddress)
@@ -429,11 +425,8 @@ void otPlatRadioSetShortAddress(otInstance *aInstance, uint16_t aAddress)
 
     otLogInfoPlat("ShortAddr=%X", aAddress);
 
-    for (uint8_t i = 0; i < EFR32_NUM_BAND_CONFIGS; i++)
-    {
-        status = RAIL_IEEE802154_SetShortAddress(gRailHandle, aAddress, 0);
-        assert(status == RAIL_STATUS_NO_ERROR);
-    }
+    status = RAIL_IEEE802154_SetShortAddress(gRailHandle, aAddress, 0);
+    assert(status == RAIL_STATUS_NO_ERROR);
 }
 
 bool otPlatRadioIsEnabled(otInstance *aInstance)
@@ -596,6 +589,9 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
         // time needed for CSMA/CA
         txSchedulerInfo.transactionTime += RADIO_TIMING_CSMA_OVERHEAD_US;
 #endif
+        csmaConfig.csmaTries    = aFrame->mInfo.mTxInfo.mMaxCsmaBackoffs;
+        csmaConfig.ccaThreshold = sCcaThresholdDbm;
+
         status = RAIL_StartCcaCsmaTx(gRailHandle, aFrame->mChannel, txOptions, &csmaConfig, &txSchedulerInfo);
     }
     else
@@ -617,6 +613,7 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame)
 #endif
         sTransmitError = OT_ERROR_CHANNEL_ACCESS_FAILURE;
         sTransmitBusy  = false;
+        otSysEventSignalPending();
     }
 
 exit:
@@ -670,11 +667,8 @@ void otPlatRadioSetPromiscuous(otInstance *aInstance, bool aEnable)
 
     sPromiscuous = aEnable;
 
-    for (uint8_t i = 0; i < EFR32_NUM_BAND_CONFIGS; i++)
-    {
-        status = RAIL_IEEE802154_SetPromiscuousMode(gRailHandle, aEnable);
-        assert(status == RAIL_STATUS_NO_ERROR);
-    }
+    status = RAIL_IEEE802154_SetPromiscuousMode(gRailHandle, aEnable);
+    assert(status == RAIL_STATUS_NO_ERROR);
 }
 
 void otPlatRadioEnableSrcMatch(otInstance *aInstance, bool aEnable)
@@ -704,11 +698,11 @@ static void processNextRxPacket(otInstance *aInstance)
 
     length = packetInfo.packetBytes + 1;
 
-    // check the length in recv packet info structure
-    otEXPECT(length == packetInfo.firstPortionData[0]);
+    // check the length in recv packet info structure; RAIL should take care of this.
+    assert(length == packetInfo.firstPortionData[0]);
 
-    // check the length validity of recv packet
-    otEXPECT(length >= IEEE802154_MIN_LENGTH && length <= IEEE802154_MAX_LENGTH);
+    // check the length validity of recv packet; RAIL should take care of this.
+    assert(length >= IEEE802154_MIN_LENGTH && length <= IEEE802154_MAX_LENGTH);
 
     otLogInfoPlat("Received data:%d", length);
 
@@ -750,16 +744,22 @@ static void processNextRxPacket(otInstance *aInstance)
     }
     else
     {
-        otEXPECT(length != IEEE802154_ACK_LENGTH);
+        // signal MAC layer for each received frame if promiscous is enabled
+        // otherwise only signal MAC layer for non-ACK frame
+        otEXPECT(sPromiscuous || (length != IEEE802154_ACK_LENGTH));
 
         sReceiveError = OT_ERROR_NONE;
 
         sReceiveFrame.mInfo.mRxInfo.mRssi = packetDetails.rssi;
         sReceiveFrame.mInfo.mRxInfo.mLqi  = packetDetails.lqi;
 
-        // TODO: grab timestamp and handle conversion to msec/usec and RAIL_GetRxTimeSyncWordEndAlt
-        // sReceiveFrame.mInfo.mRxInfo.mMsec = packetDetails.packetTime;
-        // sReceiveFrame.mInfo.mRxInfo.mUsec = packetDetails.packetTime;
+        // Get the timestamp when the SFD was received
+        assert(packetDetails.timeReceived.timePosition != RAIL_PACKET_TIME_INVALID);
+        packetDetails.timeReceived.totalPacketBytes = length + 1;
+
+        status = RAIL_GetRxTimeSyncWordEndAlt(gRailHandle, &packetDetails);
+        assert(status == RAIL_STATUS_NO_ERROR);
+        sReceiveFrame.mInfo.mRxInfo.mTimestamp = packetDetails.timeReceived.packetTime;
 
         // TODO Set this flag only when the packet is really acknowledged with frame pending set.
         // See https://github.com/openthread/openthread/pull/3785
@@ -774,16 +774,11 @@ static void processNextRxPacket(otInstance *aInstance)
         else
 #endif
         {
-            // signal MAC layer for each received frame if promiscous is enabled
-            // otherwise only signal MAC layer for non-ACK frame
-            if (sPromiscuous || sReceiveFrame.mLength > IEEE802154_ACK_LENGTH)
-            {
-                otLogInfoPlat("Received %d bytes", sReceiveFrame.mLength);
-                otPlatRadioReceiveDone(aInstance, &sReceiveFrame, sReceiveError);
+            otLogInfoPlat("Received %d bytes", sReceiveFrame.mLength);
+            otPlatRadioReceiveDone(aInstance, &sReceiveFrame, sReceiveError);
 #if RADIO_CONFIG_DEBUG_COUNTERS_SUPPORT
-                sRailDebugCounters.mRailPlatRadioReceiveDoneCbCount++;
+            sRailDebugCounters.mRailPlatRadioReceiveDoneCbCount++;
 #endif
-            }
         }
     }
 
@@ -840,6 +835,7 @@ static void RAILCb_Generic(RAIL_Handle_t aRailHandle, RAIL_Events_t aEvents)
     {
         ieee802154DataRequestCommand(aRailHandle);
     }
+
     if (aEvents & RAIL_EVENTS_TX_COMPLETION)
     {
         if (aEvents & RAIL_EVENT_TX_PACKET_SENT)
@@ -1041,17 +1037,23 @@ otError otPlatRadioSetTransmitPower(otInstance *aInstance, int8_t aPower)
 otError otPlatRadioGetCcaEnergyDetectThreshold(otInstance *aInstance, int8_t *aThreshold)
 {
     OT_UNUSED_VARIABLE(aInstance);
-    OT_UNUSED_VARIABLE(aThreshold);
 
-    return OT_ERROR_NOT_IMPLEMENTED;
+    otError error = OT_ERROR_NONE;
+    otEXPECT_ACTION(aThreshold != NULL, error = OT_ERROR_INVALID_ARGS);
+
+    *aThreshold = sCcaThresholdDbm;
+
+exit:
+    return error;
 }
 
 otError otPlatRadioSetCcaEnergyDetectThreshold(otInstance *aInstance, int8_t aThreshold)
 {
     OT_UNUSED_VARIABLE(aInstance);
-    OT_UNUSED_VARIABLE(aThreshold);
 
-    return OT_ERROR_NOT_IMPLEMENTED;
+    sCcaThresholdDbm = aThreshold;
+
+    return OT_ERROR_NONE;
 }
 
 int8_t otPlatRadioGetReceiveSensitivity(otInstance *aInstance)
