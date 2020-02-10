@@ -102,7 +102,7 @@ uint16_t otThreadGetLeaderRloc16(otInstance *aInstance)
     Instance &instance = *static_cast<Instance *>(aInstance);
     uint8_t   leaderId = instance.Get<Mle::MleRouter>().GetLeaderId();
 
-    return instance.Get<Mle::MleRouter>().GetRloc16(leaderId);
+    return instance.Get<Mle::MleRouter>().Rloc16FromRouterId(leaderId);
 }
 
 otError otThreadGetLeaderAloc(otInstance *aInstance, otIp6Address *aLeaderAloc)
