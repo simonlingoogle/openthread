@@ -51,6 +51,7 @@ const struct UdpExample::Command UdpExample::sCommands[] = {
 
 UdpExample::UdpExample(Interpreter &aInterpreter)
     : mInterpreter(aInterpreter)
+    , mMessage(NULL)
 {
     memset(&mSocket, 0, sizeof(mSocket));
 }
@@ -136,10 +137,20 @@ otError UdpExample::ProcessSend(int argc, char *argv[])
 {
     otError       error = OT_ERROR_NONE;
     otMessageInfo messageInfo;
-    otMessage *   message       = NULL;
     int           curArg        = 0;
     uint16_t      payloadLength = 0;
     PayloadType   payloadType   = kTypeText;
+    bool          chunkMode     = false;
+
+    VerifyOrExit(argc >= 1, error = OT_ERROR_INVALID_ARGS);
+    if (strcmp(argv[0], "chunk") == 0)
+    {
+        // Turn on chunk mode if first argument is "chunk": Data is appended to the message, but not sent immediately.
+        // Data chunks will be sent by the next non-chunk mode command.
+        // It is used to send large UDP messages whose commands can not be fully contained in UART RX buffer.
+        chunkMode = true;
+        argv++, argc--;
+    }
 
     memset(&messageInfo, 0, sizeof(messageInfo));
 
@@ -179,16 +190,19 @@ otError UdpExample::ProcessSend(int argc, char *argv[])
         }
     }
 
-    message = otUdpNewMessage(mInterpreter.mInstance, NULL);
-    VerifyOrExit(message != NULL, error = OT_ERROR_NO_BUFS);
+    if (mMessage == NULL)
+    {
+        mMessage = otUdpNewMessage(mInterpreter.mInstance, NULL);
+        VerifyOrExit(mMessage != NULL, error = OT_ERROR_NO_BUFS);
+    }
 
     switch (payloadType)
     {
     case kTypeText:
-        SuccessOrExit(error = otMessageAppend(message, argv[curArg], static_cast<uint16_t>(strlen(argv[curArg]))));
+        SuccessOrExit(error = otMessageAppend(mMessage, argv[curArg], static_cast<uint16_t>(strlen(argv[curArg]))));
         break;
     case kTypeAutoSize:
-        SuccessOrExit(error = WriteCharToBuffer(message, payloadLength));
+        SuccessOrExit(error = WriteCharToBuffer(mMessage, payloadLength));
         break;
     case kTypeHexString:
     {
@@ -212,19 +226,23 @@ otError UdpExample::ProcessSend(int argc, char *argv[])
 
             hexString += conversionLength;
             payloadLength -= conversionLength;
-            SuccessOrExit(error = otMessageAppend(message, buf, static_cast<uint16_t>(bufLen)));
+            SuccessOrExit(error = otMessageAppend(mMessage, buf, static_cast<uint16_t>(bufLen)));
         }
         break;
     }
     }
 
-    error = otUdpSend(&mSocket, message, &messageInfo);
+    if (!chunkMode)
+    {
+        error = otUdpSend(&mSocket, mMessage, &messageInfo);
+    }
 
 exit:
 
-    if (error != OT_ERROR_NONE && message != NULL)
+    if (error != OT_ERROR_NONE && mMessage != NULL)
     {
-        otMessageFree(message);
+        otMessageFree(mMessage);
+        mMessage = NULL;
     }
 
     return error;

@@ -96,6 +96,7 @@ private:
     Interpreter &        mInterpreter;
 
     otUdpSocket mSocket;
+    otMessage * mMessage;
 };
 
 } // namespace Cli
