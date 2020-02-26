@@ -34,6 +34,8 @@
 #ifndef RADIO_SPINEL_HPP_
 #define RADIO_SPINEL_HPP_
 
+#include "openthread-posix-config.h"
+
 #include <openthread/platform/radio.h>
 
 #if OPENTHREAD_POSIX_RCP_UART_ENABLE
@@ -44,9 +46,13 @@
 #include "spi_interface.hpp"
 #endif
 
+#if !OPENTHREAD_POSIX_RCP_UART_ENABLE && !OPENTHREAD_POSIX_RCP_SPI_ENABLE
+#error "Please enable either OPENTHREAD_POSIX_RCP_UART_ENABLE or OPENTHREAD_POSIX_RCP_SPI_ENABLE."
+#endif
+
 #include "spinel_interface.hpp"
 #include "ncp/ncp_config.h"
-#include "ncp/spinel.h"
+#include "spinel/spinel.h"
 
 namespace ot {
 namespace PosixApp {
@@ -226,6 +232,14 @@ public:
      *
      */
     int8_t GetReceiveSensitivity(void) const { return mRxSensitivity; }
+
+    /**
+     * This method gets current state of the radio.
+     *
+     * @return  Current state of the radio.
+     *
+     */
+    otRadioState GetState(void) const;
 
 #if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
     /**

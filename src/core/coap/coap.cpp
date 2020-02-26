@@ -79,6 +79,24 @@ void CoapBase::ClearRequestsAndResponses(void)
     mResponsesQueue.DequeueAllResponses();
 }
 
+void CoapBase::ClearRequests(const Ip6::Address &aAddress)
+{
+    Message *nextMessage;
+
+    // Remove pending messages with the specified source.
+    for (Message *message = static_cast<Message *>(mPendingRequests.GetHead()); message != NULL; message = nextMessage)
+    {
+        CoapMetadata coapMetadata;
+        nextMessage = static_cast<Message *>(message->GetNext());
+        coapMetadata.ReadFrom(*message);
+
+        if (coapMetadata.mSourceAddress == aAddress)
+        {
+            FinalizeCoapTransaction(*message, coapMetadata, NULL, NULL, OT_ERROR_ABORT);
+        }
+    }
+}
+
 otError CoapBase::AddResource(Resource &aResource)
 {
     return mResources.Add(aResource);
@@ -438,6 +456,11 @@ void CoapBase::Receive(ot::Message &aMessage, const Ip6::MessageInfo &aMessageIn
     if (message.ParseHeader() != OT_ERROR_NONE)
     {
         otLogDebgCoap("Failed to parse CoAP header");
+
+        if (!aMessageInfo.GetSockAddr().IsMulticast() && message.IsConfirmable())
+        {
+            SendReset(message, aMessageInfo);
+        }
     }
     else if (message.IsRequest())
     {

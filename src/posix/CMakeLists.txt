@@ -31,6 +31,7 @@ set(COMMON_INCLUDES
     ${OT_PRIVATE_INCLUDES}
     ${PROJECT_SOURCE_DIR}/src/core
     ${PROJECT_SOURCE_DIR}/src/posix/platform
+    ${PROJECT_SOURCE_DIR}/src/posix/platform/include
 )
 
 if(OT_DAEMON)
@@ -44,6 +45,10 @@ if(OT_DAEMON)
         OPENTHREAD_POSIX_APP_TYPE=2
     )
 
+    target_compile_options(ot-daemon PRIVATE
+        ${OT_CFLAGS}
+    )
+
     target_link_libraries(ot-daemon PRIVATE
         openthread-cli-ftd
         ${OT_PLATFORM_LIB}
@@ -54,7 +59,11 @@ if(OT_DAEMON)
     )
 
     add_executable(ot-ctl
-        client.c
+        client.cpp
+    )
+
+    target_compile_options(ot-ctl PRIVATE
+        ${OT_CFLAGS}
     )
 
     target_include_directories(ot-ctl PRIVATE ${COMMON_INCLUDES})
@@ -69,6 +78,10 @@ else()
         OPENTHREAD_POSIX_APP_TYPE=2
     )
 
+    target_compile_options(ot-cli PRIVATE
+        ${OT_CFLAGS}
+    )
+
     target_link_libraries(ot-cli
         openthread-cli-ftd
         ${OT_PLATFORM_LIB}
@@ -81,10 +94,15 @@ else()
     add_executable(ot-ncp
         main.c
     )
+
     target_include_directories(ot-ncp PRIVATE ${COMMON_INCLUDES})
 
     target_compile_definitions(ot-ncp PRIVATE
         OPENTHREAD_POSIX_APP_TYPE=1
+    )
+
+    target_compile_options(ot-ncp PRIVATE
+        ${OT_CFLAGS}
     )
 
     target_link_libraries(ot-ncp

@@ -33,17 +33,24 @@ OPENTHREAD_SOURCE_VERSION := $(shell git -C $(LOCAL_PATH) describe --always --ma
 OPENTHREAD_PROJECT_CFLAGS ?= -DOPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"openthread-core-posix-config.h\"
 
 OPENTHREAD_COMMON_FLAGS                                          := \
+    -DMBEDTLS_CONFIG_FILE=\"mbedtls-config.h\"                      \
+    -DOPENTHREAD_CONFIG_FILE=\<openthread-config-android.h\>        \
     -DOPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE=1                  \
     -DOPENTHREAD_CONFIG_MAC_FILTER_ENABLE=1                         \
+    -DOPENTHREAD_CONFIG_POSIX_APP_ENABLE_PTY_DEVICE=1               \
+    -DOPENTHREAD_FTD=1                                              \
+    -DOPENTHREAD_POSIX=1                                            \
+    -DOPENTHREAD_POSIX_RCP_UART_ENABLE=1                            \
+    -DOPENTHREAD_SPINEL_CONFIG_OPENTHREAD_MESSAGE_ENABLE=1          \
     -DPACKAGE=\"openthread\"                                        \
     -DPACKAGE_BUGREPORT=\"openthread-devel@googlegroups.com\"       \
     -DPACKAGE_NAME=\"OPENTHREAD\"                                   \
     -DPACKAGE_STRING=\"OPENTHREAD\ $(OPENTHREAD_DEFAULT_VERSION)\"  \
-    -DPACKAGE_VERSION=\"$(OPENTHREAD_SOURCE_VERSION)\"              \
     -DPACKAGE_TARNAME=\"openthread\"                                \
-    -DVERSION=\"$(OPENTHREAD_DEFAULT_VERSION)\"                     \
     -DPACKAGE_URL=\"http://github.com/openthread/openthread\"       \
-    -DOPENTHREAD_CONFIG_MAC_FILTER_ENABLE=1                         \
+    -DPACKAGE_VERSION=\"$(OPENTHREAD_SOURCE_VERSION)\"              \
+    -DSPINEL_PLATFORM_HEADER=\"spinel_platform.h\"                  \
+    -DVERSION=\"$(OPENTHREAD_DEFAULT_VERSION)\"                     \
     $(NULL)
 
 # Enable required features for on-device tests.
@@ -51,6 +58,16 @@ ifeq ($(TARGET_BUILD_VARIANT),eng)
 OPENTHREAD_COMMON_FLAGS                                          += \
     -DOPENTHREAD_CONFIG_DIAG_ENABLE=1                               \
     $(NULL)
+endif
+
+ifeq ($(USE_OTBR_DAEMON), 1)
+OPENTHREAD_COMMON_FLAGS                                          += \
+    -DOPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE=1                     \
+    -DOPENTHREAD_CONFIG_PLATFORM_UDP_ENABLE=1                       \
+    -DOPENTHREAD_ENABLE_POSIX_APP_DAEMON                            \
+    $(NULL)
+else
+OPENTHREAD_COMMON_FLAGS += -DOPENTHREAD_CONFIG_UDP_FORWARD_ENABLE=1
 endif
 
 # Enable all optional features for CI tests.
@@ -87,20 +104,14 @@ LOCAL_C_INCLUDES                                         := \
     $(LOCAL_PATH)/src/core                                  \
     $(LOCAL_PATH)/src/ncp                                   \
     $(LOCAL_PATH)/src/posix/platform                        \
+    $(LOCAL_PATH)/src/posix/platform/include                \
     $(LOCAL_PATH)/third_party                               \
     $(LOCAL_PATH)/third_party/mbedtls                       \
     $(LOCAL_PATH)/third_party/mbedtls/repo/include          \
     $(NULL)
 
 LOCAL_CFLAGS                                                                := \
-    -DMBEDTLS_CONFIG_FILE=\"mbedtls-config.h\"                                 \
-    -DOPENTHREAD_CONFIG_FILE=\<openthread-config-android.h\>                   \
     $(OPENTHREAD_COMMON_FLAGS)                                                 \
-    -DOPENTHREAD_CONFIG_POSIX_APP_ENABLE_PTY_DEVICE=1                          \
-    -DOPENTHREAD_FTD=1                                                         \
-    -DOPENTHREAD_POSIX=1                                                       \
-    -DOPENTHREAD_POSIX_RCP_UART_ENABLE=1                                       \
-    -DSPINEL_PLATFORM_HEADER=\"spinel_platform.h\"                             \
     $(OPENTHREAD_PROJECT_CFLAGS)                                               \
     $(NULL)
 
@@ -227,25 +238,24 @@ LOCAL_SRC_FILES                                          := \
     src/core/utils/child_supervision.cpp                    \
     src/core/utils/heap.cpp                                 \
     src/core/utils/jam_detector.cpp                         \
-    src/core/utils/missing_strlcpy.c                        \
-    src/core/utils/missing_strlcat.c                        \
-    src/core/utils/missing_strnlen.c                        \
     src/core/utils/parse_cmdline.cpp                        \
     src/core/utils/slaac_address.cpp                        \
     src/ncp/hdlc.cpp                                        \
-    src/ncp/spinel.c                                        \
-    src/ncp/spinel_decoder.cpp                              \
-    src/ncp/spinel_encoder.cpp                              \
-    src/posix/platform/alarm.c                              \
-    src/posix/platform/entropy.c                            \
+    src/posix/platform/alarm.cpp                            \
+    src/posix/platform/entropy.cpp                          \
     src/posix/platform/hdlc_interface.cpp                   \
-    src/posix/platform/logging.c                            \
-    src/posix/platform/misc.c                               \
+    src/posix/platform/logging.cpp                          \
+    src/posix/platform/misc.cpp                             \
+    src/posix/platform/netif.cpp                            \
     src/posix/platform/radio_spinel.cpp                     \
     src/posix/platform/settings.cpp                         \
     src/posix/platform/spi_interface.cpp                    \
-    src/posix/platform/system.c                             \
-    src/posix/platform/uart.c                               \
+    src/posix/platform/system.cpp                           \
+    src/posix/platform/uart.cpp                             \
+    src/posix/platform/udp.cpp                              \
+    src/spinel/spinel.c                                     \
+    src/spinel/spinel_decoder.cpp                           \
+    src/spinel/spinel_encoder.cpp                           \
     third_party/mbedtls/repo/library/md.c                   \
     third_party/mbedtls/repo/library/md_wrap.c              \
     third_party/mbedtls/repo/library/memory_buffer_alloc.c  \
@@ -278,6 +288,49 @@ include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 
+LOCAL_MODULE := libopenthread-cli
+LOCAL_MODULE_TAGS := eng
+
+LOCAL_C_INCLUDES                                         := \
+    $(OPENTHREAD_PROJECT_INCLUDES)                          \
+    $(LOCAL_PATH)/include                                   \
+    $(LOCAL_PATH)/src                                       \
+    $(LOCAL_PATH)/src/cli                                   \
+    $(LOCAL_PATH)/src/core                                  \
+    $(LOCAL_PATH)/src/posix/platform                        \
+    $(LOCAL_PATH)/src/posix/platform/include                \
+    $(LOCAL_PATH)/third_party/mbedtls                       \
+    $(LOCAL_PATH)/third_party/mbedtls/repo/include          \
+    $(NULL)
+
+LOCAL_CFLAGS                                                                := \
+    $(OPENTHREAD_COMMON_FLAGS)                                                 \
+    -DOPENTHREAD_CONFIG_UART_CLI_RAW=1                                         \
+    -DOPENTHREAD_POSIX_APP_TYPE=2                                              \
+    $(OPENTHREAD_PROJECT_CFLAGS)                                               \
+    $(NULL)
+
+LOCAL_CPPFLAGS                                                              := \
+    -Wno-non-virtual-dtor                                                      \
+    $(NULL)
+
+LOCAL_SRC_FILES                            := \
+    src/cli/cli.cpp                           \
+    src/cli/cli_coap.cpp                      \
+    src/cli/cli_coap_secure.cpp               \
+    src/cli/cli_commissioner.cpp              \
+    src/cli/cli_console.cpp                   \
+    src/cli/cli_dataset.cpp                   \
+    src/cli/cli_joiner.cpp                    \
+    src/cli/cli_server.cpp                    \
+    src/cli/cli_uart.cpp                      \
+    src/cli/cli_udp.cpp                       \
+    $(NULL)
+
+include $(BUILD_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
+
 LOCAL_MODULE := ot-cli
 LOCAL_MODULE_TAGS := eng
 
@@ -288,21 +341,15 @@ LOCAL_C_INCLUDES                                         := \
     $(LOCAL_PATH)/src/cli                                   \
     $(LOCAL_PATH)/src/core                                  \
     $(LOCAL_PATH)/src/posix/platform                        \
+    $(LOCAL_PATH)/src/posix/platform/include                \
     $(LOCAL_PATH)/third_party/mbedtls                       \
     $(LOCAL_PATH)/third_party/mbedtls/repo/include          \
     $(NULL)
 
 LOCAL_CFLAGS                                                                := \
-    -DMBEDTLS_CONFIG_FILE=\"mbedtls-config.h\"                                 \
-    -DOPENTHREAD_CONFIG_FILE=\<openthread-config-android.h\>                   \
     $(OPENTHREAD_COMMON_FLAGS)                                                 \
-    -DOPENTHREAD_CONFIG_POSIX_APP_ENABLE_PTY_DEVICE=1                          \
     -DOPENTHREAD_CONFIG_UART_CLI_RAW=1                                         \
-    -DOPENTHREAD_FTD=1                                                         \
-    -DOPENTHREAD_POSIX=1                                                       \
     -DOPENTHREAD_POSIX_APP_TYPE=2                                              \
-    -DOPENTHREAD_POSIX_RCP_UART_ENABLE=1                                       \
-    -DSPINEL_PLATFORM_HEADER=\"spinel_platform.h\"                             \
     $(OPENTHREAD_PROJECT_CFLAGS)                                               \
     $(NULL)
 
@@ -314,20 +361,50 @@ LOCAL_LDLIBS                               := \
     -lutil
 
 LOCAL_SRC_FILES                            := \
-    src/cli/cli.cpp                           \
-    src/cli/cli_coap.cpp                      \
-    src/cli/cli_commissioner.cpp              \
-    src/cli/cli_console.cpp                   \
-    src/cli/cli_dataset.cpp                   \
-    src/cli/cli_joiner.cpp                    \
-    src/cli/cli_server.cpp                    \
-    src/cli/cli_uart.cpp                      \
-    src/cli/cli_udp.cpp                       \
     src/posix/main.c                          \
     $(NULL)
 
-LOCAL_STATIC_LIBRARIES = ot-core
+LOCAL_STATIC_LIBRARIES = libopenthread-cli ot-core
 include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libopenthread-ncp
+LOCAL_MODULE_TAGS := eng
+
+LOCAL_C_INCLUDES                                         := \
+    $(OPENTHREAD_PROJECT_INCLUDES)                          \
+    $(LOCAL_PATH)/include                                   \
+    $(LOCAL_PATH)/src                                       \
+    $(LOCAL_PATH)/src/core                                  \
+    $(LOCAL_PATH)/src/ncp                                   \
+    $(LOCAL_PATH)/src/posix/platform                        \
+    $(LOCAL_PATH)/src/posix/platform/include                \
+    $(LOCAL_PATH)/third_party/mbedtls                       \
+    $(LOCAL_PATH)/third_party/mbedtls/repo/include          \
+    $(NULL)
+
+LOCAL_CFLAGS                                                                := \
+    $(OPENTHREAD_COMMON_FLAGS)                                                 \
+    -DOPENTHREAD_POSIX_APP_TYPE=1                                              \
+    $(OPENTHREAD_PROJECT_CFLAGS)                                               \
+    $(NULL)
+
+LOCAL_CPPFLAGS                                                              := \
+    -Wno-non-virtual-dtor                                                      \
+    $(NULL)
+
+LOCAL_SRC_FILES                            := \
+    src/ncp/changed_props_set.cpp             \
+    src/ncp/ncp_base.cpp                      \
+    src/ncp/ncp_base_mtd.cpp                  \
+    src/ncp/ncp_base_ftd.cpp                  \
+    src/ncp/ncp_base_dispatcher.cpp           \
+    src/ncp/ncp_uart.cpp                      \
+    src/spinel/spinel_buffer.cpp              \
+    $(NULL)
+
+include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 
@@ -341,20 +418,14 @@ LOCAL_C_INCLUDES                                         := \
     $(LOCAL_PATH)/src/core                                  \
     $(LOCAL_PATH)/src/ncp                                   \
     $(LOCAL_PATH)/src/posix/platform                        \
+    $(LOCAL_PATH)/src/posix/platform/include                \
     $(LOCAL_PATH)/third_party/mbedtls                       \
     $(LOCAL_PATH)/third_party/mbedtls/repo/include          \
     $(NULL)
 
 LOCAL_CFLAGS                                                                := \
-    -DMBEDTLS_CONFIG_FILE=\"mbedtls-config.h\"                                 \
-    -DOPENTHREAD_CONFIG_FILE=\<openthread-config-android.h\>                   \
     $(OPENTHREAD_COMMON_FLAGS)                                                 \
-    -DOPENTHREAD_CONFIG_POSIX_APP_ENABLE_PTY_DEVICE=1                          \
-    -DOPENTHREAD_FTD=1                                                         \
-    -DOPENTHREAD_POSIX=1                                                       \
     -DOPENTHREAD_POSIX_APP_TYPE=1                                              \
-    -DOPENTHREAD_POSIX_RCP_UART_ENABLE=1                                       \
-    -DSPINEL_PLATFORM_HEADER=\"spinel_platform.h\"                             \
     $(OPENTHREAD_PROJECT_CFLAGS)                                               \
     $(NULL)
 
@@ -362,19 +433,36 @@ LOCAL_CPPFLAGS                                                              := \
     -Wno-non-virtual-dtor                                                      \
     $(NULL)
 
-LOCAL_LDLIBS                               := \
-    -lutil
-
 LOCAL_SRC_FILES                            := \
-    src/ncp/changed_props_set.cpp             \
-    src/ncp/ncp_base.cpp                      \
-    src/ncp/ncp_base_mtd.cpp                  \
-    src/ncp/ncp_base_ftd.cpp                  \
-    src/ncp/ncp_base_dispatcher.cpp           \
-    src/ncp/ncp_buffer.cpp                    \
-    src/ncp/ncp_uart.cpp                      \
     src/posix/main.c                          \
     $(NULL)
 
-LOCAL_STATIC_LIBRARIES = ot-core
+LOCAL_LDLIBS                               := \
+    -lutil
+
+LOCAL_STATIC_LIBRARIES = libopenthread-ncp ot-core
+
 include $(BUILD_EXECUTABLE)
+
+ifeq ($(USE_OTBR_DAEMON), 1)
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := ot-ctl
+LOCAL_MODULE_TAGS := eng
+
+LOCAL_CFLAGS                                               := \
+    -DOPENTHREAD_CONFIG_FILE=\<openthread-config-android.h\>  \
+    $(NULL)
+
+LOCAL_C_INCLUDES                                         := \
+    $(OPENTHREAD_PROJECT_INCLUDES)                          \
+    $(LOCAL_PATH)/include                                   \
+    $(LOCAL_PATH)/src/core                                  \
+    $(LOCAL_PATH)/src/posix/platform                        \
+    $(LOCAL_PATH)/src/posix/platform/include                \
+    $(NULL)
+
+LOCAL_SRC_FILES := src/posix/client.cpp
+
+include $(BUILD_EXECUTABLE)
+endif # ($(USE_OTBR_DAEMON), 1)

@@ -388,6 +388,11 @@ int8_t SubMac::GetRssi(void) const
     return Get<Radio>().GetRssi();
 }
 
+int8_t SubMac::GetNoiseFloor(void)
+{
+    return Get<Radio>().GetReceiveSensitivity();
+}
+
 otError SubMac::EnergyScan(uint8_t aScanChannel, uint16_t aScanDuration)
 {
     otError error = OT_ERROR_NONE;
@@ -431,6 +436,8 @@ exit:
 
 void SubMac::SampleRssi(void)
 {
+    assert(!RadioSupportsEnergyScan());
+
     int8_t rssi = GetRssi();
 
     if (rssi != kInvalidRssiValue)
@@ -443,7 +450,11 @@ void SubMac::SampleRssi(void)
 
     if (TimerMilli::GetNow() < mEnergyScanEndTime)
     {
+#if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
+        mTimer.StartAt(mTimer.GetFireTime(), kEnergyScanRssiSampleInterval * 1000UL);
+#else
         mTimer.StartAt(mTimer.GetFireTime(), kEnergyScanRssiSampleInterval);
+#endif
     }
     else
     {

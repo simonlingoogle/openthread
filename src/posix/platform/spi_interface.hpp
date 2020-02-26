@@ -34,10 +34,12 @@
 #ifndef POSIX_APP_SPI_INTERFACE_HPP_
 #define POSIX_APP_SPI_INTERFACE_HPP_
 
+#include "openthread-posix-config.h"
+
 #include "spinel_interface.hpp"
 #include "ncp/hdlc.hpp"
 
-#include <openthread-system.h>
+#include <openthread/openthread-system.h>
 
 #if OPENTHREAD_POSIX_RCP_SPI_ENABLE
 
@@ -151,22 +153,22 @@ private:
     bool CheckInterrupt(void);
     void HandleReceivedFrame(Ncp::SpiFrame &aSpiFrame);
     void LogStats(void);
-    void LogError(const char * aString);
+    void LogError(const char *aString);
     void LogBuffer(const char *aDesc, const uint8_t *aBuffer, uint16_t aLength, bool aForce);
 
     enum
     {
-        kSpiModeMax              = 3,
-        kSpiAlignAllowanceMax    = 16,
-        kSpiFrameHeaderSize      = 5,
-        kSpiBitsPerWord          = 8,
-        kSpiTxRefuseWarnCount    = 30,
-        kSpiTxRefuseExitCount    = 100,
-        kImmediateRetryCount     = 5,
-        kFastRetryCount          = 15,
-        kDebugBytesPerLine       = 16, 
-        kGpioIntAssertState      = 0,
-        kGpioResetAssertState    = 0,
+        kSpiModeMax           = 3,
+        kSpiAlignAllowanceMax = 16,
+        kSpiFrameHeaderSize   = 5,
+        kSpiBitsPerWord       = 8,
+        kSpiTxRefuseWarnCount = 30,
+        kSpiTxRefuseExitCount = 100,
+        kImmediateRetryCount  = 5,
+        kFastRetryCount       = 15,
+        kDebugBytesPerLine    = 16,
+        kGpioIntAssertState   = 0,
+        kGpioResetAssertState = 0,
     };
 
     enum
@@ -210,7 +212,7 @@ private:
     uint64_t mSpiTxFrameCount;
     uint64_t mSpiTxFrameByteCount;
 
-    uint8_t  mSpiRxFrameBuffer[kMaxFrameSize + kSpiAlignAllowanceMax];
+    uint8_t mSpiRxFrameBuffer[kMaxFrameSize + kSpiAlignAllowanceMax];
 
     bool     mSpiTxIsReady;
     uint16_t mSpiTxRefusedCount;
