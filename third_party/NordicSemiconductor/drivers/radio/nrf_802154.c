@@ -62,6 +62,9 @@
 #include "rsch/nrf_802154_rsch.h"
 #include "rsch/nrf_802154_rsch_crit_sect.h"
 #include "timer_scheduler/nrf_802154_timer_sched.h"
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+#include "nest/terbium/src/platform/coex.h"
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
 #include "mac_features/nrf_802154_ack_timeout.h"
 #include "mac_features/nrf_802154_csma_ca.h"
@@ -219,6 +222,9 @@ void nrf_802154_init(void)
     nrf_802154_temperature_init();
     nrf_802154_timer_coord_init();
     nrf_802154_timer_sched_init();
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    tbCoexRadioInit();
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 }
 
 void nrf_802154_deinit(void)
@@ -361,6 +367,14 @@ bool nrf_802154_transmit_raw(const uint8_t * p_data, bool cca)
     bool result;
 
     nrf_802154_log(EVENT_TRACE_ENTER, FUNCTION_TRANSMIT);
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    if (!tbCoexRadioTxRequest(p_data))
+    {
+        // packet will be handled by coex
+        return true;
+    }
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
     result = nrf_802154_request_transmit(NRF_802154_TERM_NONE,
                                          REQ_ORIG_HIGHER_LAYER,

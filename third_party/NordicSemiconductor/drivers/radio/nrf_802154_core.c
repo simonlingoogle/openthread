@@ -69,6 +69,10 @@
 #include "mac_features/ack_generator/nrf_802154_ack_generator.h"
 #include "rsch/nrf_802154_rsch.h"
 #include "rsch/nrf_802154_rsch_crit_sect.h"
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+#include "raal/nrf_raal_api.h"
+#include "nest/terbium/src/platform/coex.h"
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
 #include "nrf_802154_core_hooks.h"
 
@@ -227,6 +231,9 @@ typedef struct
 
 #endif  // NRF_802154_TX_STARTED_NOTIFY_ENABLED
     bool rssi_started : 1;
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    bool rx_coex_requested : 1; ///< If coex for the frame being receive is already requested.
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 } nrf_802154_flags_t;
 static nrf_802154_flags_t m_flags;               ///< Flags used to store the current driver state.
 
@@ -255,6 +262,9 @@ static void rx_flags_clear(void)
 #if !NRF_802154_DISABLE_BCC_MATCHING
     m_flags.psdu_being_received = false;
 #endif // !NRF_802154_DISABLE_BCC_MATCHING
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    m_flags.rx_coex_requested = false;
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 }
 
 /** Request the RSSI measurement. */
@@ -309,8 +319,19 @@ static uint8_t lqi_get(const uint8_t * p_data)
     return (uint8_t)lqi;
 }
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+static void receive_ended_notify(bool success)
+{
+    nrf_802154_core_hooks_rx_ended(success);
+}
+#endif
+
 static void received_frame_notify(uint8_t * p_data)
 {
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    receive_ended_notify(true);
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+
     nrf_802154_notify_received(p_data,                      // data
                                rssi_last_measurement_get(), // rssi
                                lqi_get(p_data));            // lqi
@@ -330,6 +351,10 @@ static void received_frame_notify_and_nesting_allow(uint8_t * p_data)
 static void receive_failed_notify(nrf_802154_rx_error_t error)
 {
     nrf_802154_critical_section_nesting_allow();
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    receive_ended_notify(false);
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
     nrf_802154_notify_receive_failed(error);
 
@@ -1027,6 +1052,9 @@ static void falling_asleep_terminate(void)
 static void sleep_terminate(void)
 {
     nrf_802154_rsch_crit_sect_prio_request(RSCH_PRIO_MAX);
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    tbCoexRadioStart();
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 }
 
 /** Terminate RX procedure. */
@@ -1359,6 +1387,9 @@ static bool current_operation_terminate(nrf_802154_term_t term_lvl,
 
                         if (notify)
                         {
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+                            receive_ended_notify(false);
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
                             nrf_802154_notify_receive_failed(NRF_802154_RX_ERROR_ABORTED);
                         }
                     }
@@ -1690,6 +1721,13 @@ static bool tx_init(const uint8_t * p_data, bool cca, bool disabled_was_triggere
         return false;
     }
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    if (!tbCoexRadioIsGrantActive())
+    {
+        return false;
+    }
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+
     nrf_radio_txpower_set(nrf_802154_pib_tx_power_get());
     nrf_radio_packetptr_set(p_data);
 
@@ -1769,6 +1807,13 @@ static void cca_init(bool disabled_was_triggered)
     {
         return;
     }
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    if (!tbCoexRadioIsGrantActive())
+    {
+        return;
+    }
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
     // Set shorts
     nrf_radio_shorts_set(SHORTS_CCA);
@@ -2036,6 +2081,12 @@ static void irq_bcmatch_state_rx(void)
             {
                 receive_failed_notify(filter_result);
             }
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+            else
+            {
+                receive_ended_notify(false);
+            }
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
         }
         else
         {
@@ -2058,9 +2109,34 @@ static void irq_bcmatch_state_rx(void)
             // Disable receiver and wait for a new timeslot.
             rx_terminate();
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+            receive_ended_notify(false);
+            frame_accepted = false;
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+
             nrf_802154_notify_receive_failed(NRF_802154_RX_ERROR_TIMESLOT_ENDED);
         }
     }
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    if ((!m_flags.rx_coex_requested) && (frame_accepted))
+    {
+        if (tbCoexRadioRxRequest())
+        {
+            m_flags.rx_coex_requested = true;
+        }
+        else
+        {
+            // If a coex rx request is not granted then we just disable receiver and
+            // re-initialize the radio to RX state.
+            rx_terminate();
+            rx_init(true);
+
+            receive_ended_notify(false);
+            nrf_802154_notify_receive_failed(NRF_802154_TX_ERROR_BUSY_CHANNEL);
+        }
+    }
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 }
 
 #endif // !NRF_802154_DISABLE_BCC_MATCHING
@@ -2134,6 +2210,24 @@ static void irq_crcok_state_rx(void)
         return;
     }
 #endif // NRF_802154_DISABLE_BCC_MATCHING
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    // coex request
+    if (m_flags.frame_filtered &&
+        ack_is_requested(mp_current_rx_buffer->data) &&
+        !tbCoexTxAckRequest())
+    {
+        // Frame is destined to this node but coex has denied request to transmit ACK.
+        // Just disable receiver and re-initialize the radio to RX state.
+        rx_terminate();
+        rx_init(true);
+
+        mp_current_rx_buffer->free = false;
+        received_frame_notify_and_nesting_allow(mp_current_rx_buffer->data);
+
+        return;
+    }
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
     if (m_flags.frame_filtered || nrf_802154_pib_promiscuous_get())
     {
@@ -2300,6 +2394,10 @@ static void irq_crcok_state_rx(void)
                 {
                     nrf_radio_task_trigger(NRF_RADIO_TASK_START);
                 }
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+                receive_ended_notify(false);
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
             }
         }
     }
@@ -3261,6 +3359,16 @@ bool nrf_802154_core_last_rssi_measurement_get(int8_t * p_rssi)
 
     return result;
 }
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+void tbCoexRadioRestart(void)
+{
+    nrf_802154_critical_section_forcefully_enter();
+    cont_prec_denied();
+    cont_prec_approved();
+    nrf_802154_critical_section_exit();
+}
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
 #if NRF_802154_INTERNAL_RADIO_IRQ_HANDLING
 void RADIO_IRQHandler(void)

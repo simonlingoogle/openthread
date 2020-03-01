@@ -49,6 +49,10 @@
 #include "platform/random/nrf_802154_random.h"
 #include "timer_scheduler/nrf_802154_timer_sched.h"
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+#include "nest/terbium/src/platform/coex.h"
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+
 #if NRF_802154_CSMA_CA_ENABLED
 
 static uint8_t m_nb;                    ///< The number of times the CSMA-CA algorithm was required to back off while attempting the current transmission.
@@ -119,6 +123,16 @@ static void frame_transmit(void * p_context)
 
     if (procedure_is_running())
     {
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+        if (!tbCoexRadioTxRequest(mp_data))
+        {
+            // packet will be handled by coex
+            // tbCoexRadioTxRequest() must explicitly
+            // stop the csma-ca procedure if it is
+            // going to handle the packet
+            goto done;
+        }
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
         if (!nrf_802154_request_transmit(NRF_802154_TERM_NONE,
                                          REQ_ORIG_CSMA_CA,
                                          mp_data,
@@ -130,6 +144,9 @@ static void frame_transmit(void * p_context)
         }
     }
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+done:
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
     nrf_802154_log(EVENT_TRACE_EXIT, FUNCTION_CSMA_FRAME_TRANSMIT);
 }
 
@@ -139,6 +156,20 @@ static void frame_transmit(void * p_context)
 static void random_backoff_start(void)
 {
     uint8_t backoff_periods = nrf_802154_random_get() % (1 << m_be);
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    // Notify the coex driver that the tx frame is no
+    // longer in progress during csma/cca retry backoffs
+    // with a duration greater than 0.  This will cause
+    // the coex driver to deactivate the REQ signal
+    // during the backoff period.  The REQ will be
+    // re-activated when frame_transmit() is called
+    // after the backoff timer expires.
+    if ((m_nb != 0) && (backoff_periods != 0))
+    {
+        tbCoexRadioTxEnded(false);
+    }
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
     m_timer.callback  = frame_transmit;
     m_timer.p_context = NULL;
@@ -178,6 +209,41 @@ static bool channel_busy(void)
 
     return result;
 }
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+void tbCoexRadioCsmaCaTransmitStop(void)
+{
+    procedure_stop();
+}
+
+void tbCoexRadioCsmaCaTransmitStart(const uint8_t *aFrame)
+{
+    assert(!procedure_is_running());
+
+    mp_data      = aFrame;
+    m_nb         = 0;
+    m_be         = NRF_802154_CSMA_CA_MIN_BE;
+    m_is_running = true;
+
+    frame_transmit(NULL);
+}
+
+void tbCoexRadioTransmitFailed(const uint8_t *aFrame, tbCoexRadioError aError)
+{
+    int error = NRF_802154_TX_ERROR_NONE;
+
+    if (aError == TB_COEX_RADIO_ERROR_GRANT_TIMEOUT)
+    {
+        error = NRF_802154_TX_ERROR_BUSY_CHANNEL;
+    }
+    else if (aError == TB_COEX_RADIO_ERROR_RADIO_DISABLED)
+    {
+        error = NRF_802154_TX_ERROR_TIMESLOT_ENDED;
+    }
+
+    nrf_802154_notify_transmit_failed(aFrame, error);
+}
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
 void nrf_802154_csma_ca_start(const uint8_t * p_data)
 {

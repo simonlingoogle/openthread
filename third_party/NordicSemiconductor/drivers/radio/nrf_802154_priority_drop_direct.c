@@ -38,6 +38,9 @@
 #include "nrf_802154_priority_drop.h"
 
 #include "platform/clock/nrf_802154_clock.h"
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+#include "nest/terbium/src/platform/coex.h"
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
 void nrf_802154_priority_drop_init(void)
 {
@@ -47,6 +50,9 @@ void nrf_802154_priority_drop_init(void)
 void nrf_802154_priority_drop_hfclk_stop(void)
 {
     nrf_802154_clock_hfclk_stop();
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    tbCoexRadioStop();
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 }
 
 void nrf_802154_priority_drop_hfclk_stop_terminate(void)

@@ -46,6 +46,9 @@
 #include "mac_features/nrf_802154_delayed_trx.h"
 #include "nrf_802154_config.h"
 #include "nrf_802154_types.h"
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+#include "nest/terbium/src/platform/coex.h"
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
 typedef bool (* abort_hook)(nrf_802154_term_t term_lvl, req_originator_t req_orig);
 typedef void (* transmitted_hook)(const uint8_t * p_frame);
@@ -53,6 +56,10 @@ typedef bool (* tx_failed_hook)(const uint8_t * p_frame, nrf_802154_tx_error_t e
 typedef bool (* tx_started_hook)(const uint8_t * p_frame);
 typedef void (* rx_started_hook)(const uint8_t * p_frame);
 typedef void (* rx_ack_started_hook)(void);
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+typedef void (* rx_ended_hook)(bool success);
+typedef void (* tx_ended_hook)(bool success);
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
 /* Since some compilers do not allow empty initializers for arrays with unspecified bounds,
  * NULL pointer is appended to below arrays if the compiler used is not GCC. It is intentionally
@@ -119,6 +126,20 @@ static const rx_started_hook m_rx_started_hooks[] =
 
     NULL,
 };
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+static const rx_ended_hook m_rx_ended_hooks[] =
+{
+    tbCoexRadioRxEnded,
+    NULL,
+};
+
+static const tx_ended_hook m_tx_ended_hooks[] =
+{
+    tbCoexRadioTxEnded,
+    NULL,
+};
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
 static const rx_ack_started_hook m_rx_ack_started_hooks[] =
 {
@@ -234,3 +255,31 @@ void nrf_802154_core_hooks_rx_ack_started(void)
         m_rx_ack_started_hooks[i]();
     }
 }
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+void nrf_802154_core_hooks_rx_ended(bool success)
+{
+    for (uint32_t i = 0; i < sizeof(m_rx_ended_hooks) / sizeof(m_rx_ended_hooks[0]); i++)
+    {
+        if (m_rx_ended_hooks[i] == NULL)
+        {
+            break;
+        }
+
+        m_rx_ended_hooks[i](success);
+    }
+}
+
+void nrf_802154_core_hooks_tx_ended(bool success)
+{
+    for (uint32_t i = 0; i < sizeof(m_tx_ended_hooks) / sizeof(m_tx_ended_hooks[0]); i++)
+    {
+        if (m_tx_ended_hooks[i] == NULL)
+        {
+            break;
+        }
+
+        m_tx_ended_hooks[i](success);
+    }
+}
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE

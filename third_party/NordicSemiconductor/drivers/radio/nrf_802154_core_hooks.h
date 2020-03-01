@@ -104,6 +104,21 @@ void nrf_802154_core_hooks_rx_started(const uint8_t * p_frame);
  */
 void nrf_802154_core_hooks_rx_ack_started(void);
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+/**
+ * @brief Processes hooks for the RX ended event.
+ *
+ * @param[in]  success  Indicate whether the frame was successfully received.
+ */
+void nrf_802154_core_hooks_rx_ended(bool success);
+
+/**
+ * @brief Processes hooks for the TX ended event.
+ *
+ * @param[in]  success  Indicate whether the frame was successfully transmitted.
+ */
+void nrf_802154_core_hooks_tx_ended(bool success);
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 /**
  *@}
  **/

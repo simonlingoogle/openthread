@@ -1,0 +1,141 @@
+#!/bin/bash
+#
+#   Copyright (c) 2020 Google LLC.
+#   All rights reserved.
+#
+#   This document is the property of Google LLC, Inc. It is
+#   considered proprietary and confidential information.
+#
+#   This document may not be reproduced or transmitted in any form,
+#   in whole or in part, without the express written permission of
+#   Google LLC.
+#
+
+BUILD_PRODUCTS=()
+readonly BUILD_VARIANTS=("eng" "user")
+
+print_usage() {
+    echo ""
+    echo "USAGE: $0 [product] [variant]"
+    echo ""
+    echo "Arguments:"
+    echo "product  The product name. The following products are supported:"
+    echo "         ${BUILD_PRODUCTS[@]}"
+    echo ""
+    echo "variant  The build variant. The following variants are supported:"
+    echo "         ${BUILD_VARIANTS[@]}"
+    echo ""
+    echo "EXAMPLES:"
+    echo "    $0"
+    echo "    $0 elaine"
+    echo "    $0 elaine eng"
+    echo ""
+    echo "OUTPUTS:"
+    echo "    The output images will be put at output/<product>/<variant>/images."
+    echo ""
+
+    exit 1
+}
+
+build()
+{
+    local product=$1
+    local variant=$2
+    local build_dir=build/${product}/${variant}
+
+    # This file defines the `CMAKE_TOOLCHAIN_FILE`
+    . ./src/products/${product}/product_cmake_toolchain.sh
+
+    if [ -d ${build_dir} ]; then
+        rm -rf ${build_dir}
+    fi
+
+    mkdir -p ${build_dir}
+    cd ${build_dir}
+    cmake -GNinja -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} -DTERBIUM_BUILD_PRODUCT=${product} -DTERBIUM_BUILD_VARIANT=${variant} ../../../
+    ninja
+    cd ./../../../
+}
+
+build_product()
+{
+    local product=$1
+
+    for variant in ${BUILD_VARIANTS[*]}; do
+        build ${product} ${variant}
+    done;
+}
+
+build_all_products()
+{
+    for product in ${BUILD_PRODUCTS[*]}; do
+        for variant in ${BUILD_VARIANTS[*]}; do
+            build ${product} ${variant}
+        done;
+    done;
+}
+
+get_supported_products()
+{
+    local product_dirs=`cd src/products/ && ls -d */`
+    BUILD_PRODUCTS=(${product_dirs//\// })
+}
+
+is_argument_valid()
+{
+    local argument_array=$1
+    local argument=$2
+
+    for value in ${argument_array[*]}; do
+        if [ "${value}" == "${argument}" ]; then
+            return 1
+        fi
+    done;
+
+    return 0
+}
+
+main()
+{
+    local success=0
+
+    get_supported_products
+
+    case $# in
+    0)
+        build_all_products
+        success=1
+        ;;
+    1)
+        local product=$1
+
+        is_argument_valid "${BUILD_PRODUCTS[*]}" "${product}"
+        if [ $? == 1 ] ; then
+            success=1
+            build_product ${product}
+        fi
+        ;;
+    2)
+        local product=$1
+        local variant=$2
+
+        is_argument_valid "${BUILD_PRODUCTS[*]}" "${product}"
+        if [ $? == 1 ] ; then
+            is_argument_valid "${BUILD_VARIANTS[*]}" "${variant}"
+            if [ $? == 1 ] ; then
+                success=1
+                build ${product} ${variant}
+            fi
+        fi
+        ;;
+    *)
+        ;;
+    esac
+
+    if [ ${success} == 0 ]; then
+        print_usage "$@"
+        exit 1
+    fi
+}
+
+main "$@"

@@ -1,0 +1,20 @@
+#!/bin/bash -ex
+
+failed=()
+
+pushd "$(git rev-parse --show-toplevel)/third_party/nest/terbium"
+
+./scripts/make-pretty check || {\
+  msg="make-pretty failed." ;
+  echo "$msg" ;
+  failed+=( "$msg" ) ;
+}
+./scripts/cmake-build || {\
+  msg="cmake-build failed." ;
+  echo "$msg" ;
+  failed+=( "$msg" ) ;
+}
+
+popd
+
+exit "${#failed[@]}"

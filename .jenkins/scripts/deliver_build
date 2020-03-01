@@ -1,0 +1,36 @@
+#!/bin/bash
+set -xeuo pipefail
+SCRIPT_NAME=${BASH_SOURCE[0]}
+source "${bamboo_build_working_directory}/buildtools/images/images-wrapper.sh"
+
+function deliver_build() {
+  local output="$1"
+  local bamboo_BuildVersion="${bamboo_VersionBase}${bamboo_buildNumber}"
+  local destination="${bamboo_build_working_directory}/${bamboo_BuildVersion}"
+
+  mkdir -p "$destination"
+
+  cp -R ${output}/* "$destination"
+
+  pushd "$(dirname "$destination")"
+
+  find "$bamboo_BuildVersion"
+
+  copy_to_images "$bamboo_BuildVersion" "$bamboo_BuildImagesPath"
+
+  popd
+}
+function main() {
+  local product="$1"
+  case "$product" in
+    terbium)
+      local output=./third_party/nest/terbium/output
+      ;;
+    *)
+      echo "Unknown platform for '${product}'. ${SCRIPT_NAME} needs to be updated." >&2
+      exit 1
+      ;;
+  esac
+  deliver_build "$output"
+}
+main "$@"

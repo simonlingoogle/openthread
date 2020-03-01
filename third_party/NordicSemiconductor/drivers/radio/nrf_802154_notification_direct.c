@@ -41,6 +41,9 @@
 
 #include "nrf_802154.h"
 #include "nrf_802154_critical_section.h"
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+#include "nrf_802154_core_hooks.h"
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
 #define RAW_LENGTH_OFFSET  0
 #define RAW_PAYLOAD_OFFSET 1
@@ -69,6 +72,9 @@ void nrf_802154_notify_transmitted(const uint8_t * p_frame,
                                    int8_t          power,
                                    uint8_t         lqi)
 {
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    nrf_802154_core_hooks_tx_ended(true);
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 #if NRF_802154_USE_RAW_API
     nrf_802154_transmitted_raw(p_frame, p_ack, power, lqi);
 #else // NRF_802154_USE_RAW_API
@@ -82,6 +88,9 @@ void nrf_802154_notify_transmitted(const uint8_t * p_frame,
 
 void nrf_802154_notify_transmit_failed(const uint8_t * p_frame, nrf_802154_tx_error_t error)
 {
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+    nrf_802154_core_hooks_tx_ended(false);
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 #if NRF_802154_USE_RAW_API
     nrf_802154_transmit_failed(p_frame, error);
 #else // NRF_802154_USE_RAW_API

@@ -1,0 +1,86 @@
+#!/bin/bash
+#
+#   Copyright (c) 2020 Google LLC.
+#   All rights reserved.
+#
+#   This document is the property of Google LLC, Inc. It is
+#   considered proprietary and confidential information.
+#
+#   This document may not be reproduced or transmitted in any form,
+#   in whole or in part, without the express written permission of
+#   Google LLC.
+#
+
+# This script contains the copy and sign process for cmake, the
+# process would be called after build.
+
+set -euo pipefail
+
+sign_image()
+{
+    local elf_sign_script=${TERBIUM_SRC_DIR}/scripts/elf_sign.py
+    local app_private_key=${TERBIUM_SRC_DIR}/src/products/keys/app-private-key.pem
+
+    if [ -f ${app_private_key} ]; then
+        echo "Signing $1"
+        python3 ${elf_sign_script} $1 ${app_private_key} ${SIGNATURE_SECTION} \
+           "${OBJCOPY} -I elf32-littlearm -O binary -R ${SIGNATURE_SECTION}"
+    fi
+}
+
+copy_and_sign()
+{
+    local bin_dir=$1
+    local images_dir=$2
+
+    for f in ${bin_dir}/*; do
+        filename=${f#"${bin_dir}/"}
+        cp -f ${bin_dir}/${filename} ${images_dir}/${filename}.elf
+
+        if [ "${filename}" != "bootloader" ]; then
+            sign_image ${images_dir}/${filename}.elf
+        fi
+    done
+}
+
+translate_image()
+{
+    arm-none-eabi-objcopy -I $3 -O $4 $5 $1 $2
+}
+
+translate_images()
+{
+    local images_dir=$1
+
+    for image_elf in ${images_dir}/*.elf; do
+        image=${image_elf%".elf"}
+        translate_image ${image_elf} ${image}.bin elf32-littlearm binary ''
+        translate_image ${image_elf} ${image}.s37 elf32-littlearm srec --srec-forceS3
+        translate_image ${image_elf} ${image}.hex elf32-littlearm ihex ''
+    done
+}
+
+main()
+{
+    if [ ! $# -eq 4 ]; then
+        echo "Usage: copy-and-sign <TERBIUM_SRC_DIR> <OUTPUT_DIR> <SIGNATURE_SECTION> <OBJCOPY>"
+    fi
+
+    TERBIUM_SRC_DIR=$1
+    OUTPUT_DIR=$2
+    SIGNATURE_SECTION=$3
+    OBJCOPY=$4
+
+    local bin_dir=${OUTPUT_DIR}/bin
+    local images_dir=${OUTPUT_DIR}/images
+
+    mkdir -p ${images_dir}
+
+    # Copy all the files from bin to images directory and add signature to `.signature` section
+    copy_and_sign ${bin_dir} ${images_dir}
+
+    # Translate images to other format
+    translate_images ${images_dir}
+}
+
+main "$@"

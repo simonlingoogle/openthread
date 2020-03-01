@@ -1,0 +1,28 @@
+import groovy.json.JsonOutput
+library 'jenkins-shared-library@master'
+def version = "1.0"
+def config =
+[
+    versionBase : "${version}d" ,
+    imagesPath : "/images/OpenThread/Terbium/Builds" ,
+    repository : "tps/openthread" ,
+    repositoryBranch: "terbium/master" ,
+    platform : "linux" ,
+    buildType : "PSV" ,
+    targets :
+    [
+        [
+            buildProduct : "openthread" ,
+            buildConfig : "terbium" ,
+            os : "linux",
+            compileScriptAlternate: "buildtools/run_in_docker/run.sh" ,
+            envVars :
+            [
+                "dockerfile=Dockerfile.bionic" ,
+                "command=.jenkins/scripts/terbium/build",
+            ] ,
+        ] ,
+    ] ,
+]
+
+builder(JsonOutput.toJson(config))

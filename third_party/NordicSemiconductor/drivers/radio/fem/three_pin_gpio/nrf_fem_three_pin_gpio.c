@@ -39,6 +39,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+#include <nrfx.h>
+#endif
+
 #include "compiler_abstraction.h"
 #include "nrf_802154_config.h"
 #include "nrf.h"
@@ -83,11 +87,37 @@ static nrf_fem_interface_config_t m_nrf_fem_interface_config = /**< FEM controll
         .active_high  = 1,
         .gpiote_ch_id = NRF_FEM_CONTROL_DEFAULT_PDN_GPIOTE_CHANNEL
     },
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    .cps_pin_config =
+    {
+        .enable       = 0,
+        .gpio_pin     = NRF_FEM_CONTROL_DEFAULT_CPS_PIN,
+        .active_high  = 1,
+        .gpiote_ch_id = NRF_FEM_CONTROL_DEFAULT_CPS_GPIOTE_CHANNEL
+    },
+    .chl_pin_config =
+    {
+        .enable       = 0,
+        .gpio_pin     = NRF_FEM_CONTROL_DEFAULT_CHL_PIN,
+        .active_high  = 1,
+        .gpiote_ch_id = NRF_FEM_CONTROL_DEFAULT_CHL_GPIOTE_CHANNEL
+    },
+    .cps_chl_ppi_ch_id_set = NRF_FEM_CONTROL_DEFAULT_CPS_CHL_SET_PPI_CHANNEL,
+    .cps_chl_ppi_ch_id_clr = NRF_FEM_CONTROL_DEFAULT_CPS_CHL_CLR_PPI_CHANNEL,
+#endif
+
     .ppi_ch_id_set = NRF_FEM_CONTROL_DEFAULT_SET_PPI_CHANNEL,
     .ppi_ch_id_clr = NRF_FEM_CONTROL_DEFAULT_CLR_PPI_CHANNEL,
     .ppi_ch_id_pdn = NRF_FEM_CONTROL_DEFAULT_PDN_PPI_CHANNEL
 };
 static uint8_t m_ppi_channel_ext = PPI_INVALID_CHANNEL; /**< PPI channel provided by the `override_ppi = true` functionality. */
+
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+static volatile bool m_cps_active = false;
+static volatile bool m_chl_active = false;
+static volatile bool m_set_pa_pin = false;
+static volatile bool m_clr_pa_pin = false;
+#endif
 
 /** Map the mask bits with the Compare Channels. */
 static uint32_t get_available_compare_channel(uint8_t mask, uint32_t number)
@@ -153,8 +183,130 @@ static void gpiote_configure(void)
 
         nrf_gpiote_task_enable(m_nrf_fem_interface_config.pdn_pin_config.gpiote_ch_id);
     }
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    if (m_nrf_fem_interface_config.cps_pin_config.enable)
+    {
+        nrf_gpiote_task_configure(m_nrf_fem_interface_config.cps_pin_config.gpiote_ch_id,
+                                  m_nrf_fem_interface_config.cps_pin_config.gpio_pin,
+                                  (nrf_gpiote_polarity_t)GPIOTE_CONFIG_POLARITY_None,
+                                  (nrf_gpiote_outinit_t) !m_nrf_fem_interface_config.cps_pin_config.active_high);
+
+        nrf_gpiote_task_enable(m_nrf_fem_interface_config.cps_pin_config.gpiote_ch_id);
+    }
+
+    if (m_nrf_fem_interface_config.chl_pin_config.enable)
+    {
+        nrf_gpiote_task_configure(m_nrf_fem_interface_config.chl_pin_config.gpiote_ch_id,
+                                  m_nrf_fem_interface_config.chl_pin_config.gpio_pin,
+                                  (nrf_gpiote_polarity_t)GPIOTE_CONFIG_POLARITY_None,
+                                  (nrf_gpiote_outinit_t) !m_nrf_fem_interface_config.chl_pin_config.active_high);
+
+        nrf_gpiote_task_enable(m_nrf_fem_interface_config.chl_pin_config.gpiote_ch_id);
+    }
+#endif // TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
 }
 
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+int32_t nrf_fem_activate_mode_pin(nrf_fem_mode_pin_t pin, bool activate)
+{
+    nrf_fem_gpiote_pin_config_t *pin_config;
+
+    if (pin == NRF_FEM_MODE_PIN_CPS)
+    {
+        pin_config = &m_nrf_fem_interface_config.cps_pin_config;
+    }
+    else if (pin == NRF_FEM_MODE_PIN_CHL)
+    {
+        pin_config = &m_nrf_fem_interface_config.chl_pin_config;
+    }
+    else
+    {
+        assert(0);
+    }
+
+    if (!pin_config->enable)
+    {
+        return NRF_ERROR_INVALID_STATE;
+    }
+
+    if (activate)
+    {
+        if (pin == NRF_FEM_MODE_PIN_CPS)
+        {
+            m_cps_active = true;
+        }
+        else if (pin == NRF_FEM_MODE_PIN_CHL)
+        {
+            m_chl_active = true;
+        }
+    }
+    else
+    {
+        if (pin == NRF_FEM_MODE_PIN_CPS)
+        {
+            if (m_cps_active)
+            {
+                m_cps_active = false;
+                if (!m_chl_active)
+                {
+                    // If both CHL and CPS pin are disabled, disable the 'cps_chl_ppi_ch_id_set' and
+                    // 'cps_chl_ppi_ch_id_clr' PPI channels.
+                    nrf_ppi_channel_disable((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_set);
+                    nrf_ppi_channel_disable((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_clr);
+                }
+
+                // Disable the PPI task end point to disable activing CPS pin.
+                NRF_PPI->CH[m_nrf_fem_interface_config.cps_chl_ppi_ch_id_set].TEP = 0;
+                NRF_PPI->CH[m_nrf_fem_interface_config.cps_chl_ppi_ch_id_clr].TEP = 0;
+
+                // Set CPS pin to inactive state.
+                nrf_gpiote_task_force(m_nrf_fem_interface_config.cps_pin_config.gpiote_ch_id,
+                                      (nrf_gpiote_outinit_t) !m_nrf_fem_interface_config.cps_pin_config.active_high);
+            }
+        }
+        else if (pin == NRF_FEM_MODE_PIN_CHL)
+        {
+            if (m_chl_active)
+            {
+                m_chl_active = false;
+                if (!m_cps_active)
+                {
+                    // If both CHL and CPS pin are disabled, disable the 'cps_chl_ppi_ch_id_set' and
+                    // 'cps_chl_ppi_ch_id_clr' PPI channels.
+                    nrf_ppi_channel_disable((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_set);
+                    nrf_ppi_channel_disable((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_clr);
+                }
+
+                // Disable the PPI task end point to disable activing CHL pin.
+                NRF_PPI->FORK[m_nrf_fem_interface_config.cps_chl_ppi_ch_id_set].TEP = 0;
+                NRF_PPI->FORK[m_nrf_fem_interface_config.cps_chl_ppi_ch_id_clr].TEP = 0;
+
+                // Set CHL pin to inactive state.
+                nrf_gpiote_task_force(m_nrf_fem_interface_config.chl_pin_config.gpiote_ch_id,
+                                      (nrf_gpiote_outinit_t) !m_nrf_fem_interface_config.chl_pin_config.active_high);
+            }
+        }
+    }
+
+    return NRF_SUCCESS;
+}
+
+static uint32_t get_fem_pin_active_task(nrf_fem_gpiote_pin_config_t *p_pin_config, bool activate)
+{
+    uint32_t task_addr;
+
+    if (p_pin_config->active_high ^ activate)
+    {
+        task_addr = (uint32_t)(&NRF_GPIOTE->TASKS_CLR[p_pin_config->gpiote_ch_id]);
+    }
+    else
+    {
+        task_addr = (uint32_t)(&NRF_GPIOTE->TASKS_SET[p_pin_config->gpiote_ch_id]);
+    }
+
+    return task_addr;
+}
+#endif // TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
 /** Configure the event with the provided values. */
 static int32_t event_configuration_set(const nrf_802154_fal_event_t * const p_event,
                                        nrf_fem_gpiote_pin_config_t        * p_pin_config,
@@ -163,6 +315,11 @@ static int32_t event_configuration_set(const nrf_802154_fal_event_t * const p_ev
 {
     uint32_t task_addr;
     uint8_t  ppi_ch;
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    uint8_t  cps_chl_ppi_ch;
+    uint32_t cps_task_addr = 0;
+    uint32_t chl_task_addr = 0;
+#endif
 
     assert(p_event);
     assert(p_pin_config);
@@ -202,6 +359,25 @@ static int32_t event_configuration_set(const nrf_802154_fal_event_t * const p_ev
         task_addr = (uint32_t)(&NRF_GPIOTE->TASKS_SET[p_pin_config->gpiote_ch_id]);
     }
 
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    cps_chl_ppi_ch =
+        activate ? m_nrf_fem_interface_config.cps_chl_ppi_ch_id_set : m_nrf_fem_interface_config.
+        cps_chl_ppi_ch_id_clr;
+
+    if (m_set_pa_pin)
+    {
+        if (m_cps_active && m_nrf_fem_interface_config.cps_pin_config.enable)
+        {
+            cps_task_addr = get_fem_pin_active_task(&m_nrf_fem_interface_config.cps_pin_config, activate);
+        }
+
+        if (m_chl_active && m_nrf_fem_interface_config.chl_pin_config.enable)
+        {
+            chl_task_addr = get_fem_pin_active_task(&m_nrf_fem_interface_config.chl_pin_config, activate);
+        }
+    }
+#endif // TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+
     switch (p_event->type)
     {
         case NRF_802154_FAL_EVENT_TYPE_GENERIC:
@@ -218,6 +394,19 @@ static int32_t event_configuration_set(const nrf_802154_fal_event_t * const p_ev
             }
 
             nrf_ppi_channel_enable((nrf_ppi_channel_t)ppi_ch);
+
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+            // Set CPS and CHL pins.
+            if ((cps_task_addr != 0) || (chl_task_addr != 0))
+            {
+                nrf_ppi_channel_and_fork_endpoint_setup((nrf_ppi_channel_t)cps_chl_ppi_ch,
+                                                        p_event->event.generic.register_address,
+                                                        cps_task_addr,
+                                                        chl_task_addr);
+
+                nrf_ppi_channel_enable((nrf_ppi_channel_t)cps_chl_ppi_ch);
+            }
+#endif // TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
         }
         break;
 
@@ -242,6 +431,20 @@ static int32_t event_configuration_set(const nrf_802154_fal_event_t * const p_ev
             nrf_timer_cc_write(p_event->event.timer.p_timer_instance,
                                (nrf_timer_cc_channel_t)compare_channel,
                                p_event->event.timer.counter_value - time_delay);
+
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+            // Set CPS and CHL pins.
+            if ((cps_task_addr != 0) || (chl_task_addr != 0))
+            {
+                nrf_ppi_channel_and_fork_endpoint_setup((nrf_ppi_channel_t)cps_chl_ppi_ch,
+                                                        (uint32_t)(&(p_event->event.timer.p_timer_instance->
+                                                                     EVENTS_COMPARE[compare_channel])),
+                                                        cps_task_addr,
+                                                        chl_task_addr);
+
+                nrf_ppi_channel_enable((nrf_ppi_channel_t)cps_chl_ppi_ch);
+            }
+#endif // TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
 
             /* PDN pin */
             if (m_nrf_fem_interface_config.pdn_pin_config.active_high)
@@ -289,6 +492,9 @@ static int32_t event_configuration_clear(const nrf_802154_fal_event_t * const p_
                                          bool                                 activate)
 {
     uint8_t ppi_ch;
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    uint8_t cps_chl_ppi_ch;
+#endif
 
     assert(p_event);
 
@@ -306,6 +512,19 @@ static int32_t event_configuration_clear(const nrf_802154_fal_event_t * const p_
     nrf_ppi_channel_disable((nrf_ppi_channel_t)ppi_ch);
     nrf_ppi_channel_endpoint_setup((nrf_ppi_channel_t)ppi_ch, 0, 0);
     nrf_ppi_fork_endpoint_setup((nrf_ppi_channel_t)ppi_ch, 0);
+
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    cps_chl_ppi_ch =
+        activate ? m_nrf_fem_interface_config.cps_chl_ppi_ch_id_set : m_nrf_fem_interface_config.
+        cps_chl_ppi_ch_id_clr;
+
+    if (m_clr_pa_pin)
+    {
+        nrf_ppi_channel_disable((nrf_ppi_channel_t)cps_chl_ppi_ch);
+        nrf_ppi_channel_endpoint_setup((nrf_ppi_channel_t)cps_chl_ppi_ch, 0, 0);
+        nrf_ppi_fork_endpoint_setup((nrf_ppi_channel_t)cps_chl_ppi_ch, 0);
+    }
+#endif // TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
 
     switch (p_event->type)
     {
@@ -330,6 +549,10 @@ int32_t nrf_802154_fal_pa_configuration_set(const nrf_802154_fal_event_t * const
     {
         return NRF_ERROR_FORBIDDEN;
     }
+
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    m_set_pa_pin = true;
+#endif
 
     if (p_activate_event)
     {
@@ -368,6 +591,10 @@ int32_t nrf_802154_fal_lna_configuration_set(const nrf_802154_fal_event_t * cons
         return NRF_ERROR_FORBIDDEN;
     }
 
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    m_set_pa_pin = false;
+#endif
+
     if (p_activate_event)
     {
         ret_code = event_configuration_set(p_activate_event,
@@ -405,6 +632,10 @@ int32_t nrf_802154_fal_pa_configuration_clear(const nrf_802154_fal_event_t * con
         return NRF_ERROR_FORBIDDEN;
     }
 
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    m_clr_pa_pin = true;
+#endif
+
     if (p_activate_event)
     {
         ret_code = event_configuration_clear(p_activate_event, true);
@@ -436,6 +667,10 @@ int32_t nrf_802154_fal_lna_configuration_clear(
     {
         return NRF_ERROR_FORBIDDEN;
     }
+
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    m_clr_pa_pin = false;
+#endif
 
     if (p_activate_event)
     {
@@ -487,6 +722,38 @@ void nrf_802154_fal_deactivate_now(nrf_fal_functionality_t type)
                                   NRF_GPIOTE_INITIAL_VALUE_HIGH);
         }
     }
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    if (type & NRF_802154_FAL_PA)
+    {
+        if (m_nrf_fem_interface_config.cps_pin_config.enable && (type & NRF_802154_FAL_CPS))
+        {
+            if (m_nrf_fem_interface_config.cps_pin_config.active_high)
+            {
+                nrf_gpiote_task_force(m_nrf_fem_interface_config.cps_pin_config.gpiote_ch_id,
+                                      NRF_GPIOTE_INITIAL_VALUE_LOW);
+            }
+            else
+            {
+                nrf_gpiote_task_force(m_nrf_fem_interface_config.cps_pin_config.gpiote_ch_id,
+                                      NRF_GPIOTE_INITIAL_VALUE_HIGH);
+            }
+        }
+
+        if (m_nrf_fem_interface_config.chl_pin_config.enable && (type & NRF_802154_FAL_CHL))
+        {
+            if (m_nrf_fem_interface_config.chl_pin_config.active_high)
+            {
+                nrf_gpiote_task_force(m_nrf_fem_interface_config.chl_pin_config.gpiote_ch_id,
+                                      NRF_GPIOTE_INITIAL_VALUE_LOW);
+            }
+            else
+            {
+                nrf_gpiote_task_force(m_nrf_fem_interface_config.chl_pin_config.gpiote_ch_id,
+                                      NRF_GPIOTE_INITIAL_VALUE_HIGH);
+            }
+        }
+    }
+#endif // TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
 }
 
 int32_t nrf_fem_interface_configuration_set(nrf_fem_interface_config_t const * const p_config)
@@ -519,6 +786,21 @@ void nrf_802154_fal_cleanup(void)
     nrf_ppi_channel_endpoint_setup((nrf_ppi_channel_t)m_nrf_fem_interface_config.ppi_ch_id_clr, 0,
                                    0);
     nrf_ppi_fork_endpoint_setup((nrf_ppi_channel_t)m_nrf_fem_interface_config.ppi_ch_id_clr, 0);
+
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    // Clean PPI channel 'cps_chl_ppi_ch_id_set'.
+    nrf_ppi_channel_disable((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_set);
+    nrf_ppi_channel_endpoint_setup((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_set, 0,
+                                   0);
+    nrf_ppi_fork_endpoint_setup((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_set, 0);
+
+    // Clean PPI channel 'cps_chl_ppi_ch_id_clr'.
+    nrf_ppi_channel_disable((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_clr);
+    nrf_ppi_channel_endpoint_setup((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_clr, 0,
+                                   0);
+    nrf_ppi_fork_endpoint_setup((nrf_ppi_channel_t)m_nrf_fem_interface_config.cps_chl_ppi_ch_id_clr, 0);
+#endif
+
     if (m_ppi_channel_ext != PPI_INVALID_CHANNEL)
     {
         nrf_ppi_channel_disable((nrf_ppi_channel_t)m_ppi_channel_ext);

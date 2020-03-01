@@ -81,6 +81,37 @@ int32_t nrf_fem_interface_configuration_set(nrf_fem_interface_config_t const * c
  */
 int32_t nrf_fem_interface_configuration_get(nrf_fem_interface_config_t * p_config);
 
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+/**
+ * @brief CHL and CPS pin identifiers.
+ */
+typedef enum
+{
+    NRF_FEM_MODE_PIN_CHL = 0, /**< High/Low power pin identifier. */
+    NRF_FEM_MODE_PIN_CPS = 1, /**< Bypass TX/RX pin identifier. */
+} nrf_fem_mode_pin_t;
+
+/**
+ * @brief Activate or inactivate the given FEM mode pin.
+ *
+ * Note: If CHL/CPS pin is activated, the pin's behavior is consistent with the behavior of PA pin.
+ *       If CHL/CPS pin is inactivated, the pin is set to inactive state.
+ *
+ * @param[in] pin       FEM mode pin.
+ * @param[in] activate  Indicate whether the given pin should be activated or inactivated.
+ *
+ * @retval   ::NRF_SUCCESS                 CHL/CPS control successfully configured.
+ * @retval   ::NRF_ERROR_INVALID_STATE     CHL/CPS is not enabled.
+ *
+ */
+int32_t nrf_fem_activate_mode_pin(nrf_fem_mode_pin_t pin, bool activate);
+
+typedef void (*nrf_print_function)(const char *aString);
+
+void nrf_fem_print_function_register(nrf_print_function function);
+
+#endif // TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+
 #else // ENABLE_FEM
 
 typedef void nrf_fem_interface_config_t;

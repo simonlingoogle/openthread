@@ -45,6 +45,10 @@
 #include "rsch/nrf_802154_rsch.h"
 #include "platform/lp_timer/nrf_802154_lp_timer.h"
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+#include "nest/terbium/src/platform/coex.h"
+#endif
+
 #include <nrf.h>
 
 #define CMSIS_IRQ_NUM_VECTACTIVE_DIFF                 16
@@ -124,6 +128,10 @@ static bool critical_section_enter(bool forced)
         }
         while (__STREXB(cnt + 1, &m_nested_critical_section_counter));
 
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+        tbCoexRadioCriticalSectionEnter();
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+
         nrf_802154_critical_section_rsch_enter();
         nrf_802154_lp_timer_critical_section_enter();
         radio_critical_section_enter();
@@ -162,6 +170,10 @@ static void critical_section_exit(void)
             nrf_802154_critical_section_rsch_exit();
             radio_critical_section_exit();
             nrf_802154_lp_timer_critical_section_exit();
+
+#if OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
+            tbCoexRadioCriticalSectionExit();
+#endif // OPENTHREAD_CONFIG_PLATFORM_RADIO_COEX_ENABLE
 
             exiting_crit_sect = false;
         }

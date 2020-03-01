@@ -67,10 +67,18 @@ typedef struct
     nrf_fem_gpiote_pin_config_t pa_pin_config;  /* Power Amplifier pin configuration. */
     nrf_fem_gpiote_pin_config_t lna_pin_config; /* Low Noise Amplifier pin configuration. */
     nrf_fem_gpiote_pin_config_t pdn_pin_config; /* Power Down pin configuration. */
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    nrf_fem_gpiote_pin_config_t cps_pin_config; /* Bypass TX/RX mode pin configuration. */
+    nrf_fem_gpiote_pin_config_t chl_pin_config; /* High/Low power pin configuration. */
+#endif
 
     uint8_t                     ppi_ch_id_set;  /* PPI channel to be used for setting pins. */
     uint8_t                     ppi_ch_id_clr;  /* PPI channel to be used for clearing pins. */
     uint8_t                     ppi_ch_id_pdn;  /* PPI channel to handle PDN pin. */
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+    uint8_t                     cps_chl_ppi_ch_id_set;  /* PPI channel to be used for setting CPS/CHL pins. */
+    uint8_t                     cps_chl_ppi_ch_id_clr;  /* PPI channel to be used for clearing CPS/CHL pins. */
+#endif
 } nrf_fem_interface_config_t;
 
 /**
@@ -126,6 +134,48 @@ typedef struct
 /** Default GPIOTE channel for PA control. */
 #define NRF_FEM_CONTROL_DEFAULT_PA_GPIOTE_CHANNEL  7
 
+#ifdef TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
+/** Default CPS pin. */
+#define NRF_FEM_CONTROL_DEFAULT_CPS_PIN            25
+
+/** Default GPIOTE channel for CPS control. */
+#define NRF_FEM_CONTROL_DEFAULT_CPS_GPIOTE_CHANNEL 4
+
+/** Default CHL pin. */
+#define NRF_FEM_CONTROL_DEFAULT_CHL_PIN            26
+
+/** Default GPIOTE channel for CHL control. */
+#define NRF_FEM_CONTROL_DEFAULT_CHL_GPIOTE_CHANNEL 5
+
+/** Default PPI channel for CPS and CHL pin setting. */
+#define NRF_FEM_CONTROL_DEFAULT_CPS_CHL_SET_PPI_CHANNEL   17
+
+/** Default PPI channel for CPS and CHL pin clearing. */
+#define NRF_FEM_CONTROL_DEFAULT_CPS_CHL_CLR_PPI_CHANNEL   18
+
+/** Mask of GPIO pins used for FEM control. */
+#define NRF_802154_FEM_PINS_USED_MASK              ((1 << NRF_FEM_CONTROL_DEFAULT_PA_PIN) |  \
+                                                    (1 << NRF_FEM_CONTROL_DEFAULT_LNA_PIN) | \
+                                                    (1 << NRF_FEM_CONTROL_DEFAULT_PDN_PIN) | \
+                                                    (1 << NRF_FEM_CONTROL_DEFAULT_CPS_PIN) | \
+                                                    (1 << NRF_FEM_CONTROL_DEFAULT_CHL_PIN))
+
+/** Mask of PPI channels used for FEM control. */
+#define NRF_802154_FEM_PPI_CHANNELS_USED_MASK      ((1 << NRF_FEM_CONTROL_DEFAULT_SET_PPI_CHANNEL) | \
+                                                    (1 << NRF_FEM_CONTROL_DEFAULT_CLR_PPI_CHANNEL) | \
+                                                    (1 << NRF_FEM_CONTROL_DEFAULT_PDN_PPI_CHANNEL) | \
+                                                    (1 << NRF_FEM_CONTROL_DEFAULT_CPS_CHL_CLR_PPI_CHANNEL) | \
+                                                    (1 << NRF_FEM_CONTROL_DEFAULT_CPS_CHL_SET_PPI_CHANNEL))
+
+/** Mask of GPIOTE channels used for FEM control. */
+#define NRF_802154_FEM_GPIOTE_CHANNELS_USED_MASK   (        \
+        (1 << NRF_FEM_CONTROL_DEFAULT_PDN_GPIOTE_CHANNEL) | \
+        (1 << NRF_FEM_CONTROL_DEFAULT_LNA_GPIOTE_CHANNEL) | \
+        (1 << NRF_FEM_CONTROL_DEFAULT_PA_GPIOTE_CHANNEL)  | \
+        (1 << NRF_FEM_CONTROL_DEFAULT_CPS_GPIOTE_CHANNEL) | \
+        (1 << NRF_FEM_CONTROL_DEFAULT_CHL_GPIOTE_CHANNEL))
+#else
+
 /** Mask of GPIO pins used for FEM control. */
 #define NRF_802154_FEM_PINS_USED_MASK              ((1 << NRF_FEM_CONTROL_DEFAULT_PA_PIN) |  \
                                                     (1 << NRF_FEM_CONTROL_DEFAULT_LNA_PIN) | \
@@ -141,6 +191,7 @@ typedef struct
         (1 << NRF_FEM_CONTROL_DEFAULT_PDN_GPIOTE_CHANNEL) | \
         (1 << NRF_FEM_CONTROL_DEFAULT_LNA_GPIOTE_CHANNEL) | \
         (1 << NRF_FEM_CONTROL_DEFAULT_PA_GPIOTE_CHANNEL))
+#endif // TERBIUM_CONFIG_FEM_PIN_CONTROLLER_ENABLE
 
 #ifdef __cplusplus
 }
