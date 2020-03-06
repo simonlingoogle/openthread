@@ -3239,7 +3239,7 @@ void MleRouter::RemoveNeighbor(Neighbor &aNeighbor)
             Get<AddressResolver>().Remove(aNeighbor.GetRloc16());
         }
 
-        RemoveStoredChild(aNeighbor.GetRloc16());
+        RemoveStoredChild(aNeighbor.GetRloc16(), aNeighbor.GetExtAddress());
     }
     else if (aNeighbor.IsStateValid())
     {
@@ -3619,13 +3619,15 @@ exit:
     }
 }
 
-otError MleRouter::RemoveStoredChild(uint16_t aChildRloc16)
+otError MleRouter::RemoveStoredChild(uint16_t aChildRloc16, const Mac::ExtAddress &aExtAddr)
 {
     otError error = OT_ERROR_NOT_FOUND;
 
     for (Settings::ChildInfoIterator iter(GetInstance()); !iter.IsDone(); iter++)
     {
-        if (iter.GetChildInfo().GetRloc16() == aChildRloc16)
+        const SettingsBase::ChildInfo &child = iter.GetChildInfo();
+
+        if (child.GetRloc16() == aChildRloc16 || child.GetExtAddress() == aExtAddr)
         {
             error = iter.Delete();
             ExitNow();
@@ -3640,7 +3642,7 @@ otError MleRouter::StoreChild(const Child &aChild)
 {
     Settings::ChildInfo childInfo;
 
-    IgnoreReturnValue(RemoveStoredChild(aChild.GetRloc16()));
+    IgnoreReturnValue(RemoveStoredChild(aChild.GetRloc16(), aChild.GetExtAddress()));
 
     childInfo.Init();
     childInfo.SetExtAddress(aChild.GetExtAddress());

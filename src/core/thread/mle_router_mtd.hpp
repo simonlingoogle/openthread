@@ -84,7 +84,7 @@ public:
     bool IsMinimalChild(uint16_t) const { return false; }
 
     void    RestoreChildren(void) {}
-    otError RemoveStoredChild(uint16_t) { return OT_ERROR_NOT_IMPLEMENTED; }
+    otError RemoveStoredChild(uint16_t, const Mac::ExtAddress &) { return OT_ERROR_NOT_IMPLEMENTED; }
     otError StoreChild(const Child &) { return OT_ERROR_NOT_IMPLEMENTED; }
 
     Neighbor *GetNeighbor(uint16_t aAddress) { return Mle::GetNeighbor(aAddress); }

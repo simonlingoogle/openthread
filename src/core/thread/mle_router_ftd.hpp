@@ -340,7 +340,7 @@ public:
      * @retval  OT_ERROR_NOT_FOUND   There is no specified child stored in non-volatile memory.
      *
      */
-    otError RemoveStoredChild(uint16_t aChildRloc16);
+    otError RemoveStoredChild(uint16_t aChildRloc16, const Mac::ExtAddress &aExtAddr);
 
     /**
      * This method store a child information into non-volatile memory.
