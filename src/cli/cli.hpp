@@ -301,7 +301,7 @@ private:
     void    ProcessPrefix(int argc, char *argv[]);
     otError ProcessPrefixAdd(int argc, char *argv[]);
     otError ProcessPrefixRemove(int argc, char *argv[]);
-    otError ProcessPrefixList(void);
+    otError ProcessPrefixList(bool aUseNetData);
 #endif
     void ProcessPromiscuous(int argc, char *argv[]);
 #if OPENTHREAD_FTD

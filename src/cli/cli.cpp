@@ -2387,12 +2387,20 @@ exit:
     return error;
 }
 
-otError Interpreter::ProcessPrefixList(void)
+otError Interpreter::ProcessPrefixList(bool aUseNetData)
 {
     otNetworkDataIterator iterator = OT_NETWORK_DATA_ITERATOR_INIT;
     otBorderRouterConfig  config;
 
-    while (otBorderRouterGetNextOnMeshPrefix(mInstance, &iterator, &config) == OT_ERROR_NONE)
+    otError (*getNextPrefix)(otInstance * aInstance, otNetworkDataIterator * aIterator,
+                             otBorderRouterConfig * aConfig) = otBorderRouterGetNextOnMeshPrefix;
+
+    if (aUseNetData)
+    {
+        getNextPrefix = otNetDataGetNextOnMeshPrefix;
+    }
+
+    while (getNextPrefix(mInstance, &iterator, &config) == OT_ERROR_NONE)
     {
         mServer->OutputFormat("%x:%x:%x:%x::/%d ", HostSwap16(config.mPrefix.mPrefix.mFields.m16[0]),
                               HostSwap16(config.mPrefix.mPrefix.mFields.m16[1]),
@@ -2457,9 +2465,13 @@ void Interpreter::ProcessPrefix(int argc, char *argv[])
 {
     otError error = OT_ERROR_NONE;
 
-    if (argc == 0)
+    if (argc == 0 || strcmp(argv[0], "list") == 0)
     {
-        SuccessOrExit(error = ProcessPrefixList());
+        SuccessOrExit(error = ProcessPrefixList(/* aUseNetData */ false));
+    }
+    else if (strcmp(argv[0], "list-nd") == 0)
+    {
+        SuccessOrExit(error = ProcessPrefixList(/* aUseNetData */ true));
     }
     else if (strcmp(argv[0], "add") == 0)
     {
