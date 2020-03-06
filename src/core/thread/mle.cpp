@@ -1037,7 +1037,7 @@ void Mle::SetLeaderData(uint32_t aPartitionId, uint8_t aWeighting, uint8_t aLead
 
 otError Mle::GetLeaderAddress(Ip6::Address &aAddress) const
 {
-    return GetRlocAddress(aAddress, mLeaderData.GetLeaderRouterId());
+    return GetRlocAddress(aAddress, Rloc16FromRouterId(mLeaderData.GetLeaderRouterId()));
 }
 
 otError Mle::GetRlocAddress(Ip6::Address &aRloc, uint16_t aRloc16) const
