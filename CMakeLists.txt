@@ -61,8 +61,18 @@ list(APPEND OT_PRIVATE_DEFINES
     "PACKAGE_VERSION=\"${OT_VERSION}\""
 )
 
-set(OT_PLATFORM "none" CACHE STRING "Target platform chosen by the user at configure time")
+set(OT_THREAD_VERSION "1.1" CACHE STRING "Thread version chosen by the user at configure time")
+set_property(CACHE OT_THREAD_VERSION PROPERTY STRINGS "1.1" "1.2")
+if(${OT_THREAD_VERSION} EQUAL "1.1")
+    list(APPEND OT_PRIVATE_DEFINES "OPENTHREAD_CONFIG_THREAD_VERSION=OT_THREAD_VERSION_1_1")
+elseif(${OT_THREAD_VERSION} EQUAL "1.2")
+    list(APPEND OT_PRIVATE_DEFINES "OPENTHREAD_CONFIG_THREAD_VERSION=OT_THREAD_VERSION_1_2")
+else()
+    message(FATAL_ERROR "Thread version unknown: ${OT_THREAD_VERSION}")
+endif()
 
+
+set(OT_PLATFORM "none" CACHE STRING "Target platform chosen by the user at configure time")
 ot_get_platforms(OT_EXAMPLE_PLATFORMS)
 set_property(CACHE OT_PLATFORM PROPERTY STRINGS ${OT_EXAMPLE_PLATFORMS})
 if(NOT OT_PLATFORM IN_LIST OT_EXAMPLE_PLATFORMS)
@@ -97,15 +107,6 @@ if(OT_CONFIG)
 endif()
 
 list(APPEND OT_PRIVATE_DEFINES ${OT_PLATFORM_DEFINES})
-
-if(OT_BUILTIN_MBEDTLS)
-    list(APPEND OT_PRIVATE_INCLUDES ${PROJECT_SOURCE_DIR}/third_party/mbedtls)
-    list(APPEND OT_PRIVATE_INCLUDES ${PROJECT_SOURCE_DIR}/third_party/mbedtls/repo/include)
-
-    list(APPEND OT_PRIVATE_DEFINES
-        "MBEDTLS_CONFIG_FILE=\"mbedtls-config.h\""
-    )
-endif()
 
 if(OT_PLATFORM STREQUAL "posix-host")
     add_subdirectory(src/posix)
