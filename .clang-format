@@ -29,6 +29,7 @@ BraceWrapping:
   AfterObjCDeclaration: false
   AfterStruct:     true
   AfterUnion:      true
+  AfterCaseLabel:  true
   BeforeCatch:     false
   BeforeElse:      true
   IndentBraces:    false
