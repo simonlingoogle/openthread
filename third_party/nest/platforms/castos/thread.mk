@@ -3,6 +3,7 @@
 OPENTHREAD_PROJECT_CFLAGS = -DOPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"openthread-core-castos-config.h\"
 OPENTHREAD_PROJECT_INCLUDES = external/openthread/third_party/nest/platforms/castos
 OPENTHREAD_PROJECT_SRC_FILES = third_party/nest/extension/ot-legacy-pairing-ext.cpp
+USE_OT_RCP_BUS = spi
 
 PRODUCT_PACKAGES += \
   ncp-ctl \
