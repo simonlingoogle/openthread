@@ -42,9 +42,9 @@ namespace ot {
 namespace Utils {
 
 #if OPENTHREAD_CONFIG_OTNS_ENABLE
-#define OtnsStatusPush otPlatOtnsStatusPush
+#define OtnsStatus otPlatOtnsStatus
 #else
-#define OtnsStatusPush(...) ((void)0)
+#define OtnsStatus(...) ((void)0)
 #endif
 
 } // namespace Utils

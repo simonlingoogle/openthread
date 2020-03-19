@@ -2015,9 +2015,9 @@ void Interpreter::HandleIcmpReceive(otMessage *          aMessage,
     }
 
     mServer->OutputFormat("\r\n");
-    OtnsStatusPush("ping_reply=%s,%u,%lu,%d",
-                   static_cast<const Ip6::MessageInfo *>(aMessageInfo)->GetPeerAddr().ToString().AsCString(), datasize,
-                   HostSwap32(timestamp), aMessageInfo->mHopLimit);
+    OtnsStatus("ping_reply=%s,%u,%lu,%d",
+               static_cast<const Ip6::MessageInfo *>(aMessageInfo)->GetPeerAddr().ToString().AsCString(), datasize,
+               HostSwap32(timestamp), aMessageInfo->mHopLimit);
 
 exit:
     return;
@@ -2119,9 +2119,9 @@ void Interpreter::SendPing(void)
     SuccessOrExit(otMessageAppend(message, &timestamp, sizeof(timestamp)));
     SuccessOrExit(otMessageSetLength(message, mPingLength));
     SuccessOrExit(otIcmp6SendEchoRequest(mInstance, message, &messageInfo, mPingIdentifier));
-    OtnsStatusPush("ping_request=%s,%d,%lu",
-                   static_cast<Ip6::MessageInfo *>(&messageInfo)->GetPeerAddr().ToString().AsCString(), mPingLength,
-                   HostSwap32(timestamp));
+    OtnsStatus("ping_request=%s,%d,%lu",
+               static_cast<Ip6::MessageInfo *>(&messageInfo)->GetPeerAddr().ToString().AsCString(), mPingLength,
+               HostSwap32(timestamp));
 
     message = NULL;
 

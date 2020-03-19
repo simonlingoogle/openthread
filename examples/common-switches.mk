@@ -59,6 +59,7 @@ endif
 LINK_RAW            ?= 0
 MAC_FILTER          ?= 0
 MTD_NETDIAG         ?= 0
+OTNS                ?= 0
 PLATFORM_UDP        ?= 0
 REFERENCE_DEVICE    ?= 0
 SERVICE             ?= 0
@@ -69,7 +70,6 @@ SNTP_CLIENT         ?= 0
 THREAD_VERSION      ?= 1.1
 TIME_SYNC           ?= 0
 UDP_FORWARD         ?= 0
-OTNS                ?= 0
 
 
 ifeq ($(BIG_ENDIAN),1)

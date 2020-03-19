@@ -110,7 +110,7 @@ void RouterTable::ClearNeighbors(void)
         if (router.IsStateValid())
         {
             Get<Mle::MleRouter>().Signal(OT_NEIGHBOR_TABLE_EVENT_ROUTER_REMOVED, router);
-            OtnsStatusPush("router_removed=%s", router.GetExtAddress().ToString().AsCString());
+            OtnsStatus("router_removed=%s", router.GetExtAddress().ToString().AsCString());
         }
 
         router.SetState(Neighbor::kStateInvalid);

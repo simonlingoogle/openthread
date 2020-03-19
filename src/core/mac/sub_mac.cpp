@@ -118,7 +118,7 @@ void SubMac::SetExtAddress(const ExtAddress &aExtAddress)
     address.Set(aExtAddress.m8, ExtAddress::kReverseByteOrder);
     Get<Radio>().SetExtendedAddress(address);
 
-    OtnsStatusPush("extaddr=%s", mExtAddress.ToString().AsCString());
+    OtnsStatus("extaddr=%s", mExtAddress.ToString().AsCString());
     otLogDebgMac("RadioExtAddress: %s", mExtAddress.ToString().AsCString());
 }
 

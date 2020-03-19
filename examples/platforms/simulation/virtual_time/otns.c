@@ -33,7 +33,7 @@
 #include <stdio.h>
 #include <openthread/platform/alarm-micro.h>
 
-void otPlatOtnsStatusPush(const char *aFmt, ...)
+void otPlatOtnsStatus(const char *aFmt, ...)
 {
     int          n;
     struct Event event;

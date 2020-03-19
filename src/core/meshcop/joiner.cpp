@@ -79,7 +79,7 @@ void Joiner::SetState(otJoinerState aState)
     VerifyOrExit(aState != mState);
 
     otLogInfoMeshCoP("JoinerState: %s -> %s", JoinerStateToString(mState), JoinerStateToString(aState));
-    OtnsStatusPush("joiner_state=%s", JoinerStateToString(aState));
+    OtnsStatus("joiner_state=%s", JoinerStateToString(aState));
     mState = aState;
 
 exit:

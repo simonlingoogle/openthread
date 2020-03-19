@@ -50,8 +50,9 @@ extern "C" {
  */
 
 /**
- * OpenThread uses `OtnsStatusPush` to push node status to OTNS.
- * Each call to `OtnsStatusPush` can send multiple statuses, separated by ';', e.x. parid=577fbc37;lrid=5.
+ * This function exports status information to OTNS.
+ *
+ * Each call to `OtnsStatus` can send multiple statuses, separated by ';', e.x. parid=577fbc37;lrid=5.
  * Each status contains key and value separated by '='.
  * Status value can be further separated into multiple fields using ',',
  * e.x. ping_request=fdde:ad00:beef:0:459e:d7b4:b65e:5480,4,112000.
@@ -63,7 +64,7 @@ extern "C" {
  *
  * Currently, OTNS only supports virtual time simulation.
  */
-void otPlatOtnsStatusPush(const char *aFmt, ...);
+void otPlatOtnsStatus(const char *aFmt, ...);
 
 /**
  * @}
