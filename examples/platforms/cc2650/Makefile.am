@@ -50,7 +50,6 @@ PLATFORM_SOURCES                                      = \
     cc2650_radio.h                                      \
     diag.c                                              \
     entropy.c                                           \
-    flash.c                                             \
     misc.c                                              \
     logging.c                                           \
     openthread-core-cc2650-config.h                     \
@@ -72,10 +71,6 @@ libopenthread_cc2650_a_SOURCES                        = \
 
 libopenthread_cc2650_a_DEPENDENCIES                   =                       \
     $(top_srcdir)/third_party/ti/devices/cc26x0/driverlib/bin/gcc/driverlib.a \
-    $(NULL)
-
-PRETTY_FILES                                          = \
-    $(PLATFORM_SOURCES)                                 \
     $(NULL)
 
 Dash                                                  = -
