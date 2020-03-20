@@ -45,7 +45,7 @@ $(OPENTHREAD_WORKDIR)/config.status: $(OPENTHREAD_REPO)/configure
 		--enable-cli \
 		--enable-ftd \
 		--enable-ncp \
-		--enable-posix-app \
+		--with-platform=posix \
 		--with-vendor-extension=$(OPENTHREAD_REPO)/third_party/nest/extension/ot-legacy-pairing-ext.cpp \
 	)
 

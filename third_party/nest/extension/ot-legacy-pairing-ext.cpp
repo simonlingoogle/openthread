@@ -224,7 +224,7 @@ LegacyPairingExtension::LegacyPairingExtension(Instance &aInstance)
 {
     memset(mLegacyKey, 0, sizeof(mLegacyKey));
 
-    assert(sLegacyPairingExtension == NULL);
+    OT_ASSERT(sLegacyPairingExtension == NULL);
     sLegacyPairingExtension = this;
 }
 
