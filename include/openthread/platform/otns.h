@@ -30,6 +30,10 @@
  * @file
  * @brief
  *   This file includes the abstraction for the platform OTNS utilities.
+ *
+ *   OTNS is an OpenThread Network Simulator that simulates Thread networks using OpenThread simulation instances and
+ *   provides visualization and management of those simulated networks.
+ *   Refer to https://github.com/openthread/ot-ns for more information about OTNS.
  */
 
 #ifndef OPENTHREAD_PLATFORM_OTNS_H_

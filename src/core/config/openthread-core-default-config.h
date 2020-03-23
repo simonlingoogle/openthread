@@ -428,6 +428,12 @@
 #define OPENTHREAD_CONFIG_LEGACY_ENABLE 0
 #endif
 
+/**
+ * @def OPENTHREAD_CONFIG_OTNS_ENABLE
+ *
+ * Define to 1 to enable OTNS interactions.
+ *
+ */
 #ifndef OPENTHREAD_CONFIG_OTNS_ENABLE
 #define OPENTHREAD_CONFIG_OTNS_ENABLE 0
 #endif
