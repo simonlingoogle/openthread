@@ -73,6 +73,9 @@
 #if OPENTHREAD_CONFIG_CHANNEL_MONITOR_ENABLE
 #include "utils/channel_monitor.hpp"
 #endif
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+#include "utils/otns.hpp"
+#endif
 #endif // OPENTHREAD_FTD || OPENTHREAD_MTD
 #if OPENTHREAD_ENABLE_VENDOR_EXTENSION
 #include "common/extension.hpp"
@@ -364,6 +367,11 @@ private:
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     FactoryDiags::Diags mDiags;
 #endif
+
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    Utils::OtnsStub mOtnsStub;
+#endif
+
     bool mIsInitialized;
 };
 
@@ -656,6 +664,7 @@ template <> inline Utils::ChannelManager &Instance::Get(void)
 {
     return mChannelManager;
 }
+
 #endif
 
 #if OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
@@ -722,6 +731,13 @@ template <> inline Extension::ExtensionBase &Instance::Get(void)
 template <> inline FactoryDiags::Diags &Instance::Get(void)
 {
     return mDiags;
+}
+#endif
+
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+template <> inline Utils::OtnsStub &Instance::Get(void)
+{
+    return mOtnsStub;
 }
 #endif
 

@@ -296,6 +296,15 @@ private:
     void ProcessParentPriority(int argc, char *argv[]);
 #endif
     void ProcessPing(int argc, char *argv[]);
+    void SignalPingRequest(const Ip6::Address &aPeerAddress,
+                           uint16_t            aPingLength,
+                           uint32_t            aTimestamp,
+                           uint8_t             aHopLimit);
+    void SignalPingReply(const Ip6::Address &aPeerAddress,
+                         uint16_t            aPingLength,
+                         uint32_t            aTimestamp,
+                         uint8_t             aHopLimit);
+
     void ProcessPollPeriod(int argc, char *argv[]);
 #if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
     void    ProcessPrefix(int argc, char *argv[]);

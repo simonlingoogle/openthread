@@ -106,6 +106,9 @@ Instance::Instance(void)
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     , mDiags(*this)
 #endif
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    , mOtnsStub(*this)
+#endif
     , mIsInitialized(false)
 {
 }

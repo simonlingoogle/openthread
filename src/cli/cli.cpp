@@ -2015,9 +2015,9 @@ void Interpreter::HandleIcmpReceive(otMessage *          aMessage,
     }
 
     mServer->OutputFormat("\r\n");
-    OtnsStatus("ping_reply=%s,%u,%lu,%d",
-               static_cast<const Ip6::MessageInfo *>(aMessageInfo)->GetPeerAddr().ToString().AsCString(), datasize,
-               HostSwap32(timestamp), aMessageInfo->mHopLimit);
+
+    SignalPingRequest(static_cast<const Ip6::MessageInfo *>(aMessageInfo)->GetPeerAddr(), datasize,
+                      HostSwap32(timestamp), aMessageInfo->mHopLimit);
 
 exit:
     return;
@@ -2119,9 +2119,9 @@ void Interpreter::SendPing(void)
     SuccessOrExit(otMessageAppend(message, &timestamp, sizeof(timestamp)));
     SuccessOrExit(otMessageSetLength(message, mPingLength));
     SuccessOrExit(otIcmp6SendEchoRequest(mInstance, message, &messageInfo, mPingIdentifier));
-    OtnsStatus("ping_request=%s,%d,%lu",
-               static_cast<Ip6::MessageInfo *>(&messageInfo)->GetPeerAddr().ToString().AsCString(), mPingLength,
-               HostSwap32(timestamp));
+
+    SignalPingRequest(static_cast<Ip6::MessageInfo *>(&messageInfo)->GetPeerAddr(), mPingLength, HostSwap32(timestamp),
+                      messageInfo.mHopLimit);
 
     message = NULL;
 
@@ -3785,6 +3785,26 @@ Interpreter &Interpreter::GetOwner(OwnerLocator &aOwnerLocator)
     Interpreter &interpreter = Server::sServer->GetInterpreter();
 #endif
     return interpreter;
+}
+
+void Interpreter::SignalPingRequest(const Ip6::Address &aPeerAddress,
+                                    uint16_t            aPingLength,
+                                    uint32_t            aTimestamp,
+                                    uint8_t             aHopLimit)
+{
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    mInstance->Get<Utils::OtnsStub>().EmitPingRequest(aPeerAddress, aPingLength, aTimestamp, aHopLimit);
+#endif
+}
+
+void Interpreter::SignalPingReply(const Ip6::Address &aPeerAddress,
+                                  uint16_t            aPingLength,
+                                  uint32_t            aTimestamp,
+                                  uint8_t             aHopLimit)
+{
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    mInstance->Get<Utils::OtnsStub>().EmitPingReply(aPeerAddress, aPingLength, aTimestamp, aHopLimit);
+#endif
 }
 
 extern "C" void otCliSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength)

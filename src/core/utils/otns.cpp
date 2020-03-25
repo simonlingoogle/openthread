@@ -28,71 +28,47 @@
 
 /**
  * @file
- *   This file wraps the calls to platform OTNS abstrations.
+ *   This file implements OTNS utilities.
+ *
  */
 
-#ifndef UTILS_OTNS_HPP_
-#define UTILS_OTNS_HPP_
-
-#include "openthread-core-config.h"
-
-#include <net/ip6_address.hpp>
-#include <openthread/thread.h>
-#include <openthread/thread_ftd.h>
-#include <openthread/platform/otns.h>
-
-#include "common/locator.hpp"
-#include "mac/mac_types.hpp"
+#include "otns.hpp"
 
 namespace ot {
 namespace Utils {
 
 #if OPENTHREAD_CONFIG_OTNS_ENABLE
+#define OtnsStatus otPlatOtnsStatus
+#else
+#define OtnsStatus(...) ((void)0)
+#endif
 
-/**
- * This class implements the OTNS Stub that interacts with OTNS
- *
- */
-class OtnsStub : public InstanceLocator
+void OtnsStub::EmitShortAddress(uint16_t aShortAddress)
 {
-public:
-    /**
-     * This constructor initializes the object.
-     *
-     * @param[in]  aInstance     A reference to the OpenThread instance.
-     *
-     */
-    explicit OtnsStub(Instance &aInstance)
-        : InstanceLocator(aInstance)
-    {
-    }
+    OtnsStatus("rloc16=%d", aShortAddress);
+}
 
-    /**
-     * this function emit radio short address to OTNS.
-     *
-     */
-    static void EmitShortAddress(uint16_t aShortAddress);
+void OtnsStub::EmitExtendedAddress(const Mac::ExtAddress &aExtAddress)
+{
+    OtnsStatus("extaddr=%s", aExtAddress.ToString().AsCString());
+}
 
-    static void EmitExtendedAddress(const Mac::ExtAddress &aExtAddress);
+void OtnsStub::EmitPingRequest(const Ip6::Address &aPeerAddress,
+                               uint16_t            aPingLength,
+                               uint32_t            aTimestamp,
+                               uint8_t             mHopLimit)
+{
+    OT_UNUSED_VARIABLE(mHopLimit);
+    OtnsStatus("ping_request=%s,%d,%lu", aPeerAddress.ToString().AsCString(), aPingLength, aTimestamp);
+}
 
-//    static void Signal(otNeighborTableEvent aEvent, Neighbor &aNeighbor);
-
-    static void EmitPingRequest(const Ip6::Address &aPeerAddress,
-                                uint16_t            aPingLength,
-                                uint32_t            aTimestamp,
-                                uint8_t             mHopLimit);
-
-    static void EmitPingReply(const Ip6::Address &aPeerAddress,
-                              uint16_t            aPingLength,
-                              uint32_t            aTimestamp,
-                              uint8_t             aHopLimit);
-
-private:
-};
-
-#endif // OPENTHREAD_CONFIG_OTNS_ENABLE
+void OtnsStub::EmitPingReply(const Ip6::Address &aPeerAddress,
+                             uint16_t            aPingLength,
+                             uint32_t            aTimestamp,
+                             uint8_t             aHopLimit)
+{
+    OtnsStatus("ping_reply=%s,%u,%lu,%d", aPeerAddress.ToString().AsCString(), aPingLength, aTimestamp, aHopLimit);
+}
 
 } // namespace Utils
 } // namespace ot
-
-#endif // UTILS_OTNS_HPP_
