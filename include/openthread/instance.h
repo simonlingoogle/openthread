@@ -147,8 +147,7 @@ enum
     OT_CHANGED_SUPPORTED_CHANNEL_MASK      = 1 << 22, ///< Supported channel mask changed
     OT_CHANGED_BORDER_AGENT_STATE          = 1 << 23, ///< Border agent state changed
     OT_CHANGED_THREAD_NETIF_STATE          = 1 << 24, ///< Thread network interface state changed
-    OT_CHANGED_THREAD_PARENT               = 1 << 25, ///< Thread network parent changed
-    OT_CHANGED_JOINER_STATE                = 1 << 26, ///< Joiner state changed
+    OT_CHANGED_JOINER_STATE                = 1 << 25, ///< Joiner state changed
 };
 
 /**

@@ -34,23 +34,24 @@
 
 #include "otns.hpp"
 
+#if (OPENTHREAD_MTD || OPENTHREAD_FTD) && OPENTHREAD_CONFIG_OTNS_ENABLE
+
+#include "common/debug.hpp"
+#include "common/locator-getters.hpp"
+
 namespace ot {
 namespace Utils {
 
-#if OPENTHREAD_CONFIG_OTNS_ENABLE
-#define OtnsStatus otPlatOtnsStatus
-#else
-#define OtnsStatus(...) ((void)0)
-#endif
+const int kMaxStatusStringLength = 256;
 
 void OtnsStub::EmitShortAddress(uint16_t aShortAddress)
 {
-    OtnsStatus("rloc16=%d", aShortAddress);
+    EmitStatus("rloc16=%d", aShortAddress);
 }
 
 void OtnsStub::EmitExtendedAddress(const Mac::ExtAddress &aExtAddress)
 {
-    OtnsStatus("extaddr=%s", aExtAddress.ToString().AsCString());
+    EmitStatus("extaddr=%s", aExtAddress.ToString().AsCString());
 }
 
 void OtnsStub::EmitPingRequest(const Ip6::Address &aPeerAddress,
@@ -59,7 +60,7 @@ void OtnsStub::EmitPingRequest(const Ip6::Address &aPeerAddress,
                                uint8_t             mHopLimit)
 {
     OT_UNUSED_VARIABLE(mHopLimit);
-    OtnsStatus("ping_request=%s,%d,%lu", aPeerAddress.ToString().AsCString(), aPingLength, aTimestamp);
+    EmitStatus("ping_request=%s,%d,%lu", aPeerAddress.ToString().AsCString(), aPingLength, aTimestamp);
 }
 
 void OtnsStub::EmitPingReply(const Ip6::Address &aPeerAddress,
@@ -67,8 +68,70 @@ void OtnsStub::EmitPingReply(const Ip6::Address &aPeerAddress,
                              uint32_t            aTimestamp,
                              uint8_t             aHopLimit)
 {
-    OtnsStatus("ping_reply=%s,%u,%lu,%d", aPeerAddress.ToString().AsCString(), aPingLength, aTimestamp, aHopLimit);
+    EmitStatus("ping_reply=%s,%u,%lu,%d", aPeerAddress.ToString().AsCString(), aPingLength, aTimestamp, aHopLimit);
+}
+
+void OtnsStub::EmitStatus(const char *aFmt, ...)
+{
+    static char statusStr[kMaxStatusStringLength + 1];
+    int         n;
+
+    va_list ap;
+    va_start(ap, aFmt);
+
+    n = vsnprintf(statusStr, sizeof(statusStr), aFmt, ap);
+    OT_ASSERT(n >= 0);
+
+    va_end(ap);
+
+    otPlatOtnsStatus(reinterpret_cast<uint8_t *>(statusStr), n);
+}
+
+void OtnsStub::HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags)
+{
+    aCallback.GetOwner<OtnsStub>().HandleStateChanged(aFlags);
+}
+
+void OtnsStub::HandleStateChanged(otChangedFlags aFlags)
+{
+    if ((aFlags & OT_CHANGED_THREAD_ROLE) != 0)
+    {
+        EmitStatus("role=%d", Get<Mle::Mle>().GetRole());
+    }
+
+    if ((aFlags & OT_CHANGED_THREAD_PARTITION_ID) != 0)
+    {
+        EmitStatus("parid=%x", Get<Mle::Mle>().GetLeaderData().GetPartitionId());
+    }
+
+    if ((aFlags & OT_CHANGED_JOINER_STATE) != 0)
+    {
+        EmitStatus("joiner_state=%d", Get<MeshCoP::Joiner>().GetState());
+    }
+}
+
+void OtnsStub::EmitNeighborChange(otNeighborTableEvent aEvent, Neighbor &aNeighbor)
+{
+    const char *extAddr = aNeighbor.GetExtAddress().ToString().AsCString();
+
+    switch (aEvent)
+    {
+    case OT_NEIGHBOR_TABLE_EVENT_ROUTER_ADDED:
+        EmitStatus("router_added=%s", extAddr);
+        break;
+    case OT_NEIGHBOR_TABLE_EVENT_ROUTER_REMOVED:
+        EmitStatus("router_removed=%s", extAddr);
+        break;
+    case OT_NEIGHBOR_TABLE_EVENT_CHILD_ADDED:
+        EmitStatus("child_added=%s", extAddr);
+        break;
+    case OT_NEIGHBOR_TABLE_EVENT_CHILD_REMOVED:
+        EmitStatus("child_removed=%s", extAddr);
+        break;
+    }
 }
 
 } // namespace Utils
 } // namespace ot
+
+#endif // (OPENTHREAD_MTD || OPENTHREAD_FTD) && OPENTHREAD_CONFIG_OTNS_ENABLE

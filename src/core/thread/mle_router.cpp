@@ -989,7 +989,6 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
     router->SetKeySequence(aKeySequence);
 
     Signal(OT_NEIGHBOR_TABLE_EVENT_ROUTER_ADDED, *router);
-//    OtnsStatus("router_added=%s", router->GetExtAddress().ToString().AsCString());
 
     if (aRequest)
     {
@@ -3263,7 +3262,6 @@ void MleRouter::RemoveNeighbor(Neighbor &aNeighbor)
         if (aNeighbor.IsStateValidOrRestoring())
         {
             Signal(OT_NEIGHBOR_TABLE_EVENT_CHILD_REMOVED, aNeighbor);
-//            OtnsStatus("child_removed=%s", aNeighbor.GetExtAddress().ToString().AsCString());
         }
 
         Get<IndirectSender>().ClearAllMessagesForSleepyChild(static_cast<Child &>(aNeighbor));
@@ -3281,7 +3279,6 @@ void MleRouter::RemoveNeighbor(Neighbor &aNeighbor)
     {
         Signal(OT_NEIGHBOR_TABLE_EVENT_ROUTER_REMOVED, aNeighbor);
         mRouterTable.RemoveNeighbor(static_cast<Router &>(aNeighbor));
-//        OtnsStatus("router_removed=%s", aNeighbor.GetExtAddress().ToString().AsCString());
     }
 
     aNeighbor.GetLinkInfo().Clear();
@@ -4614,7 +4611,7 @@ void MleRouter::SetChildStateToValid(Child &aChild)
     aChild.SetState(Neighbor::kStateValid);
     StoreChild(aChild);
     Signal(OT_NEIGHBOR_TABLE_EVENT_CHILD_ADDED, aChild);
-//    OtnsStatus("child_added=%s", aChild.GetExtAddress().ToString().AsCString());
+    Get<Utils::OtnsStub>().EmitStatus("child_added=%s", aChild.GetExtAddress().ToString().AsCString());
 
 exit:
     return;
@@ -4716,9 +4713,9 @@ void MleRouter::Signal(otNeighborTableEvent aEvent, Neighbor &aNeighbor)
         mNeighborTableChangedCallback(aEvent, &info);
     }
 
-//#if OPENTHREAD_CONFIG_OTNS_ENABLE
-//    Get<Utils::OtnsStub>().EmitNeighborChange(aEvent, aNeighbor);
-//#endif
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    Get<Utils::OtnsStub>().EmitNeighborChange(aEvent, aNeighbor);
+#endif
 
     switch (aEvent)
     {

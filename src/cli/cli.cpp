@@ -2016,8 +2016,8 @@ void Interpreter::HandleIcmpReceive(otMessage *          aMessage,
 
     mServer->OutputFormat("\r\n");
 
-    SignalPingRequest(static_cast<const Ip6::MessageInfo *>(aMessageInfo)->GetPeerAddr(), datasize,
-                      HostSwap32(timestamp), aMessageInfo->mHopLimit);
+    SignalPingReply(static_cast<const Ip6::MessageInfo *>(aMessageInfo)->GetPeerAddr(), datasize, HostSwap32(timestamp),
+                    aMessageInfo->mHopLimit);
 
 exit:
     return;

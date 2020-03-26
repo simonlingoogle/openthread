@@ -30,25 +30,16 @@
 
 #if OPENTHREAD_CONFIG_OTNS_ENABLE
 
-#include <stdio.h>
 #include <openthread/platform/alarm-micro.h>
 
-void otPlatOtnsStatus(const char *aFmt, ...)
+void otPlatOtnsStatus(uint8_t *aStatus, uint16_t aLength)
 {
-    int          n;
     struct Event event;
 
-    va_list ap;
-    va_start(ap, aFmt);
-
-    n = vsnprintf((char *)(&event.mData[0]), sizeof(event.mData), aFmt, ap);
-    assert(n >= 0);
-
-    va_end(ap);
-
+    memcpy(event.mData, aStatus, aLength);
+    event.mDataLength = aLength;
     event.mDelay      = 0;
     event.mEvent      = OT_SIM_EVENT_OTNS_STATUS_PUSH;
-    event.mDataLength = (uint16_t)n;
 
     otSimSendEvent(&event);
 }

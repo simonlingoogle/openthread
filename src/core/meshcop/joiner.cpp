@@ -79,9 +79,6 @@ void Joiner::SetState(otJoinerState aState)
     SuccessOrExit(Get<Notifier>().Update(mState, aState, OT_CHANGED_JOINER_STATE));
 
     otLogInfoMeshCoP("JoinerState: %s -> %s", JoinerStateToString(mState), JoinerStateToString(aState));
-//    OtnsStatus("joiner_state=%s", JoinerStateToString(aState));
-    mState = aState;
-
 exit:
     return;
 }

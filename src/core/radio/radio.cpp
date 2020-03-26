@@ -27,25 +27,21 @@
  */
 
 #include "radio.hpp"
+
 #include <utils/otns.hpp>
 
-//#include "common/instance.hpp"
-//#include "common/locator.hpp"
 #include "common/locator-getters.hpp"
-//#include "utils/otns.hpp"
 
 namespace ot {
 
 void Radio::SetExtendedAddress(const Mac::ExtAddress &aExtAddress)
 {
     otPlatRadioSetExtendedAddress(GetInstance(), &aExtAddress);
-//    Get<Utils::OtnsStub>().EmitExtendedAddress(aExtAddress);
 }
 
 void Radio::SetShortAddress(Mac::ShortAddress aShortAddress)
 {
     otPlatRadioSetShortAddress(GetInstance(), aShortAddress);
-    Get<Utils::OtnsStub>().EmitShortAddress(aShortAddress);
 }
 
 } // namespace ot

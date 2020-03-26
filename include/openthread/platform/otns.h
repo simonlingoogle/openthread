@@ -63,12 +63,12 @@ extern "C" {
  *
  * New statuses should follow these conventions.
  *
- * @param[in]  aFmt   A pointer to the format string.
- * @param[in]  ...    A matching list of arguments.
+ * @param[in]  aStatusStr     The status string.
+ * @param[in]  aStatusLength  The length of status string.
  *
  * Currently, OTNS only supports virtual time simulation.
  */
-void otPlatOtnsStatus(const char *aFmt, ...);
+void otPlatOtnsStatus(uint8_t *aStatus, uint16_t aLength);
 
 /**
  * @}

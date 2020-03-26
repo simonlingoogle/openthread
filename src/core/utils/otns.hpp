@@ -36,18 +36,20 @@
 
 #include "openthread-core-config.h"
 
-#include <net/ip6_address.hpp>
 #include <openthread/thread.h>
 #include <openthread/thread_ftd.h>
 #include <openthread/platform/otns.h>
 
 #include "common/locator.hpp"
+#include "common/notifier.hpp"
 #include "mac/mac_types.hpp"
+#include "net/ip6_address.hpp"
+#include "thread/topology.hpp"
 
 namespace ot {
 namespace Utils {
 
-#if OPENTHREAD_CONFIG_OTNS_ENABLE
+#if (OPENTHREAD_MTD || OPENTHREAD_FTD) && OPENTHREAD_CONFIG_OTNS_ENABLE
 
 /**
  * This class implements the OTNS Stub that interacts with OTNS
@@ -64,6 +66,7 @@ public:
      */
     explicit OtnsStub(Instance &aInstance)
         : InstanceLocator(aInstance)
+        , mNotifierCallback(aInstance, &OtnsStub::HandleStateChanged, this)
     {
     }
 
@@ -75,7 +78,7 @@ public:
 
     static void EmitExtendedAddress(const Mac::ExtAddress &aExtAddress);
 
-//    static void Signal(otNeighborTableEvent aEvent, Neighbor &aNeighbor);
+    //    static void Signal(otNeighborTableEvent aEvent, Neighbor &aNeighbor);
 
     static void EmitPingRequest(const Ip6::Address &aPeerAddress,
                                 uint16_t            aPingLength,
@@ -87,10 +90,18 @@ public:
                               uint32_t            aTimestamp,
                               uint8_t             aHopLimit);
 
+    static void EmitStatus(const char *aFmt, ...);
+
+    static void EmitNeighborChange(otNeighborTableEvent aEvent, Neighbor &aNeighbor);
+
 private:
+    static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags);
+    void        HandleStateChanged(otChangedFlags aFlags);
+
+    Notifier::Callback mNotifierCallback;
 };
 
-#endif // OPENTHREAD_CONFIG_OTNS_ENABLE
+#endif //(OPENTHREAD_MTD || OPENTHREAD_FTD) && OPENTHREAD_CONFIG_OTNS_ENABLE
 
 } // namespace Utils
 } // namespace ot

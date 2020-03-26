@@ -73,14 +73,13 @@
 #if OPENTHREAD_CONFIG_CHANNEL_MONITOR_ENABLE
 #include "utils/channel_monitor.hpp"
 #endif
-#if OPENTHREAD_CONFIG_OTNS_ENABLE
-#include "utils/otns.hpp"
-#endif
 #endif // OPENTHREAD_FTD || OPENTHREAD_MTD
 #if OPENTHREAD_ENABLE_VENDOR_EXTENSION
 #include "common/extension.hpp"
 #endif
-
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+#include "utils/otns.hpp"
+#endif
 /**
  * @addtogroup core-instance
  *
@@ -353,6 +352,10 @@ private:
     AnnounceSender mAnnounceSender;
 #endif
 
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    Utils::OtnsStub mOtnsStub;
+#endif
+
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
     Mac::LinkRaw mLinkRaw;
@@ -366,10 +369,6 @@ private:
 #endif
 #if OPENTHREAD_CONFIG_DIAG_ENABLE
     FactoryDiags::Diags mDiags;
-#endif
-
-#if OPENTHREAD_CONFIG_OTNS_ENABLE
-    Utils::OtnsStub mOtnsStub;
 #endif
 
     bool mIsInitialized;
@@ -686,6 +685,13 @@ template <> inline MessagePool &Instance::Get(void)
     return mMessagePool;
 }
 
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+template <> inline Utils::OtnsStub &Instance::Get(void)
+{
+    return mOtnsStub;
+}
+#endif
+
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
 
 #if OPENTHREAD_RADIO || OPENTHREAD_CONFIG_LINK_RAW_ENABLE
@@ -731,13 +737,6 @@ template <> inline Extension::ExtensionBase &Instance::Get(void)
 template <> inline FactoryDiags::Diags &Instance::Get(void)
 {
     return mDiags;
-}
-#endif
-
-#if OPENTHREAD_CONFIG_OTNS_ENABLE
-template <> inline Utils::OtnsStub &Instance::Get(void)
-{
-    return mOtnsStub;
 }
 #endif
 
