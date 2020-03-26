@@ -4611,7 +4611,6 @@ void MleRouter::SetChildStateToValid(Child &aChild)
     aChild.SetState(Neighbor::kStateValid);
     StoreChild(aChild);
     Signal(OT_NEIGHBOR_TABLE_EVENT_CHILD_ADDED, aChild);
-    Get<Utils::OtnsStub>().EmitStatus("child_added=%s", aChild.GetExtAddress().ToString().AsCString());
 
 exit:
     return;

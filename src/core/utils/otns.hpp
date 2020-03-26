@@ -90,11 +90,11 @@ public:
                               uint32_t            aTimestamp,
                               uint8_t             aHopLimit);
 
-    static void EmitStatus(const char *aFmt, ...);
-
     static void EmitNeighborChange(otNeighborTableEvent aEvent, Neighbor &aNeighbor);
 
 private:
+    static void EmitStatus(const char *aFmt, ...);
+
     static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags);
     void        HandleStateChanged(otChangedFlags aFlags);
 
