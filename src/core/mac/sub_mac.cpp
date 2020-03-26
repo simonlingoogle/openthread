@@ -106,10 +106,6 @@ void SubMac::SetShortAddress(ShortAddress aShortAddress)
     mShortAddress = aShortAddress;
     Get<Radio>().SetShortAddress(mShortAddress);
 
-#if (OPENTHREAD_MTD || OPENTHREAD_FTD) && OPENTHREAD_CONFIG_OTNS_ENABLE
-    Get<Utils::OtnsStub>().EmitShortAddress(aShortAddress);
-#endif
-
     otLogDebgMac("RadioShortAddress: 0x%04x", mShortAddress);
 }
 
@@ -123,9 +119,6 @@ void SubMac::SetExtAddress(const ExtAddress &aExtAddress)
     address.Set(aExtAddress.m8, ExtAddress::kReverseByteOrder);
     Get<Radio>().SetExtendedAddress(address);
 
-#if (OPENTHREAD_MTD || OPENTHREAD_FTD) && OPENTHREAD_CONFIG_OTNS_ENABLE
-    Get<Utils::OtnsStub>().EmitExtendedAddress(mExtAddress);
-#endif
     otLogDebgMac("RadioExtAddress: %s", mExtAddress.ToString().AsCString());
 }
 

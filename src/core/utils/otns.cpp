@@ -51,7 +51,9 @@ void OtnsStub::EmitShortAddress(uint16_t aShortAddress)
 
 void OtnsStub::EmitExtendedAddress(const Mac::ExtAddress &aExtAddress)
 {
-    EmitStatus("extaddr=%s", aExtAddress.ToString().AsCString());
+    Mac::ExtAddress revExtAddress;
+    revExtAddress.Set(aExtAddress.m8, Mac::ExtAddress::kReverseByteOrder);
+    EmitStatus("extaddr=%s", revExtAddress.ToString().AsCString());
 }
 
 void OtnsStub::EmitPingRequest(const Ip6::Address &aPeerAddress,
