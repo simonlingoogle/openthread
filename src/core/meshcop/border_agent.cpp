@@ -100,7 +100,7 @@ public:
     /**
      * This method generate the response header according to the saved metadata.
      *
-     * @param[out]  aHeader     A refernce to the response header.
+     * @param[out]  aHeader     A reference to the response header.
      * @param[in]   aCode       The response code to fill in the response header.
      *
      * @retval OT_ERROR_NONE     Successfully generated the response header.
@@ -534,7 +534,7 @@ void BorderAgent::HandleRelayTransmit(const Coap::Message &aMessage)
     messageInfo.SetSockAddr(Get<Mle::MleRouter>().GetMeshLocal16());
     messageInfo.SetPeerPort(kCoapUdpPort);
     messageInfo.SetPeerAddr(Get<Mle::MleRouter>().GetMeshLocal16());
-    messageInfo.GetPeerAddr().mFields.m16[7] = HostSwap16(joinerRouterRloc);
+    messageInfo.GetPeerAddr().SetLocator(joinerRouterRloc);
 
     SuccessOrExit(error = Get<Coap::Coap>().SendMessage(*message, messageInfo));
 

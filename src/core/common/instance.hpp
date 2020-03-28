@@ -73,6 +73,16 @@
 #if OPENTHREAD_CONFIG_CHANNEL_MONITOR_ENABLE
 #include "utils/channel_monitor.hpp"
 #endif
+
+#if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+#include "backbone_router/leader.hpp"
+
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#include "backbone_router/local.hpp"
+#endif
+
+#endif // (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+
 #endif // OPENTHREAD_FTD || OPENTHREAD_MTD
 #if OPENTHREAD_ENABLE_VENDOR_EXTENSION
 #include "common/extension.hpp"
@@ -411,6 +421,7 @@ template <> inline Mle::MleRouter &Instance::Get(void)
     return mThreadNetif.mMleRouter;
 }
 
+#if OPENTHREAD_FTD
 template <> inline ChildTable &Instance::Get(void)
 {
     return mThreadNetif.mMleRouter.mChildTable;
@@ -420,6 +431,7 @@ template <> inline RouterTable &Instance::Get(void)
 {
     return mThreadNetif.mMleRouter.mRouterTable;
 }
+#endif
 
 template <> inline Ip6::Netif &Instance::Get(void)
 {
@@ -682,6 +694,20 @@ template <> inline MessagePool &Instance::Get(void)
 {
     return mMessagePool;
 }
+
+#if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+template <> inline BackboneRouter::Leader &Instance::Get(void)
+{
+    return mThreadNetif.mBackboneRouterLeader;
+}
+
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+template <> inline BackboneRouter::Local &Instance::Get(void)
+{
+    return mThreadNetif.mBackboneRouterLocal;
+}
+#endif
+#endif // (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
 
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
 
