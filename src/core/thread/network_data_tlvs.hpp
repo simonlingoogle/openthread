@@ -36,15 +36,17 @@
 
 #include "openthread-core-config.h"
 
+#include <openthread/netdata.h>
+
+#include "common/debug.hpp"
 #include "common/encoding.hpp"
 #include "net/ip6_address.hpp"
-
-#define THREAD_ENTERPRISE_NUMBER 44970
 
 namespace ot {
 namespace NetworkData {
 
 using ot::Encoding::BigEndian::HostSwap16;
+using ot::Encoding::BigEndian::HostSwap32;
 
 /**
  * @addtogroup core-netdata-tlvs
@@ -122,12 +124,28 @@ public:
     void SetLength(uint8_t aLength) { mLength = aLength; }
 
     /**
+     * This method returns the TLV's total size (number of bytes) including Type, Length, and Value fields.
+     *
+     * @returns The total size include Type, Length, and Value fields.
+     *
+     */
+    uint8_t GetSize(void) const { return sizeof(NetworkDataTlv) + mLength; }
+
+    /**
      * This method returns a pointer to the Value.
      *
      * @returns A pointer to the value.
      *
      */
     uint8_t *GetValue(void) { return reinterpret_cast<uint8_t *>(this) + sizeof(NetworkDataTlv); }
+
+    /**
+     * This method returns a pointer to the Value.
+     *
+     * @returns A pointer to the value.
+     *
+     */
+    const uint8_t *GetValue(void) const { return reinterpret_cast<const uint8_t *>(this) + sizeof(NetworkDataTlv); }
 
     /**
      * This method returns a pointer to the next Network Data TLV.
@@ -138,6 +156,18 @@ public:
     NetworkDataTlv *GetNext(void)
     {
         return reinterpret_cast<NetworkDataTlv *>(reinterpret_cast<uint8_t *>(this) + sizeof(*this) + mLength);
+    }
+
+    /**
+     * This method returns a pointer to the next Network Data TLV.
+     *
+     * @returns A pointer to the next Network Data TLV.
+     *
+     */
+    const NetworkDataTlv *GetNext(void) const
+    {
+        return reinterpret_cast<const NetworkDataTlv *>(reinterpret_cast<const uint8_t *>(this) + sizeof(*this) +
+                                                        mLength);
     }
 
     /**
@@ -234,6 +264,14 @@ public:
      */
     HasRouteEntry *GetNext(void) { return (this + 1); }
 
+    /**
+     * This method returns a pointer to the next HasRouteEntry.
+     *
+     * @returns A pointer to the next HasRouteEntry.
+     *
+     */
+    const HasRouteEntry *GetNext(void) const { return (this + 1); }
+
 private:
     enum
     {
@@ -253,6 +291,11 @@ OT_TOOL_PACKED_BEGIN
 class HasRouteTlv : public NetworkDataTlv
 {
 public:
+    enum
+    {
+        kType = kTypeHasRoute, ///< The TLV Type.
+    };
+
     /**
      * This method initializes the TLV.
      *
@@ -286,12 +329,33 @@ public:
     }
 
     /**
+     * This method returns a pointer to the i'th HasRoute entry.
+     *
+     * @param[in]  i  An index.
+     *
+     * @returns A pointer to the i'th HasRoute entry.
+     *
+     */
+    const HasRouteEntry *GetEntry(uint8_t i) const
+    {
+        return reinterpret_cast<const HasRouteEntry *>(GetValue() + (i * sizeof(HasRouteEntry)));
+    }
+
+    /**
      * This method returns a pointer to the first HasRouteEntry (at index 0'th).
      *
      * @returns A pointer to the first HasRouteEntry.
      *
      */
     HasRouteEntry *GetFirstEntry(void) { return reinterpret_cast<HasRouteEntry *>(GetValue()); }
+
+    /**
+     * This method returns a pointer to the first HasRouteEntry (at index 0'th).
+     *
+     * @returns A pointer to the first HasRouteEntry.
+     *
+     */
+    const HasRouteEntry *GetFirstEntry(void) const { return reinterpret_cast<const HasRouteEntry *>(GetValue()); }
 
     /**
      * This method returns a pointer to the last HasRouteEntry.
@@ -305,6 +369,20 @@ public:
     {
         return reinterpret_cast<HasRouteEntry *>(GetValue() + GetLength() - sizeof(HasRouteEntry));
     }
+
+    /**
+     * This method returns a pointer to the last HasRouteEntry.
+     *
+     * If there are no entries the pointer will be invalid but guaranteed to be before the `GetFirstEntry()` pointer.
+     *
+     * @returns A pointer to the last HasRouteEntry.
+     *
+     */
+    const HasRouteEntry *GetLastEntry(void) const
+    {
+        return reinterpret_cast<const HasRouteEntry *>(GetValue() + GetLength() - sizeof(HasRouteEntry));
+    }
+
 } OT_TOOL_PACKED_END;
 
 /**
@@ -315,6 +393,11 @@ OT_TOOL_PACKED_BEGIN
 class PrefixTlv : public NetworkDataTlv
 {
 public:
+    enum
+    {
+        kType = kTypePrefix, ///< The TLV Type.
+    };
+
     /**
      * This method initializes the TLV.
      *
@@ -372,6 +455,14 @@ public:
     uint8_t *GetPrefix(void) { return reinterpret_cast<uint8_t *>(this) + sizeof(*this); }
 
     /**
+     * This method returns a pointer to the Prefix.
+     *
+     * @returns A pointer to the Prefix.
+     *
+     */
+    const uint8_t *GetPrefix(void) const { return reinterpret_cast<const uint8_t *>(this) + sizeof(*this); }
+
+    /**
      * This method returns a pointer to the Sub-TLVs.
      *
      * @returns A pointer to the Sub-TLVs.
@@ -380,6 +471,17 @@ public:
     NetworkDataTlv *GetSubTlvs(void)
     {
         return reinterpret_cast<NetworkDataTlv *>(GetPrefix() + BitVectorBytes(mPrefixLength));
+    }
+
+    /**
+     * This method returns a pointer to the Sub-TLVs.
+     *
+     * @returns A pointer to the Sub-TLVs.
+     *
+     */
+    const NetworkDataTlv *GetSubTlvs(void) const
+    {
+        return reinterpret_cast<const NetworkDataTlv *>(GetPrefix() + BitVectorBytes(mPrefixLength));
     }
 
     /**
@@ -624,6 +726,14 @@ public:
      */
     BorderRouterEntry *GetNext(void) { return (this + 1); }
 
+    /**
+     * This method returns a pointer to the next BorderRouterEntry
+     *
+     * @returns A pointer to the next BorderRouterEntry.
+     *
+     */
+    const BorderRouterEntry *GetNext(void) const { return (this + 1); }
+
 private:
     uint16_t mRloc;
     uint8_t  mFlags;
@@ -638,6 +748,11 @@ OT_TOOL_PACKED_BEGIN
 class BorderRouterTlv : public NetworkDataTlv
 {
 public:
+    enum
+    {
+        kType = kTypeBorderRouter, ///< The TLV Type.
+    };
+
     /**
      * This method initializes the TLV.
      *
@@ -671,12 +786,36 @@ public:
     }
 
     /**
+     * This method returns a pointer to the i'th Border Router entry.
+     *
+     * @param[in]  i  The index.
+     *
+     * @returns A pointer to the i'th Border Router entry.
+     *
+     */
+    const BorderRouterEntry *GetEntry(uint8_t i) const
+    {
+        return reinterpret_cast<const BorderRouterEntry *>(GetValue() + (i * sizeof(BorderRouterEntry)));
+    }
+
+    /**
      * This method returns a pointer to the first BorderRouterEntry (at index 0'th).
      *
      * @returns A pointer to the first BorderRouterEntry.
      *
      */
     BorderRouterEntry *GetFirstEntry(void) { return reinterpret_cast<BorderRouterEntry *>(GetValue()); }
+
+    /**
+     * This method returns a pointer to the first BorderRouterEntry (at index 0'th).
+     *
+     * @returns A pointer to the first BorderRouterEntry.
+     *
+     */
+    const BorderRouterEntry *GetFirstEntry(void) const
+    {
+        return reinterpret_cast<const BorderRouterEntry *>(GetValue());
+    }
 
     /**
      * This method returns a pointer to the last BorderRouterEntry.
@@ -690,6 +829,20 @@ public:
     {
         return reinterpret_cast<BorderRouterEntry *>(GetValue() + GetLength() - sizeof(BorderRouterEntry));
     }
+
+    /**
+     * This method returns a pointer to the last BorderRouterEntry.
+     *
+     * If there are no entries the pointer will be invalid but guaranteed to be before the `GetFirstEntry()` pointer.
+     *
+     * @returns A pointer to the last BorderRouterEntry.
+     *
+     */
+    const BorderRouterEntry *GetLastEntry(void) const
+    {
+        return reinterpret_cast<const BorderRouterEntry *>(GetValue() + GetLength() - sizeof(BorderRouterEntry));
+    }
+
 } OT_TOOL_PACKED_END;
 
 /**
@@ -700,6 +853,11 @@ OT_TOOL_PACKED_BEGIN
 class ContextTlv : public NetworkDataTlv
 {
 public:
+    enum
+    {
+        kType = kTypeContext, ///< The TLV Type.
+    };
+
     /**
      * This method initializes the TLV.
      *
@@ -788,6 +946,11 @@ OT_TOOL_PACKED_BEGIN
 class CommissioningDataTlv : public NetworkDataTlv
 {
 public:
+    enum
+    {
+        kType = kTypeCommissioningData, ///< The TLV Type.
+    };
+
     /**
      * This method initializes the TLV.
      *
@@ -810,20 +973,41 @@ class ServiceTlv : public NetworkDataTlv
 public:
     enum
     {
-        kServiceDataBackboneRouter = 0x01, // const THREAD_SERVICE_DATA_BBR
+        kType                      = kTypeService, ///< The TLV Type.
+        kThreadEnterpriseNumber    = 44970,        ///< Thread enterprise number.
+        kServiceDataBackboneRouter = 0x01,         ///< const THREAD_SERVICE_DATA_BBR
     };
 
     /**
      * This method initializes the TLV.
-     * Initial length is set to 2, to hold S_service_data_length field.
+     *
+     * @param[in]  aServiceId          The Service Id value.
+     * @param[in]  aEnterpriseNumber   The Enterprise Number.
+     * @param[in]  aServiceData        The Service Data.
+     * @param[in]  aServiceDataLength  The Service Data length (number of bytes).
+     *
      */
-    void Init(void)
+    void Init(uint8_t aServiceId, uint32_t aEnterpriseNumber, const uint8_t *aServiceData, uint8_t aServiceDataLength)
     {
         NetworkDataTlv::Init();
         SetType(kTypeService);
-        SetLength(2);
-        mTResSId = kTMask;
-        SetServiceDataLength(0);
+
+        mFlagsServiceId = (aEnterpriseNumber == kThreadEnterpriseNumber) ? kThreadEnterpriseFlag : 0;
+        mFlagsServiceId |= (aServiceId & kServiceIdMask);
+
+        if (aEnterpriseNumber != kThreadEnterpriseNumber)
+        {
+            mShared.mEnterpriseNumber = HostSwap32(aEnterpriseNumber);
+            mServiceDataLength        = aServiceDataLength;
+            memcpy(&mServiceDataLength + sizeof(uint8_t), aServiceData, aServiceDataLength);
+        }
+        else
+        {
+            mShared.mServiceDataLengthThreadEnterprise = aServiceDataLength;
+            memcpy(&mShared.mServiceDataLengthThreadEnterprise + sizeof(uint8_t), aServiceData, aServiceDataLength);
+        }
+
+        SetLength(GetFieldsLength());
     }
 
     /**
@@ -833,133 +1017,67 @@ public:
      * @retval FALSE  If the TLV does not appear to be well-formed.
      *
      */
-    bool IsValid(void)
+    bool IsValid(void) const
     {
         uint8_t length = GetLength();
-        return ((length >= (sizeof(*this) - sizeof(NetworkDataTlv))) &&
-                (length >= ((sizeof(*this) - sizeof(NetworkDataTlv)) + (IsThreadEnterprise() ? 0 : sizeof(uint32_t)) +
-                            sizeof(uint8_t))) &&
-                (length >= ((sizeof(*this) - sizeof(NetworkDataTlv)) + (IsThreadEnterprise() ? 0 : sizeof(uint32_t)) +
-                            sizeof(uint8_t) + GetServiceDataLength())));
+
+        return (length >= sizeof(mFlagsServiceId)) &&
+               (length >= kMinLength + (IsThreadEnterprise() ? 0 : sizeof(uint32_t))) && (length >= GetFieldsLength());
+    }
+
+    /**
+     * This method returns the Service ID. It is in range 0x00-0x0f.
+     *
+     * @returns the Service ID.
+     *
+     */
+    uint8_t GetServiceId(void) const { return (mFlagsServiceId & kServiceIdMask); }
+
+    /**
+     * This method returns Enterprise Number field.
+     *
+     * @returns The Enterprise Number.
+     *
+     */
+    uint32_t GetEnterpriseNumber(void) const
+    {
+        return IsThreadEnterprise() ? static_cast<uint32_t>(kThreadEnterpriseNumber)
+                                    : HostSwap32(mShared.mEnterpriseNumber);
     }
 
     /**
      * This method gets Service Data length.
      *
      * @returns length of the Service Data field in bytes.
-     */
-    uint8_t GetServiceDataLength(void) { return *GetServiceDataLengthLocation(); }
-
-    /**
-     * This method sets Service Data length.
      *
-     * @param aServiceDataLength desired length of the Service Data field in bytes.
      */
-    void SetServiceDataLength(uint8_t aServiceDataLength) { *GetServiceDataLengthLocation() = aServiceDataLength; }
+    uint8_t GetServiceDataLength(void) const
+    {
+        return IsThreadEnterprise() ? mShared.mServiceDataLengthThreadEnterprise : mServiceDataLength;
+    }
 
     /**
      * This method returns a pointer to the Service Data.
      *
      * @returns A pointer to the Service Data.
-     */
-    uint8_t *GetServiceData(void) { return GetServiceDataLengthLocation() + sizeof(uint8_t); }
-
-    /**
-     * This method sets Service Data to the given values.
      *
-     * Caller must ensure that there is enough memory allocated.
-     *
-     * @param aServiceData       pointer to the service data to use
-     * @param aServiceDataLength length of the provided service data in bytes
      */
-    void SetServiceData(const uint8_t *aServiceData, uint8_t aServiceDataLength)
+    uint8_t *GetServiceData(void)
     {
-        SetServiceDataLength(aServiceDataLength);
-
-        memcpy(GetServiceData(), aServiceData, aServiceDataLength);
+        return (IsThreadEnterprise() ? &mShared.mServiceDataLengthThreadEnterprise : &mServiceDataLength) +
+               sizeof(uint8_t);
     }
 
     /**
-     * This method returns Enterprise Number field.
+     * This method returns a pointer to the Service Data.
      *
-     * @returns Enterprise Number
+     * @returns A pointer to the Service Data.
+     *
      */
-    uint32_t GetEnterpriseNumber(void)
+    const uint8_t *GetServiceData(void) const
     {
-        if (IsThreadEnterprise())
-        {
-            return THREAD_ENTERPRISE_NUMBER;
-        }
-        else
-        {
-            // This memory access most likely will not be aligned to 4 bytes
-            return HostSwap32(*reinterpret_cast<uint32_t *>(GetEnterpriseNumberLocation()));
-        }
-    }
-
-    /**
-     * This method returns the T flag. It is set when Enterprise Number is equal to THREAD_ENTERPRISE_NUMBER.
-     *
-     * @returns Flag whether Enterprise Number is equal to THREAD_ENTERPRISE_NUMBER
-     */
-    bool IsThreadEnterprise(void) const { return (mTResSId & kTMask) != 0; }
-
-    /**
-     * This method sets Enterprise Number and updates the T flag.
-     *
-     * Note: this method does not preserve service data / sub-TLV fields. Changing the T flag and inserting
-     * few bytes in the middle of this TLV effectively destroys rest of the content of this TLV (and might lead to
-     * memory corruption) so modification of Enterprise Number must be done before adding any content to the TLV.
-     *
-     * @param [in] aEnterpriseNumber Enterprise Number
-     */
-    void SetEnterpriseNumber(uint32_t aEnterpriseNumber)
-    {
-        if (aEnterpriseNumber == THREAD_ENTERPRISE_NUMBER)
-        {
-            mTResSId |= kTMask;
-        }
-        else
-        {
-            mTResSId &= ~kTMask;
-
-            // This memory access most likely will not be aligned to 4 bytes
-            *reinterpret_cast<uint32_t *>(GetEnterpriseNumberLocation()) = HostSwap32(aEnterpriseNumber);
-        }
-    }
-
-    /**
-     * This method returns length of the S_enterprise_number TLV field in bytes, for given Enterprise Number.
-     *
-     * @returns length of the S_enterprise_number field in bytes
-     */
-    static uint8_t GetEnterpriseNumberFieldLength(uint32_t aEnterpriseNumber)
-    {
-        if (aEnterpriseNumber == THREAD_ENTERPRISE_NUMBER)
-        {
-            return 0;
-        }
-        else
-        {
-            return (sizeof(aEnterpriseNumber));
-        }
-    }
-
-    /**
-     * This method returns Service ID. It is in range 0x00-0x0f.
-     *
-     * @returns Service ID
-     */
-    uint8_t GetServiceId(void) const { return (mTResSId & kSIdMask) >> kSIdOffset; }
-
-    /**
-     * This method sets Service ID.
-     *
-     * @param [in] aServiceId Service ID to be set. Expected range: 0x00-0x0f.
-     */
-    void SetServiceId(uint8_t aServiceId)
-    {
-        mTResSId = static_cast<uint8_t>((mTResSId & ~kSIdMask) | (aServiceId << kSIdOffset));
+        return (IsThreadEnterprise() ? &mShared.mServiceDataLengthThreadEnterprise : &mServiceDataLength) +
+               sizeof(uint8_t);
     }
 
     /**
@@ -968,11 +1086,7 @@ public:
      * @returns The Sub-TLVs length in bytes.
      *
      */
-    uint8_t GetSubTlvsLength(void)
-    {
-        return GetLength() - (sizeof(*this) - sizeof(NetworkDataTlv)) - (IsThreadEnterprise() ? 0 : sizeof(uint32_t)) -
-               sizeof(uint8_t) /* mServiceDataLength */ - GetServiceDataLength();
-    }
+    uint8_t GetSubTlvsLength(void) { return GetLength() - GetFieldsLength(); }
 
     /**
      * This method sets the Sub-TLVs length in bytes.
@@ -980,11 +1094,7 @@ public:
      * @param[in]  aLength  The Sub-TLVs length in bytes.
      *
      */
-    void SetSubTlvsLength(uint8_t aLength)
-    {
-        SetLength(sizeof(*this) - sizeof(NetworkDataTlv) + (IsThreadEnterprise() ? 0 : sizeof(uint32_t)) +
-                  sizeof(uint8_t) /* mServiceDataLength */ + GetServiceDataLength() + aLength);
-    }
+    void SetSubTlvsLength(uint8_t aLength) { SetLength(GetFieldsLength() + aLength); }
 
     /**
      * This method returns a pointer to the Sub-TLVs.
@@ -992,41 +1102,69 @@ public:
      * @returns A pointer to the Sub-TLVs.
      *
      */
-    NetworkDataTlv *GetSubTlvs(void)
+    NetworkDataTlv *GetSubTlvs(void) { return reinterpret_cast<NetworkDataTlv *>(GetValue() + GetFieldsLength()); }
+
+    /**
+     * This method returns a pointer to the Sub-TLVs.
+     *
+     * @returns A pointer to the Sub-TLVs.
+     *
+     */
+    const NetworkDataTlv *GetSubTlvs(void) const
     {
-        return reinterpret_cast<NetworkDataTlv *>(GetServiceDataLengthLocation() + sizeof(uint8_t) +
-                                                  GetServiceDataLength());
+        return reinterpret_cast<const NetworkDataTlv *>(GetValue() + GetFieldsLength());
+    }
+
+    /**
+     * This static method calculates the total size (number of bytes) of a Service TLV with a given Enterprise Number
+     * and Service Data length.
+     *
+     * Note that the returned size does include the Type and Length fields in the TLV, but does not account for any
+     * sub-TLVs of the Service TLV.
+     *
+     * @param[in]  aEnterpriseNumber   A Enterprise Number.
+     * @param[in]  aServiceDataLength  A Service Data length.
+     *
+     * @returns    The size (number of bytes) of the Service TLV.
+     *
+     */
+    static uint16_t GetSize(uint32_t aEnterpriseNumber, uint8_t aServiceDataLength)
+    {
+        return sizeof(NetworkDataTlv) + kMinLength + aServiceDataLength +
+               ((aEnterpriseNumber == kThreadEnterpriseNumber) ? 0 : sizeof(uint32_t) /* mEnterpriseNumber  */);
     }
 
 private:
-    /**
-     * This method returns pointer to where mServiceDataLength would be.
-     *
-     * @returns pointer to service data length location
-     */
-    uint8_t *GetServiceDataLengthLocation(void)
-    {
-        return GetEnterpriseNumberLocation() + (IsThreadEnterprise() ? 0 : sizeof(uint32_t));
-    }
+    bool IsThreadEnterprise(void) const { return (mFlagsServiceId & kThreadEnterpriseFlag) != 0; }
 
-    /**
-     * This method returns pointer to where mEnterpriseNumber would be.
-     *
-     * Note: this method returns uint8_t*, not uint32_t*.
-     *
-     * @returns pointer to enterprise number location
-     */
-    uint8_t *GetEnterpriseNumberLocation(void) { return &mTResSId + sizeof(mTResSId); }
+    uint8_t GetFieldsLength(void) const
+    {
+        // Returns the length of TLV value's common fields (flags, enterprise
+        // number and service data) excluding any sub-TLVs.
+
+        return kMinLength + (IsThreadEnterprise() ? 0 : sizeof(uint32_t)) + GetServiceDataLength();
+    }
 
     enum
     {
-        kTOffset   = 7,
-        kTMask     = 0x1 << kTOffset,
-        kSIdOffset = 0,
-        kSIdMask   = 0xf << kSIdOffset,
+        kThreadEnterpriseFlag = (1 << 7),
+        kServiceIdMask        = 0xf,
+        kMinLength            = sizeof(uint8_t) + sizeof(uint8_t), // Flags and Service Data length.
     };
 
-    uint8_t mTResSId;
+    // When `kThreadEnterpriseFlag is set in the `mFlagsServiceId`, the
+    // `mEnterpriseNumber` field is elided and `mFlagsServiceId` is
+    // immediately followed by the Service Data length field (which is
+    // represented by `mServiceDataLengthThreadEnterprise`)
+
+    uint8_t mFlagsServiceId;
+    union OT_TOOL_PACKED_FIELD
+    {
+        uint32_t mEnterpriseNumber;
+        uint8_t  mServiceDataLengthThreadEnterprise;
+    } mShared;
+    uint8_t mServiceDataLength;
+
 } OT_TOOL_PACKED_END;
 
 /**
@@ -1037,6 +1175,11 @@ OT_TOOL_PACKED_BEGIN
 class ServerTlv : public NetworkDataTlv
 {
 public:
+    enum
+    {
+        kType = kTypeServer, ///< The TLV Type.
+    };
+
     /**
      * This method initializes the TLV.
      *
@@ -1061,6 +1204,7 @@ public:
      * This method returns the S_server_16 value.
      *
      * @returns The S_server_16 value.
+     *
      */
     uint16_t GetServer16(void) const { return HostSwap16(mServer16); }
 
@@ -1076,8 +1220,9 @@ public:
      * This method returns a pointer to the Server Data.
      *
      * @returns A pointer to the Server Data.
+     *
      */
-    const uint8_t *GetServerData(void) { return reinterpret_cast<uint8_t *>(this) + sizeof(*this); }
+    const uint8_t *GetServerData(void) const { return reinterpret_cast<const uint8_t *>(this) + sizeof(*this); }
 
     /**
      * This method sets Server Data to the given values.

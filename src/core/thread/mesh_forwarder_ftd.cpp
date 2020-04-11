@@ -184,36 +184,69 @@ void MeshForwarder::HandleResolved(const Ip6::Address &aEid, otError aError)
 
 otError MeshForwarder::EvictMessage(uint8_t aPriority)
 {
-    otError  error = OT_ERROR_NOT_FOUND;
-    Message *message;
+    otError        error    = OT_ERROR_NOT_FOUND;
+    PriorityQueue *queues[] = {&mResolvingQueue, &mSendQueue};
+    Message *      evict    = NULL;
 
-    VerifyOrExit((message = mSendQueue.GetTail()) != NULL);
-
-    if (message->GetPriority() < aPriority)
+    // search for a lower priority message to evict (choose lowest priority message among all queues)
+    for (uint8_t index = 0; index < OT_ARRAY_LENGTH(queues); index++)
     {
-        VerifyOrExit(!message->GetDoNotEvict());
-        RemoveMessage(*message);
+        for (uint8_t priority = 0; priority < aPriority; priority++)
+        {
+            for (Message *message = queues[index]->GetHeadForPriority(priority); message; message = message->GetNext())
+            {
+                if (message->GetPriority() != priority)
+                {
+                    break;
+                }
+
+                if (message->GetDoNotEvict())
+                {
+                    continue;
+                }
+
+                evict     = message;
+                aPriority = priority;
+                break;
+            }
+        }
+    }
+
+    if (evict != NULL)
+    {
         ExitNow(error = OT_ERROR_NONE);
     }
-    else
+
+    for (uint8_t priority = aPriority; priority < Message::kNumPriorities; priority++)
     {
-        while (aPriority <= Message::kPriorityNet)
+        // search for an equal or higher priority indirect message to evict
+        for (Message *message = mSendQueue.GetHeadForPriority(aPriority); message; message = message->GetNext())
         {
-            for (message = mSendQueue.GetHeadForPriority(aPriority); message && (message->GetPriority() == aPriority);
-                 message = message->GetNext())
+            if (message->GetPriority() != priority)
             {
-                if (message->IsChildPending())
-                {
-                    RemoveMessage(*message);
-                    ExitNow(error = OT_ERROR_NONE);
-                }
+                break;
             }
 
-            aPriority++;
+            if (message->GetDoNotEvict())
+            {
+                continue;
+            }
+
+            if (message->IsChildPending())
+            {
+                evict = message;
+                ExitNow(error = OT_ERROR_NONE);
+            }
         }
     }
 
 exit:
+
+    if (error == OT_ERROR_NONE)
+    {
+        RemoveMessage(*evict);
+    }
+
     return error;
 }
 
@@ -371,7 +404,7 @@ exit:
     return error;
 }
 
-otError MeshForwarder::UpdateIp6RouteFtd(Ip6::Header &ip6Header)
+otError MeshForwarder::UpdateIp6RouteFtd(Ip6::Header &ip6Header, const Message &aMessage)
 {
     Mle::MleRouter &mle   = Get<Mle::MleRouter>();
     otError         error = OT_ERROR_NONE;
@@ -451,7 +484,7 @@ otError MeshForwarder::UpdateIp6RouteFtd(Ip6::Header &ip6Header)
 
     mMeshSource = Get<Mac::Mac>().GetShortAddress();
 
-    SuccessOrExit(error = mle.CheckReachability(mMeshSource, mMeshDest, ip6Header));
+    SuccessOrExit(error = mle.CheckReachability(mMeshDest, ip6Header));
     mMacDest.SetShort(mle.GetNextHop(mMeshDest));
 
     if (mMacDest.GetShort() != mMeshDest)
@@ -462,6 +495,11 @@ otError MeshForwarder::UpdateIp6RouteFtd(Ip6::Header &ip6Header)
     }
 
 exit:
+    if (error == OT_ERROR_NO_ROUTE)
+    {
+        SendDestinationUnreachable(mMeshSource, aMessage);
+    }
+
     return error;
 }
 
@@ -478,29 +516,64 @@ otError MeshForwarder::GetIp6Header(const uint8_t *     aFrame,
                                nextHeaderCompressed);
 }
 
-otError MeshForwarder::CheckReachability(uint8_t *           aFrame,
+otError MeshForwarder::CheckReachability(const uint8_t *     aFrame,
                                          uint16_t            aFrameLength,
                                          const Mac::Address &aMeshSource,
                                          const Mac::Address &aMeshDest)
 {
-    otError     error = OT_ERROR_NONE;
-    Ip6::Header ip6Header;
+    otError                error = OT_ERROR_NONE;
+    Ip6::Header            ip6Header;
+    Message *              message = NULL;
+    Lowpan::FragmentHeader fragmentHeader;
+    uint16_t               fragmentHeaderLength;
+    uint16_t               datagramSize = 0;
 
-    SuccessOrExit(error = GetIp6Header(aFrame, aFrameLength, aMeshSource, aMeshDest, ip6Header));
-    error = Get<Mle::MleRouter>().CheckReachability(aMeshSource.GetShort(), aMeshDest.GetShort(), ip6Header);
+    if (fragmentHeader.ParseFrom(aFrame, aFrameLength, fragmentHeaderLength) == OT_ERROR_NONE)
+    {
+        // Only the first fragment header is followed by a LOWPAN_IPHC header
+        VerifyOrExit(fragmentHeader.GetDatagramOffset() == 0, error = OT_ERROR_NOT_FOUND);
+        aFrame += fragmentHeaderLength;
+        aFrameLength -= fragmentHeaderLength;
+
+        datagramSize = fragmentHeader.GetDatagramSize();
+    }
+
+    VerifyOrExit(aFrameLength >= 1 && Lowpan::Lowpan::IsLowpanHc(aFrame), error = OT_ERROR_NOT_FOUND);
+
+    error = FrameToMessage(aFrame, aFrameLength, datagramSize, aMeshSource, aMeshDest, message);
+    SuccessOrExit(error);
+
+    message->Read(0, sizeof(ip6Header), &ip6Header);
+    error = Get<Mle::MleRouter>().CheckReachability(aMeshDest.GetShort(), ip6Header);
 
 exit:
-    // the message may not contain an IPv6 header
     if (error == OT_ERROR_NOT_FOUND)
     {
+        // the message may not contain an IPv6 header
         error = OT_ERROR_NONE;
     }
-    else if (error != OT_ERROR_NONE)
+    else if (error == OT_ERROR_NO_ROUTE)
     {
-        error = OT_ERROR_DROP;
+        SendDestinationUnreachable(aMeshSource.GetShort(), *message);
+    }
+
+    if (message != NULL)
+    {
+        message->Free();
     }
 
     return error;
+}
+
+void MeshForwarder::SendDestinationUnreachable(uint16_t aMeshSource, const Message &aMessage)
+{
+    Ip6::MessageInfo messageInfo;
+
+    messageInfo.GetPeerAddr() = Get<Mle::MleRouter>().GetMeshLocal16();
+    messageInfo.GetPeerAddr().SetLocator(aMeshSource);
+
+    Get<Ip6::Icmp>().SendError(Ip6::IcmpHeader::kTypeDstUnreach, Ip6::IcmpHeader::kCodeDstUnreachNoRoute, messageInfo,
+                               aMessage);
 }
 
 void MeshForwarder::HandleMesh(uint8_t *               aFrame,
@@ -585,7 +658,7 @@ exit:
     }
 }
 
-void MeshForwarder::UpdateRoutes(uint8_t *           aFrame,
+void MeshForwarder::UpdateRoutes(const uint8_t *     aFrame,
                                  uint16_t            aFrameLength,
                                  const Mac::Address &aMeshSource,
                                  const Mac::Address &aMeshDest)
@@ -613,7 +686,7 @@ void MeshForwarder::UpdateRoutes(uint8_t *           aFrame,
                 (aMeshDest.GetShort() == Get<Mac::Mac>().GetShortAddress() ||
                  Get<Mle::MleRouter>().IsMinimalChild(aMeshDest.GetShort())))
             {
-                Get<AddressResolver>().AddCacheEntry(ip6Header.GetSource(), aMeshSource.GetShort());
+                Get<AddressResolver>().AddSnoopedCacheEntry(ip6Header.GetSource(), aMeshSource.GetShort());
             }
         }
     }
@@ -782,26 +855,26 @@ exit:
 
 otError MeshForwarder::GetDestinationRlocByServiceAloc(uint16_t aServiceAloc, uint16_t &aMeshDest)
 {
-    otError                  error      = OT_ERROR_NONE;
-    uint8_t                  serviceId  = Mle::Mle::ServiceIdFromAloc(aServiceAloc);
-    NetworkData::ServiceTlv *serviceTlv = Get<NetworkData::Leader>().FindServiceById(serviceId);
+    otError                        error      = OT_ERROR_NONE;
+    uint8_t                        serviceId  = Mle::Mle::ServiceIdFromAloc(aServiceAloc);
+    const NetworkData::ServiceTlv *serviceTlv = Get<NetworkData::Leader>().FindServiceById(serviceId);
 
     if (serviceTlv != NULL)
     {
-        NetworkData::NetworkDataTlv *cur = serviceTlv->GetSubTlvs();
-        NetworkData::NetworkDataTlv *end = serviceTlv->GetNext();
-        Neighbor *                   neighbor;
-        uint16_t                     server16;
-        uint8_t                      bestCost = Mle::kMaxRouteCost;
-        uint8_t                      curCost  = 0x00;
-        uint16_t                     bestDest = Mac::kShortAddrInvalid;
+        const NetworkData::NetworkDataTlv *cur = serviceTlv->GetSubTlvs();
+        const NetworkData::NetworkDataTlv *end = serviceTlv->GetNext();
+        Neighbor *                         neighbor;
+        uint16_t                           server16;
+        uint8_t                            bestCost = Mle::kMaxRouteCost;
+        uint8_t                            curCost  = 0x00;
+        uint16_t                           bestDest = Mac::kShortAddrInvalid;
 
         while (cur < end)
         {
             switch (cur->GetType())
             {
             case NetworkData::NetworkDataTlv::kTypeServer:
-                server16 = static_cast<NetworkData::ServerTlv *>(cur)->GetServer16();
+                server16 = static_cast<const NetworkData::ServerTlv *>(cur)->GetServer16();
 
                 // Path cost
                 curCost = Get<Mle::MleRouter>().GetCost(server16);

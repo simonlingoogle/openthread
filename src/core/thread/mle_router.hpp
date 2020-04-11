@@ -328,6 +328,14 @@ public:
     void RemoveNeighbor(Neighbor &aNeighbor);
 
     /**
+     * This method invalidates a direct link to a neighboring router (due to failed link-layer acks).
+     *
+     * @param[in]  aRouter  A reference to the router object.
+     *
+     */
+    void RemoveRouterLink(Router &aRouter);
+
+    /**
      * This method restores children information from non-volatile memory.
      *
      */
@@ -485,15 +493,14 @@ public:
     /**
      * This method checks if the destination is reachable.
      *
-     * @param[in]  aMeshSource  The RLOC16 of the source.
-     * @param[in]  aMeshDest    The RLOC16 of the destination.
-     * @param[in]  aIp6Header   A reference to the IPv6 header of the message.
+     * @param[in]  aMeshDest   The RLOC16 of the destination.
+     * @param[in]  aIp6Header  A reference to the IPv6 header of the message.
      *
-     * @retval OT_ERROR_NONE  The destination is reachable.
-     * @retval OT_ERROR_DROP  The destination is not reachable and the message should be dropped.
+     * @retval OT_ERROR_NONE      The destination is reachable.
+     * @retval OT_ERROR_NO_ROUTE  The destination is not reachable and the message should be dropped.
      *
      */
-    otError CheckReachability(uint16_t aMeshSource, uint16_t aMeshDest, Ip6::Header &aIp6Header);
+    otError CheckReachability(uint16_t aMeshDest, Ip6::Header &aIp6Header);
 
     /**
      * This method resolves 2-hop routing loops.
@@ -669,6 +676,29 @@ public:
     void SetBackboneRouterRegistrationDelay(uint8_t aDelay) { mBackboneRouterRegistrationDelay = aDelay; }
 #endif
 
+    /**
+     * This method gets the maximum number of IP addresses that each MTD child may register with this device as parent.
+     *
+     * @returns The maximum number of IP addresses that each MTD child may register with this device as parent.
+     *
+     */
+    uint8_t GetMaxChildIpAddresses(void) const;
+
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+    /**
+     * This method sets/restores the maximum number of IP addresses that each MTD child may register with this
+     * device as parent.
+     *
+     * @param[in]  aMaxIpAddresses  The maximum number of IP addresses that each MTD child may register with this
+     *                              device as parent. 0 to clear the setting and restore the default.
+     *
+     * @retval OT_ERROR_NONE           Successfully set/cleared the number.
+     * @retval OT_ERROR_INVALID_ARGS   If exceeds the allowed maximum number.
+     *
+     */
+    otError SetMaxChildIpAddresses(uint8_t aMaxIpAddresses);
+#endif
+
 private:
     enum
     {
@@ -816,6 +846,9 @@ private:
 #if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
     uint8_t mBackboneRouterRegistrationDelay; ///< Delay before registering Backbone Router service.
 #endif
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+    uint8_t mMaxChildIpAddresses;
+#endif
 
 #if OPENTHREAD_CONFIG_MLE_STEERING_DATA_SET_OOB_ENABLE
     MeshCoP::SteeringDataTlv mSteeringData;
@@ -844,6 +877,7 @@ public:
     uint8_t GetCost(uint16_t) { return 0; }
 
     otError RemoveNeighbor(Neighbor &) { return BecomeDetached(); }
+    otError RemoveRouterLink(Router &) { return BecomeDetached(); }
 
     Neighbor *GetNeighbor(const Mac::ExtAddress &aAddress) { return Mle::GetNeighbor(aAddress); }
     Neighbor *GetNeighbor(const Mac::Address &aAddress) { return Mle::GetNeighbor(aAddress); }

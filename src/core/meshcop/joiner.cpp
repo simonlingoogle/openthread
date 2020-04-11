@@ -45,6 +45,7 @@
 #include "radio/radio.hpp"
 #include "thread/thread_netif.hpp"
 #include "thread/thread_uri_paths.hpp"
+#include "utils/otns.hpp"
 
 #if OPENTHREAD_CONFIG_JOINER_ENABLE
 
@@ -75,11 +76,12 @@ void Joiner::GetJoinerId(Mac::ExtAddress &aJoinerId) const
 
 void Joiner::SetState(otJoinerState aState)
 {
-    VerifyOrExit(aState != mState);
+    otJoinerState oldState = mState;
+    OT_UNUSED_VARIABLE(oldState);
 
-    otLogInfoMeshCoP("JoinerState: %s -> %s", JoinerStateToString(mState), JoinerStateToString(aState));
-    mState = aState;
+    SuccessOrExit(Get<Notifier>().Update(mState, aState, OT_CHANGED_JOINER_STATE));
 
+    otLogInfoMeshCoP("JoinerState: %s -> %s", JoinerStateToString(oldState), JoinerStateToString(aState));
 exit:
     return;
 }
@@ -128,7 +130,7 @@ otError Joiner::Start(const char *     aPskd,
 exit:
     if (error != OT_ERROR_NONE)
     {
-        otLogInfoMeshCoP("Error %s while starting joiner", otThreadErrorToString(error));
+        otLogWarnMeshCoP("Failed to start joiner: %s", otThreadErrorToString(error));
         FreeJoinerFinalizeMessage();
     }
 
@@ -349,7 +351,7 @@ exit:
 
     if (error != OT_ERROR_NONE)
     {
-        otLogInfoMeshCoP("Error %s while joiner trying to connect", otThreadErrorToString(error));
+        otLogWarnMeshCoP("Failed to start secure joiner connection: %s", otThreadErrorToString(error));
     }
 
     return error;
@@ -551,7 +553,7 @@ exit:
 
     if (error != OT_ERROR_NONE)
     {
-        otLogWarnMeshCoP("Error %s while processing joiner entrust", otThreadErrorToString(error));
+        otLogWarnMeshCoP("Failed to process joiner entrust: %s", otThreadErrorToString(error));
     }
 }
 

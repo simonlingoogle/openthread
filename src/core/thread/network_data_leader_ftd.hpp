@@ -108,10 +108,10 @@ public:
     void IncrementVersion(void);
 
     /**
-     * This method increments the Thread Network Data stable version.
+     * This method increments both the Thread Network Data version and stable version.
      *
      */
-    void IncrementStableVersion(void);
+    void IncrementVersionAndStableVersion(void);
 
     /**
      * This method returns CONTEXT_ID_RESUSE_DELAY value.
@@ -119,7 +119,7 @@ public:
      * @returns The CONTEXT_ID_REUSE_DELAY value.
      *
      */
-    uint32_t GetContextIdReuseDelay(void) const;
+    uint32_t GetContextIdReuseDelay(void) const { return mContextIdReuseDelay; }
 
     /**
      * This method sets CONTEXT_ID_RESUSE_DELAY value.
@@ -129,7 +129,7 @@ public:
      * @param[in]  aDelay  The CONTEXT_ID_REUSE_DELAY value.
      *
      */
-    void SetContextIdReuseDelay(uint32_t aDelay);
+    void SetContextIdReuseDelay(uint32_t aDelay) { mContextIdReuseDelay = aDelay; }
 
     /**
      * This method removes Network Data entries matching with a given RLOC16.
@@ -139,17 +139,6 @@ public:
      *
      */
     void RemoveBorderRouter(uint16_t aRloc16, MatchMode aMatchMode);
-
-    /**
-     * This method sends a Server Data Notification message to the Leader indicating an invalid RLOC16.
-     *
-     * @param[in]  aRloc16  The invalid RLOC16 to notify.
-     *
-     * @retval OT_ERROR_NONE     Successfully enqueued the notification message.
-     * @retval OT_ERROR_NO_BUFS  Insufficient message buffers to generate the notification message.
-     *
-     */
-    otError SendServerDataNotification(uint16_t aRloc16);
 
     /**
      * This method synchronizes internal 6LoWPAN Context ID Set with recently obtained Thread Network Data.
@@ -166,7 +155,20 @@ public:
      * @return Pointer to the Service TLV for given Service ID, or NULL if not present.
      *
      */
-    ServiceTlv *FindServiceById(uint8_t aServiceId);
+    const ServiceTlv *FindServiceById(uint8_t aServiceId) const;
+
+    /**
+     * This method sends SVR_DATA.ntf message for any stale child entries that exist in the network data.
+     *
+     * @param[in]  aHandler  A function pointer that is called when the transaction ends.
+     * @param[in]  aContext  A pointer to arbitrary context information.
+     *
+     * @retval OT_ERROR_NONE       A stale child entry was found and successfully enqueued a SVR_DATA.ntf message.
+     * @retval OT_ERROR_NO_BUFS    A stale child entry was found, but insufficient message buffers were available.
+     * @retval OT_ERROR_NOT_FOUND  No stale child entries were found.
+     *
+     */
+    otError RemoveStaleChildEntries(Coap::ResponseHandler aHandler, void *aContext);
 
 private:
     static void HandleServerData(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
@@ -202,15 +204,18 @@ private:
 
     static bool RlocMatch(uint16_t aFirstRloc16, uint16_t aSecondRloc16, MatchMode aMatchMode);
 
-    otError RlocLookup(uint16_t  aRloc16,
-                       bool &    aIn,
-                       bool &    aStable,
-                       uint8_t * aTlvs,
-                       uint8_t   aTlvsLength,
-                       MatchMode aMatchMode,
-                       bool      aAllowOtherEntries = true);
+    static otError RlocLookup(uint16_t       aRloc16,
+                              bool &         aIn,
+                              bool &         aStable,
+                              const uint8_t *aTlvs,
+                              uint8_t        aTlvsLength,
+                              MatchMode      aMatchMode,
+                              bool           aAllowOtherEntries = true);
 
-    bool IsStableUpdated(uint8_t *aTlvs, uint8_t aTlvsLength, uint8_t *aTlvsBase, uint8_t aTlvsBaseLength);
+    static bool IsStableUpdated(const uint8_t *aTlvs,
+                                uint8_t        aTlvsLength,
+                                const uint8_t *aTlvsBase,
+                                uint8_t        aTlvsBaseLength);
 
     static void HandleCommissioningSet(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
     void        HandleCommissioningSet(Coap::Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
@@ -224,6 +229,7 @@ private:
     void SendCommissioningSetResponse(const Coap::Message &    aRequest,
                                       const Ip6::MessageInfo & aMessageInfo,
                                       MeshCoP::StateTlv::State aState);
+    void IncrementVersions(bool aIncludeStable);
 
     /**
      * Thread Specification Constants.

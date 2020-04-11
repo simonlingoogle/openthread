@@ -86,7 +86,7 @@ void Local::Reset(void)
 
     if (mState == OT_BACKBONE_ROUTER_STATE_PRIMARY)
     {
-        // Increase sequence number when changing from primary to secondary.
+        // Increase sequence number when changing from Primary to Secondary.
         mSequenceNumber++;
         Get<Notifier>().Signal(OT_CHANGED_THREAD_BACKBONE_ROUTER_LOCAL);
         SetState(OT_BACKBONE_ROUTER_STATE_SECONDARY);
@@ -154,11 +154,11 @@ otError Local::AddService(bool aForce)
     serverData.SetMlrTimeout(mMlrTimeout);
 
     SuccessOrExit(error = Get<NetworkData::Local>().AddService(
-                      THREAD_ENTERPRISE_NUMBER, &serviceData, sizeof(serviceData), true,
+                      NetworkData::ServiceTlv::kThreadEnterpriseNumber, &serviceData, sizeof(serviceData), true,
                       reinterpret_cast<const uint8_t *>(&serverData), sizeof(serverData)));
 
     mIsServiceAdded = true;
-    Get<NetworkData::Local>().SendServerDataNotification();
+    Get<NetworkData::Notifier>().HandleServerDataUpdated();
 
     otLogInfoNetData("BBR Service added: seqno (%d), delay (%ds), timeout (%ds)", mSequenceNumber, mReregistrationDelay,
                      mMlrTimeout);
@@ -173,15 +173,11 @@ otError Local::RemoveService(void)
     otError error       = OT_ERROR_NONE;
     uint8_t serviceData = NetworkData::ServiceTlv::kServiceDataBackboneRouter;
 
-    SuccessOrExit(
-        error = Get<NetworkData::Local>().RemoveService(THREAD_ENTERPRISE_NUMBER, &serviceData, sizeof(serviceData)));
+    SuccessOrExit(error = Get<NetworkData::Local>().RemoveService(NetworkData::ServiceTlv::kThreadEnterpriseNumber,
+                                                                  &serviceData, sizeof(serviceData)));
 
     mIsServiceAdded = false;
-
-    if (Get<Mle::MleRouter>().IsAttached())
-    {
-        Get<NetworkData::Local>().SendServerDataNotification();
-    }
+    Get<NetworkData::Notifier>().HandleServerDataUpdated();
 
 exit:
     otLogInfoNetData("Remove BBR Service %s", otThreadErrorToString(error));
@@ -210,7 +206,7 @@ void Local::UpdateBackboneRouterPrimary(Leader::State aState, const BackboneRout
     {
         uint8_t delay = 1;
 
-        if (Get<Mle::MleRouter>().GetRole() != OT_DEVICE_ROLE_LEADER)
+        if (!Get<Mle::MleRouter>().IsLeader())
         {
             delay += Random::NonCrypto::GetUint8InRange(0, mRegistrationJitter < 255 ? mRegistrationJitter + 1
                                                                                      : mRegistrationJitter);

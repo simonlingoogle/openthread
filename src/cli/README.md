@@ -80,6 +80,7 @@ Done
 * [preferrouterid](#preferrouterid-routerid)
 * [prefix](#prefix-add-prefix-pvdcsr-prf)
 * [promiscuous](#promiscuous)
+* [pskc](#pskc--p-keypassphrase)
 * [releaserouterid](#releaserouterid-routerid)
 * [reset](#reset)
 * [rloc16](#rloc16)
@@ -333,6 +334,28 @@ Get the list of IP addresses stored for MTD children.
 Done
 ```
 
+### childip max
+
+Get the maximum number of IP addresses that each MTD child may register with this device as parent.
+
+```bash
+> childip max
+4
+Done
+```
+
+### childip max \<count\>
+
+Set the maximum number of IP addresses that each MTD child may register with this device as parent.
+0 to clear the setting and restore the default.
+
+`OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is required.
+
+```bash
+> childip max 2
+Done
+```
+
 ### childmax
 
 Get the Thread maximum number of allowed children.
@@ -576,6 +599,8 @@ Done
 ### extpanid
 
 Get the Thread Extended PAN ID value.
+
+**NOTE** The current commissioning credential becomes stale after changing this value. Use [pskc](#pskc--p-keypassphrase) to reset.
 
 ```bash
 > extpanid
@@ -1037,6 +1062,8 @@ Done
 
 Set the Thread Network Name.
 
+**NOTE** The current commissioning credential becomes stale after changing this value. Use [pskc](#pskc--p-keypassphrase) to reset.
+
 ```bash
 > networkname OpenThread
 Done
@@ -1141,6 +1168,17 @@ Set the customized data poll period for sleepy end device (milliseconds >= 10ms)
 
 ```bash
 > pollperiod 10
+Done
+```
+
+### pskc [-p] \<key\>|\<passphrase\>
+
+With `-p` generate pskc from \<passphrase\> (UTF-8 encoded) together with **current** network name and extended PAN ID, otherwise set pskc as \<key\> (hex format).
+
+```bash
+> pskc 67c0c203aa0b042bfb5381c47aef4d9e
+Done
+> pskc -p 123456
 Done
 ```
 

@@ -164,26 +164,35 @@ public:
     /**
      * This method sends a Server Data Notification message to the Leader.
      *
-     * @retval OT_ERROR_NONE     Successfully enqueued the notification message.
-     * @retval OT_ERROR_NO_BUFS  Insufficient message buffers to generate the notification message.
+     * @param[in]  aHandler  A function pointer that is called when the transaction ends.
+     * @param[in]  aContext  A pointer to arbitrary context information.
+     *
+     * @retval OT_ERROR_NONE           Successfully enqueued the notification message.
+     * @retval OT_ERROR_NO_BUFS        Insufficient message buffers to generate the notification message.
+     * @retval OT_ERROR_INVALID_STATE  Device is a REED and is in the process of becoming a Router.
+     * @retval OT_ERROR_NOT_FOUND      Server Data is already consistent with network data.
      *
      */
-    otError SendServerDataNotification(void);
+    otError UpdateInconsistentServerData(Coap::ResponseHandler aHandler, void *aContext);
 
 private:
     void UpdateRloc(void);
 #if OPENTHREAD_CONFIG_BORDER_ROUTER_ENABLE
-    void UpdateRloc(PrefixTlv &aPrefix);
-    void UpdateRloc(HasRouteTlv &aHasRoute);
-    void UpdateRloc(BorderRouterTlv &aBorderRouter);
-    bool IsOnMeshPrefixConsistent(void);
-    bool IsExternalRouteConsistent(void);
+    otError AddPrefix(const uint8_t *      aPrefix,
+                      uint8_t              aPrefixLength,
+                      NetworkDataTlv::Type aSubTlvType,
+                      int8_t               aPrf,
+                      uint8_t              aFlags,
+                      bool                 aStable);
+    otError RemovePrefix(const uint8_t *aPrefix, uint8_t aPrefixLength, NetworkDataTlv::Type aSubTlvType);
+    void    UpdateRloc(PrefixTlv &aPrefix);
+    bool    IsOnMeshPrefixConsistent(void) const;
+    bool    IsExternalRouteConsistent(void) const;
 #endif
 
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     void UpdateRloc(ServiceTlv &aService);
-    void UpdateRloc(ServerTlv &aServer);
-    bool IsServiceConsistent(void);
+    bool IsServiceConsistent(void) const;
 #endif
 
     uint16_t mOldRloc;

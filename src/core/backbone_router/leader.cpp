@@ -80,8 +80,8 @@ otError Leader::GetServiceId(uint8_t &aServiceId) const
 
     VerifyOrExit(HasPrimary(), error = OT_ERROR_NOT_FOUND);
 
-    error = Get<NetworkData::Leader>().GetServiceId(THREAD_ENTERPRISE_NUMBER, &serviceData, sizeof(serviceData), true,
-                                                    aServiceId);
+    error = Get<NetworkData::Leader>().GetServiceId(NetworkData::ServiceTlv::kThreadEnterpriseNumber, &serviceData,
+                                                    sizeof(serviceData), true, aServiceId);
 
 exit:
     return error;
@@ -156,13 +156,13 @@ void Leader::Update(void)
         }
         else
         {
-            // Short Address of PBBR changes
+            // Short Address of PBBR changes.
             state = kStateToTriggerRereg;
         }
     }
     else if (config.mServer16 == Mac::kShortAddrInvalid)
     {
-        // If no primary all the time
+        // If no Primary all the time.
         state = kStateNone;
     }
     else if (config.mSequenceNumber != mConfig.mSequenceNumber)

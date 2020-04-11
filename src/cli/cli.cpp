@@ -65,6 +65,7 @@
 
 #include "common/new.hpp"
 #include "net/ip6.hpp"
+#include "utils/otns.hpp"
 
 #if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
 #include <openthread/backbone_router.h>
@@ -864,37 +865,62 @@ exit:
 
 void Interpreter::ProcessChildIp(uint8_t aArgsLength, char *aArgs[])
 {
-    otError  error = OT_ERROR_NONE;
-    uint16_t maxChildren;
+    OT_UNUSED_VARIABLE(aArgs);
+    otError error = OT_ERROR_NONE;
 
-    VerifyOrExit(aArgsLength == 0, error = OT_ERROR_INVALID_ARGS);
-
-    maxChildren = otThreadGetMaxAllowedChildren(mInstance);
-
-    for (uint16_t childIndex = 0; childIndex < maxChildren; childIndex++)
+    if (aArgsLength == 0)
     {
-        otChildIp6AddressIterator iterator = OT_CHILD_IP6_ADDRESS_ITERATOR_INIT;
-        otIp6Address              ip6Address;
-        otChildInfo               childInfo;
+        uint16_t maxChildren = otThreadGetMaxAllowedChildren(mInstance);
 
-        if ((otThreadGetChildInfoByIndex(mInstance, childIndex, &childInfo) != OT_ERROR_NONE) ||
-            childInfo.mIsStateRestoring)
+        for (uint16_t childIndex = 0; childIndex < maxChildren; childIndex++)
         {
-            continue;
-        }
+            otChildIp6AddressIterator iterator = OT_CHILD_IP6_ADDRESS_ITERATOR_INIT;
+            otIp6Address              ip6Address;
+            otChildInfo               childInfo;
 
-        iterator = OT_CHILD_IP6_ADDRESS_ITERATOR_INIT;
+            if ((otThreadGetChildInfoByIndex(mInstance, childIndex, &childInfo) != OT_ERROR_NONE) ||
+                childInfo.mIsStateRestoring)
+            {
+                continue;
+            }
 
-        while (otThreadGetChildNextIp6Address(mInstance, childIndex, &iterator, &ip6Address) == OT_ERROR_NONE)
-        {
-            mServer->OutputFormat("%04x: ", childInfo.mRloc16);
-            OutputIp6Address(ip6Address);
-            mServer->OutputFormat("\r\n");
+            iterator = OT_CHILD_IP6_ADDRESS_ITERATOR_INIT;
+
+            while (otThreadGetChildNextIp6Address(mInstance, childIndex, &iterator, &ip6Address) == OT_ERROR_NONE)
+            {
+                mServer->OutputFormat("%04x: ", childInfo.mRloc16);
+                OutputIp6Address(ip6Address);
+                mServer->OutputFormat("\r\n");
+            }
         }
     }
+    else if (strcmp(aArgs[0], "max") == 0)
+    {
+        if (aArgsLength == 1)
+        {
+            mServer->OutputFormat("%d\r\n", otThreadGetMaxChildIpAddresses(mInstance));
+        }
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+        else if (aArgsLength == 2)
+        {
+            unsigned long value;
+            SuccessOrExit(error = ParseUnsignedLong(aArgs[1], value));
+            SuccessOrExit(error = otThreadSetMaxChildIpAddresses(mInstance, static_cast<uint8_t>(value)));
+        }
+#endif
+        else
+        {
+            error = OT_ERROR_INVALID_ARGS;
+        }
+    }
+    else
+    {
+        error = OT_ERROR_INVALID_COMMAND;
+    }
 
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
 exit:
-    OT_UNUSED_VARIABLE(aArgs);
+#endif
     AppendResult(error);
 }
 
@@ -1269,16 +1295,14 @@ void Interpreter::ProcessEidCache(uint8_t aArgsLength, char *aArgs[])
     OT_UNUSED_VARIABLE(aArgsLength);
     OT_UNUSED_VARIABLE(aArgs);
 
-    otEidCacheEntry entry;
+    otCacheEntryIterator iterator;
+    otCacheEntryInfo     entry;
+
+    memset(&iterator, 0, sizeof(iterator));
 
     for (uint8_t i = 0;; i++)
     {
-        SuccessOrExit(otThreadGetEidCacheEntry(mInstance, i, &entry));
-
-        if (!entry.mValid)
-        {
-            continue;
-        }
+        SuccessOrExit(otThreadGetNextCacheEntry(mInstance, &entry, &iterator));
 
         OutputIp6Address(entry.mTarget);
         mServer->OutputFormat(" %04x\r\n", entry.mRloc16);
@@ -1716,7 +1740,21 @@ void Interpreter::ProcessPskc(uint8_t aArgsLength, char *aArgs[])
     {
         otPskc pskc;
 
-        VerifyOrExit(Hex2Bin(aArgs[0], pskc.m8, sizeof(pskc)) == OT_PSKC_MAX_SIZE, error = OT_ERROR_INVALID_ARGS);
+        if (aArgsLength == 1)
+        {
+            VerifyOrExit(Hex2Bin(aArgs[0], pskc.m8, sizeof(pskc)) == sizeof(pskc), error = OT_ERROR_INVALID_ARGS);
+        }
+        else if (!strcmp(aArgs[0], "-p"))
+        {
+            SuccessOrExit(error = otDatasetGeneratePskc(
+                              aArgs[1], reinterpret_cast<const otNetworkName *>(otThreadGetNetworkName(mInstance)),
+                              otThreadGetExtendedPanId(mInstance), &pskc));
+        }
+        else
+        {
+            ExitNow(error = OT_ERROR_INVALID_ARGS);
+        }
+
         SuccessOrExit(error = otThreadSetPskc(mInstance, &pskc));
     }
 
@@ -2141,13 +2179,14 @@ void Interpreter::HandleIcmpReceive(otMessage *          aMessage,
                                     const otMessageInfo *aMessageInfo,
                                     const otIcmp6Header *aIcmpHeader)
 {
-    uint32_t timestamp;
+    uint32_t timestamp = 0;
+    uint16_t dataSize;
 
     VerifyOrExit(aIcmpHeader->mType == OT_ICMP6_TYPE_ECHO_REPLY);
     VerifyOrExit((mPingIdentifier != 0) && (mPingIdentifier == HostSwap16(aIcmpHeader->mData.m16[0])));
 
-    mServer->OutputFormat("%u bytes from ", otMessageGetLength(aMessage) - otMessageGetOffset(aMessage) +
-                                                static_cast<uint16_t>(sizeof(otIcmp6Header)));
+    dataSize = otMessageGetLength(aMessage) - otMessageGetOffset(aMessage);
+    mServer->OutputFormat("%u bytes from ", dataSize + static_cast<uint16_t>(sizeof(otIcmp6Header)));
 
     OutputIp6Address(aMessageInfo->mPeerAddr);
 
@@ -2159,6 +2198,9 @@ void Interpreter::HandleIcmpReceive(otMessage *          aMessage,
     }
 
     mServer->OutputFormat("\r\n");
+
+    SignalPingReply(static_cast<const Ip6::MessageInfo *>(aMessageInfo)->GetPeerAddr(), dataSize, HostSwap32(timestamp),
+                    aMessageInfo->mHopLimit);
 
 exit:
     return;
@@ -2260,6 +2302,9 @@ void Interpreter::SendPing(void)
     SuccessOrExit(otMessageAppend(message, &timestamp, sizeof(timestamp)));
     SuccessOrExit(otMessageSetLength(message, mPingLength));
     SuccessOrExit(otIcmp6SendEchoRequest(mInstance, message, &messageInfo, mPingIdentifier));
+
+    SignalPingRequest(static_cast<Ip6::MessageInfo *>(&messageInfo)->GetPeerAddr(), mPingLength, HostSwap32(timestamp),
+                      messageInfo.mHopLimit);
 
     message = NULL;
 
@@ -3907,72 +3952,72 @@ void Interpreter::HandleDiagnosticGetResponse(const otMessage &aMessage, const I
         {
         case OT_NETWORK_DIAGNOSTIC_TLV_EXT_ADDRESS:
             mServer->OutputFormat("Ext Address: '");
-            OutputBytes(diagTlv.mExtAddress.m8, sizeof(diagTlv.mExtAddress.m8));
+            OutputBytes(diagTlv.mData.mExtAddress.m8, sizeof(diagTlv.mData.mExtAddress.m8));
             mServer->OutputFormat("'\r\n");
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_SHORT_ADDRESS:
-            mServer->OutputFormat("Rloc16: 0x%04x\r\n", diagTlv.mAddr16);
+            mServer->OutputFormat("Rloc16: 0x%04x\r\n", diagTlv.mData.mAddr16);
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_MODE:
             mServer->OutputFormat("Mode:\r\n");
-            OutputMode(diagTlv.mMode, column + INDENT_SIZE);
+            OutputMode(diagTlv.mData.mMode, column + INDENT_SIZE);
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_TIMEOUT:
-            mServer->OutputFormat("Timeout: %u\r\n", diagTlv.mTimeout);
+            mServer->OutputFormat("Timeout: %u\r\n", diagTlv.mData.mTimeout);
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_CONNECTIVITY:
             mServer->OutputFormat("Connectivity:\r\n");
-            OutputConnectivity(diagTlv.mConnectivity, column + INDENT_SIZE);
+            OutputConnectivity(diagTlv.mData.mConnectivity, column + INDENT_SIZE);
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_ROUTE:
             mServer->OutputFormat("Route:\r\n");
-            OutputRoute(diagTlv.mRoute, column + INDENT_SIZE);
+            OutputRoute(diagTlv.mData.mRoute, column + INDENT_SIZE);
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_LEADER_DATA:
             mServer->OutputFormat("Leader Data:\r\n");
-            OutputLeaderData(diagTlv.mLeaderData, column + INDENT_SIZE);
+            OutputLeaderData(diagTlv.mData.mLeaderData, column + INDENT_SIZE);
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_NETWORK_DATA:
             mServer->OutputFormat("Network Data: '");
-            OutputBytes(diagTlv.mNetworkData, diagTlv.mNetworkDataCount);
+            OutputBytes(diagTlv.mData.mNetworkData.m8, diagTlv.mData.mNetworkData.mCount);
             mServer->OutputFormat("'\r\n");
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_IP6_ADDR_LIST:
             mServer->OutputFormat("IP6 Address List:\r\n");
-            for (uint16_t i = 0; i < diagTlv.mIp6AddrCount; ++i)
+            for (uint16_t i = 0; i < diagTlv.mData.mIp6AddrList.mCount; ++i)
             {
                 OutputSpaces(column + INDENT_SIZE);
                 mServer->OutputFormat("- ");
-                OutputIp6Address(diagTlv.mIp6AddrList[i]);
+                OutputIp6Address(diagTlv.mData.mIp6AddrList.mList[i]);
                 mServer->OutputFormat("\r\n");
             }
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_MAC_COUNTERS:
             mServer->OutputFormat("MAC Counters:\r\n");
-            OutputNetworkDiagMacCounters(diagTlv.mMacCounters, column + INDENT_SIZE);
+            OutputNetworkDiagMacCounters(diagTlv.mData.mMacCounters, column + INDENT_SIZE);
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_BATTERY_LEVEL:
-            mServer->OutputFormat("Battery Level: %u%%\r\n", diagTlv.mBatteryLevel);
+            mServer->OutputFormat("Battery Level: %u%%\r\n", diagTlv.mData.mBatteryLevel);
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_SUPPLY_VOLTAGE:
-            mServer->OutputFormat("Supply Voltage: %umV\r\n", diagTlv.mSupplyVoltage);
+            mServer->OutputFormat("Supply Voltage: %umV\r\n", diagTlv.mData.mSupplyVoltage);
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_CHILD_TABLE:
             mServer->OutputFormat("Child Table:\r\n");
-            for (uint16_t i = 0; i < diagTlv.mChildCount; ++i)
+            for (uint16_t i = 0; i < diagTlv.mData.mChildTable.mCount; ++i)
             {
                 OutputSpaces(column + INDENT_SIZE);
                 mServer->OutputFormat("- ");
-                OutputChildTableEntry(diagTlv.mChildTable[i], column + INDENT_SIZE + 2);
+                OutputChildTableEntry(diagTlv.mData.mChildTable.mTable[i], column + INDENT_SIZE + 2);
             }
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_CHANNEL_PAGES:
             mServer->OutputFormat("Channel Pages: '");
-            OutputBytes(diagTlv.mChannelPages, diagTlv.mChannelPageCount);
+            OutputBytes(diagTlv.mData.mChannelPages.m8, diagTlv.mData.mChannelPages.mCount);
             mServer->OutputFormat("'\r\n");
             break;
         case OT_NETWORK_DIAGNOSTIC_TLV_MAX_CHILD_TIMEOUT:
-            mServer->OutputFormat("Max Child Timeout: %u\r\n", diagTlv.mMaxChildTimeout);
+            mServer->OutputFormat("Max Child Timeout: %u\r\n", diagTlv.mData.mMaxChildTimeout);
             break;
         }
     }
@@ -4150,6 +4195,36 @@ Interpreter &Interpreter::GetOwner(OwnerLocator &aOwnerLocator)
     Interpreter &interpreter = Server::sServer->GetInterpreter();
 #endif
     return interpreter;
+}
+
+void Interpreter::SignalPingRequest(const Ip6::Address &aPeerAddress,
+                                    uint16_t            aPingLength,
+                                    uint32_t            aTimestamp,
+                                    uint8_t             aHopLimit)
+{
+    OT_UNUSED_VARIABLE(aPeerAddress);
+    OT_UNUSED_VARIABLE(aPingLength);
+    OT_UNUSED_VARIABLE(aTimestamp);
+    OT_UNUSED_VARIABLE(aHopLimit);
+
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    mInstance->Get<Utils::Otns>().EmitPingRequest(aPeerAddress, aPingLength, aTimestamp, aHopLimit);
+#endif
+}
+
+void Interpreter::SignalPingReply(const Ip6::Address &aPeerAddress,
+                                  uint16_t            aPingLength,
+                                  uint32_t            aTimestamp,
+                                  uint8_t             aHopLimit)
+{
+    OT_UNUSED_VARIABLE(aPeerAddress);
+    OT_UNUSED_VARIABLE(aPingLength);
+    OT_UNUSED_VARIABLE(aTimestamp);
+    OT_UNUSED_VARIABLE(aHopLimit);
+
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    mInstance->Get<Utils::Otns>().EmitPingReply(aPeerAddress, aPingLength, aTimestamp, aHopLimit);
+#endif
 }
 
 extern "C" void otCliSetUserCommands(const otCliCommand *aUserCommands, uint8_t aLength)
