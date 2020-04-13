@@ -187,15 +187,6 @@
 #define OPENTHREAD_CONFIG_CLI_UART_RX_BUFFER_SIZE 3500
 
 /**
- * @def OPENTHREAD_CONFIG_LOG_LEVEL
- *
- * The log level (used at compile time). If `OPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE`
- * is set, this defines the most verbose log level possible.
- *
- */
-#define OPENTHREAD_CONFIG_LOG_LEVEL OT_LOG_LEVEL_INFO
-
-/**
  * @def OPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE
  *
  * Define as 1 to enable dynamic log level control.
