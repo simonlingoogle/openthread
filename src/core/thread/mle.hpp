@@ -45,6 +45,9 @@
 #include "thread/mle_tlvs.hpp"
 #include "thread/mle_types.hpp"
 #include "thread/topology.hpp"
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#include "backbone_router/leader.hpp"
+#endif
 
 namespace ot {
 
@@ -666,7 +669,27 @@ public:
     {
         return mAllNetworkBackboneRouters.GetAddress();
     }
-#endif
+
+    /**
+     * This method returns a reference to the All Domain Backbone Routers Multicast Address.
+     *
+     * @returns A reference to the All Domain Backbone Routers Multicast Address.
+     *
+     */
+    const Ip6::Address &GetAllDomainBackboneRoutersAddress(void) const
+    {
+        return mAllDomainBackboneRouters.GetAddress();
+    }
+
+    /**
+     * This method updates the subscription of All Domain Backbone Routers Multicast Address.
+     *
+     * @param[in]  aState  The Domain Prefix state or state change.
+     *
+     */
+    void UpdateAllDomainBackboneRouters(BackboneRouter::Leader::DomainPrefixState aState);
+
+#endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
 
     /**
      * This method gets the parent when operating in End Device mode.
@@ -779,7 +802,7 @@ public:
      * @retval OT_ERROR_DETACHED  The Thread interface is not currently attached to a Thread Partition.
      *
      */
-    otError GetLeaderAloc(Ip6::Address &aAddress) const { return GetAlocAddress(aAddress, kAloc16Leader); }
+    otError GetLeaderAloc(Ip6::Address &aAddress) const { return GetLocatorAddress(aAddress, kAloc16Leader); }
 
     /**
      * This method computes the Commissioner's ALOC.
@@ -793,7 +816,7 @@ public:
      */
     otError GetCommissionerAloc(Ip6::Address &aAddress, uint16_t aSessionId) const
     {
-        return GetAlocAddress(aAddress, CommissionerAloc16FromId(aSessionId));
+        return GetLocatorAddress(aAddress, CommissionerAloc16FromId(aSessionId));
     }
 
     /**
@@ -972,6 +995,18 @@ public:
      *
      */
     void RequestShorterChildIdRequest(void);
+
+    /**
+     * This method gets the RLOC or ALOC of a given RLOC16 or ALOC16.
+     *
+     * @param[out]  aAddress  A reference to the RLOC or ALOC.
+     * @param[in]   aLocator  RLOC16 or ALOC16.
+     *
+     * @retval OT_ERROR_NONE      If got the RLOC or ALOC successfully.
+     * @retval OT_ERROR_DETACHED  If device is detached.
+     *
+     */
+    otError GetLocatorAddress(Ip6::Address &aAddress, uint16_t aLocator) const;
 
 protected:
     /**
@@ -1756,7 +1791,6 @@ private:
                         uint8_t                aVersion);
     bool IsNetworkDataNewer(const LeaderData &aLeaderData);
 
-    otError GetAlocAddress(Ip6::Address &aAddress, uint16_t aAloc16) const;
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
     /**
      * This method scans for network data from the leader and updates IP addresses assigned to this
@@ -1839,6 +1873,7 @@ private:
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
     Ip6::NetifUnicastAddress   mBackboneRouterPrimaryAloc;
     Ip6::NetifMulticastAddress mAllNetworkBackboneRouters;
+    Ip6::NetifMulticastAddress mAllDomainBackboneRouters;
 #endif
 
     otMleCounters mCounters;

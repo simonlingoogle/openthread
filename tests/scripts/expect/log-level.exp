@@ -1,5 +1,6 @@
+#!/usr/bin/expect -f
 #
-#  Copyright (c) 2019, The OpenThread Authors.
+#  Copyright (c) 2020, The OpenThread Authors.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -26,9 +27,19 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-if(OT_BUILTIN_MBEDTLS)
-    add_subdirectory(mbedtls)
-endif()
-if(OT_PLATFORM STREQUAL "kw41z")
-    add_subdirectory(nxp)
-endif()
+spawn $env(OT_COMMAND) 1
+set timeout 1
+expect_after {
+    timeout { exit 1 }
+}
+send "log level\n"
+expect "1\r\nDone\r\n"
+send "log level 5\n"
+expect "Done"
+send "log level\n"
+expect "5\r\nDone\r\n"
+send "log level -1\n"
+expect "Error 7: InvalidArgs\r\n"
+send "log level 6\n"
+expect "Error 7: InvalidArgs\r\n"
+send_user "\r\n"

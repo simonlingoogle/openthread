@@ -61,6 +61,7 @@
 
 #include <openthread/diag.h>
 #include <openthread/icmp6.h>
+#include <openthread/logging.h>
 #include <openthread/platform/uart.h>
 
 #include "common/new.hpp"
@@ -140,6 +141,9 @@ const struct Command Interpreter::sCommands[] = {
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
     {"dns", &Interpreter::ProcessDns},
 #endif
+#if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+    {"domainname", &Interpreter::ProcessDomainName},
+#endif
 #if OPENTHREAD_FTD
     {"eidcache", &Interpreter::ProcessEidCache},
 #endif
@@ -147,9 +151,7 @@ const struct Command Interpreter::sCommands[] = {
 #if OPENTHREAD_POSIX
     {"exit", &Interpreter::ProcessExit},
 #endif
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_DEBUG_UART) && OPENTHREAD_POSIX
-    {"logfilename", &Interpreter::ProcessLogFilename},
-#endif
+    {"log", &Interpreter::ProcessLog},
     {"extaddr", &Interpreter::ProcessExtAddress},
     {"extpanid", &Interpreter::ProcessExtPanId},
     {"factoryreset", &Interpreter::ProcessFactoryReset},
@@ -579,6 +581,24 @@ exit:
     return error;
 }
 #endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+
+void Interpreter::ProcessDomainName(uint8_t aArgsLength, char *aArgs[])
+{
+    otError error = OT_ERROR_NONE;
+
+    if (aArgsLength == 0)
+    {
+        const char *domainName = otThreadGetDomainName(mInstance);
+        mServer->OutputFormat("%s\r\n", static_cast<const char *>(domainName));
+    }
+    else
+    {
+        SuccessOrExit(error = otThreadSetDomainName(mInstance, aArgs[0]));
+    }
+
+exit:
+    AppendResult(error);
+}
 
 #endif // (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
 
@@ -1363,20 +1383,47 @@ void Interpreter::ProcessExit(uint8_t aArgsLength, char *aArgs[])
 }
 #endif
 
-#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_DEBUG_UART) && OPENTHREAD_POSIX
-
-void Interpreter::ProcessLogFilename(uint8_t aArgsLength, char *aArgs[])
+void Interpreter::ProcessLog(uint8_t aArgsLength, char *aArgs[])
 {
     otError error = OT_ERROR_NONE;
 
-    VerifyOrExit(aArgsLength == 1, error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(aArgsLength >= 1, error = OT_ERROR_INVALID_ARGS);
 
-    SuccessOrExit(error = otPlatDebugUart_logfile(aArgs[0]));
+    if (!strcmp(aArgs[0], "level"))
+    {
+        if (aArgsLength == 1)
+        {
+            mServer->OutputFormat("%d\r\n", otLoggingGetLevel());
+        }
+#if OPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE
+        else if (aArgsLength == 2)
+        {
+            long level;
+
+            SuccessOrExit(error = ParseLong(aArgs[1], level));
+            SuccessOrExit(error = otLoggingSetLevel(static_cast<otLogLevel>(level)));
+        }
+#endif
+        else
+        {
+            ExitNow(error = OT_ERROR_INVALID_ARGS);
+        }
+    }
+#if (OPENTHREAD_CONFIG_LOG_OUTPUT == OPENTHREAD_CONFIG_LOG_OUTPUT_DEBUG_UART) && OPENTHREAD_POSIX
+    else if (!strcmp(aArgs[0], "filename"))
+    {
+        VerifyOrExit(aArgsLength == 1, error = OT_ERROR_INVALID_ARGS);
+        SuccessOrExit(error = otPlatDebugUart_logfile(aArgs[1]));
+    }
+#endif
+    else
+    {
+        ExitNow(error = OT_ERROR_INVALID_ARGS);
+    }
 
 exit:
     AppendResult(error);
 }
-#endif
 
 void Interpreter::ProcessExtPanId(uint8_t aArgsLength, char *aArgs[])
 {
@@ -2035,7 +2082,7 @@ void Interpreter::ProcessNetworkName(uint8_t aArgsLength, char *aArgs[])
     if (aArgsLength == 0)
     {
         const char *networkName = otThreadGetNetworkName(mInstance);
-        mServer->OutputFormat("%.*s\r\n", OT_NETWORK_NAME_MAX_SIZE, static_cast<const char *>(networkName));
+        mServer->OutputFormat("%s\r\n", static_cast<const char *>(networkName));
     }
     else
     {
@@ -2527,6 +2574,15 @@ otError Interpreter::ProcessPrefixAdd(uint8_t aArgsLength, char *aArgs[])
                     config.mStable = true;
                     break;
 
+                case 'n':
+                    config.mNdDns = true;
+                    break;
+
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+                case 'D':
+                    config.mDp = true;
+                    break;
+#endif
                 default:
                     ExitNow(error = OT_ERROR_INVALID_ARGS);
                 }
@@ -2575,6 +2631,76 @@ exit:
     return error;
 }
 
+void Interpreter::OutputPrefix(otBorderRouterConfig &aConfig)
+{
+    mServer->OutputFormat("%x:%x:%x:%x::/%d ", HostSwap16(aConfig.mPrefix.mPrefix.mFields.m16[0]),
+                          HostSwap16(aConfig.mPrefix.mPrefix.mFields.m16[1]),
+                          HostSwap16(aConfig.mPrefix.mPrefix.mFields.m16[2]),
+                          HostSwap16(aConfig.mPrefix.mPrefix.mFields.m16[3]), aConfig.mPrefix.mLength);
+
+    if (aConfig.mPreferred)
+    {
+        mServer->OutputFormat("p");
+    }
+
+    if (aConfig.mSlaac)
+    {
+        mServer->OutputFormat("a");
+    }
+
+    if (aConfig.mDhcp)
+    {
+        mServer->OutputFormat("d");
+    }
+
+    if (aConfig.mConfigure)
+    {
+        mServer->OutputFormat("c");
+    }
+
+    if (aConfig.mDefaultRoute)
+    {
+        mServer->OutputFormat("r");
+    }
+
+    if (aConfig.mOnMesh)
+    {
+        mServer->OutputFormat("o");
+    }
+
+    if (aConfig.mStable)
+    {
+        mServer->OutputFormat("s");
+    }
+
+    if (aConfig.mNdDns)
+    {
+        mServer->OutputFormat("n");
+    }
+
+    if (aConfig.mDp)
+    {
+        mServer->OutputFormat("D");
+    }
+
+    switch (aConfig.mPreference)
+    {
+    case OT_ROUTE_PREFERENCE_LOW:
+        mServer->OutputFormat(" low");
+        break;
+
+    case OT_ROUTE_PREFERENCE_MED:
+        mServer->OutputFormat(" med");
+        break;
+
+    case OT_ROUTE_PREFERENCE_HIGH:
+        mServer->OutputFormat(" high");
+        break;
+    }
+
+    mServer->OutputFormat("\r\n");
+}
+
 otError Interpreter::ProcessPrefixList(void)
 {
     otNetworkDataIterator iterator = OT_NETWORK_DATA_ITERATOR_INIT;
@@ -2582,61 +2708,19 @@ otError Interpreter::ProcessPrefixList(void)
 
     while (otBorderRouterGetNextOnMeshPrefix(mInstance, &iterator, &config) == OT_ERROR_NONE)
     {
-        mServer->OutputFormat("%x:%x:%x:%x::/%d ", HostSwap16(config.mPrefix.mPrefix.mFields.m16[0]),
-                              HostSwap16(config.mPrefix.mPrefix.mFields.m16[1]),
-                              HostSwap16(config.mPrefix.mPrefix.mFields.m16[2]),
-                              HostSwap16(config.mPrefix.mPrefix.mFields.m16[3]), config.mPrefix.mLength);
-
-        if (config.mPreferred)
-        {
-            mServer->OutputFormat("p");
-        }
-
-        if (config.mSlaac)
-        {
-            mServer->OutputFormat("a");
-        }
-
-        if (config.mDhcp)
-        {
-            mServer->OutputFormat("d");
-        }
-
-        if (config.mConfigure)
-        {
-            mServer->OutputFormat("c");
-        }
-
-        if (config.mDefaultRoute)
-        {
-            mServer->OutputFormat("r");
-        }
-
-        if (config.mOnMesh)
-        {
-            mServer->OutputFormat("o");
-        }
-
-        if (config.mStable)
-        {
-            mServer->OutputFormat("s");
-        }
-
-        switch (config.mPreference)
-        {
-        case OT_ROUTE_PREFERENCE_LOW:
-            mServer->OutputFormat(" low\r\n");
-            break;
-
-        case OT_ROUTE_PREFERENCE_MED:
-            mServer->OutputFormat(" med\r\n");
-            break;
-
-        case OT_ROUTE_PREFERENCE_HIGH:
-            mServer->OutputFormat(" high\r\n");
-            break;
-        }
+        OutputPrefix(config);
     }
+
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+    if (otBackboneRouterGetState(mInstance) == OT_BACKBONE_ROUTER_STATE_DISABLED)
+    {
+        SuccessOrExit(otBackboneRouterGetDomainPrefix(mInstance, &config));
+        mServer->OutputFormat("- ");
+        OutputPrefix(config);
+    }
+    // Else already printed via above while loop.
+exit:
+#endif
 
     return OT_ERROR_NONE;
 }
