@@ -142,6 +142,8 @@ public:
      */
     Router *Allocate(void);
 
+    void VerifyAllocationCorrectness(const char *file = NULL, int lineno = 0);
+
     /**
      * This method allocates a router with a specified router id.
      *
@@ -333,6 +335,20 @@ public:
      *
      */
     void ProcessTimerTick(void);
+
+    bool IsRouter(const Router &router)
+    {
+        bool isRouter = false;
+        for (int i = 0; i < Mle::kMaxRouters; i++)
+        {
+            if (&mRouters[i] == &router)
+            {
+                isRouter = true;
+                break;
+            }
+        }
+        return isRouter;
+    }
 
 private:
     void          UpdateAllocation(void);

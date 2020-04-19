@@ -205,7 +205,11 @@ otError MleRouter::BecomeLeader(void)
     Get<MeshCoP::Leader>().SetEmptyCommissionerData();
 
     SetStateLeader(Rloc16FromRouterId(leaderId));
-
+    Get<RouterTable>().VerifyAllocationCorrectness();
+#if OPENTHREAD_FTD
+    OT_ASSERT(Get<RouterTable>().GetLeader() != NULL);
+    OT_ASSERT(Get<RouterTable>().IsAllocated(GetLeaderId()));
+#endif
 exit:
     return error;
 }
@@ -302,7 +306,7 @@ exit:
     {
         SetRouterId(kInvalidRouterId);
     }
-
+    Get<RouterTable>().VerifyAllocationCorrectness();
     return error;
 }
 
@@ -388,6 +392,7 @@ bool MleRouter::HandleAdvertiseTimer(void)
     SendAdvertisement();
 
 exit:
+    Get<RouterTable>().VerifyAllocationCorrectness();
     return continueTrickle;
 }
 
@@ -673,6 +678,7 @@ otError MleRouter::HandleLinkRequest(const Message &aMessage, const Ip6::Message
     SuccessOrExit(error = SendLinkAccept(aMessageInfo, neighbor, requestedTlvs, challenge));
 
 exit:
+    Get<RouterTable>().VerifyAllocationCorrectness();
     return error;
 }
 
@@ -782,7 +788,7 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
     {
         otLogWarnMle("Failed to process Link Accept: %s", otThreadErrorToString(error));
     }
-
+    Get<RouterTable>().VerifyAllocationCorrectness();
     return error;
 }
 
@@ -934,7 +940,11 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
         {
             SetStateRouter(GetRloc16());
         }
-
+        Get<RouterTable>().VerifyAllocationCorrectness();
+#if OPENTHREAD_FTD
+        OT_ASSERT(Get<RouterTable>().GetLeader() != NULL);
+        OT_ASSERT(Get<RouterTable>().IsAllocated(GetLeaderId()));
+#endif
         mRetrieveNewNetworkData = true;
         SendDataRequest(aMessageInfo.GetPeerAddr(), dataRequestTlvs, sizeof(dataRequestTlvs), 0);
 
@@ -953,7 +963,8 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
 
         // Leader Data
         SuccessOrExit(error = ReadLeaderData(aMessage, leaderData));
-        VerifyOrExit(leaderData.GetPartitionId() == mLeaderData.GetPartitionId());
+        VerifyOrExit(leaderData.GetPartitionId() == mLeaderData.GetPartitionId() &&
+                     leaderData.GetLeaderRouterId() == mLeaderData.GetLeaderRouterId());
 
         if (mRetrieveNewNetworkData ||
             (static_cast<int8_t>(leaderData.GetDataVersion() - Get<NetworkData::Leader>().GetVersion()) > 0))
@@ -969,7 +980,6 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
             UpdateRoutes(route, routerId);
         }
 
-        // update routing table
         if (routerId != mRouterId && !IsRouterIdValid(router->GetNextHop()))
         {
             ResetAdvertiseInterval();
@@ -1020,6 +1030,7 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
     }
 
 exit:
+    Get<RouterTable>().VerifyAllocationCorrectness();
     return error;
 }
 
@@ -1081,6 +1092,8 @@ otError MleRouter::ProcessRouteTlv(const RouteTlv &aRoute)
 {
     otError error = OT_ERROR_NONE;
 
+    OT_ASSERT(aRoute.IsRouterIdSet(GetLeaderId()));
+
     mRouterTable.UpdateRouterIdSet(aRoute.GetRouterIdSequence(), aRoute.GetRouterIdMask());
 
     if (IsRouter() && !mRouterTable.IsAllocated(mRouterId))
@@ -1088,6 +1101,14 @@ otError MleRouter::ProcessRouteTlv(const RouteTlv &aRoute)
         BecomeDetached();
         error = OT_ERROR_NO_ROUTE;
     }
+
+#if OPENTHREAD_FTD
+    if (!IsDetached())
+    {
+        otLogCritMle("ProcessRouteTlv: L=%d, P=%d, role=%d", GetLeaderId(), GetParent().GetRouterId(), GetRole());
+        OT_ASSERT(Get<RouterTable>().GetLeader() != NULL);
+    }
+#endif
 
     return error;
 }
@@ -1175,6 +1196,8 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
     uint8_t         routerId;
     uint8_t         routerCount;
 
+    Get<RouterTable>().VerifyAllocationCorrectness();
+
     aMessageInfo.GetPeerAddr().ToExtAddress(macAddr);
 
     // Source Address
@@ -1242,7 +1265,7 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
 
     VerifyOrExit(IsActiveRouter(sourceAddress) && route.IsValid());
     routerId = RouterIdFromRloc16(sourceAddress);
-
+    Get<RouterTable>().VerifyAllocationCorrectness();
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     Get<TimeSync>().HandleTimeSyncMessage(aMessage);
 #endif
@@ -1284,10 +1307,19 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
 
         if (processRouteTlv)
         {
+            otLogCritMle("HandleAdvertisement: P=%d,%d, L=%d,%d", mLeaderData.mPartitionId, leaderData.mPartitionId,
+                         mLeaderData.mLeaderRouterId, leaderData.mLeaderRouterId);
+
+            OT_ASSERT(route.IsRouterIdSet(leaderData.mLeaderRouterId));
+            //            SetLeaderData(leaderData.mPartitionId, leaderData.mWeighting, leaderData.mLeaderRouterId);
             SuccessOrExit(error = ProcessRouteTlv(route));
+
+            OT_ASSERT(Get<RouterTable>().IsAllocated(GetLeaderId()));
+            OT_ASSERT(Get<RouterTable>().GetLeader() != NULL);
         }
     }
 
+    Get<RouterTable>().VerifyAllocationCorrectness();
     switch (mRole)
     {
     case kRoleDisabled:
@@ -1349,6 +1381,7 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
                     }
                 }
             }
+            Get<RouterTable>().VerifyAllocationCorrectness();
         }
         else
         {
@@ -1368,6 +1401,7 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
                 SendLinkRequest(router);
                 ExitNow(error = OT_ERROR_NO_ROUTE);
             }
+            Get<RouterTable>().VerifyAllocationCorrectness();
         }
 
         router->SetLastHeard(TimerMilli::GetNow());
@@ -1395,7 +1429,7 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
         {
             mRouterSelectionJitterTimeout = 1 + Random::NonCrypto::GetUint8InRange(0, mRouterSelectionJitter);
         }
-
+        Get<RouterTable>().VerifyAllocationCorrectness();
         // fall through
 
     case kRoleLeader:
@@ -1417,18 +1451,24 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
         }
 
         router->SetLastHeard(TimerMilli::GetNow());
+        Get<RouterTable>().VerifyAllocationCorrectness();
         break;
     }
-
+    Get<RouterTable>().VerifyAllocationCorrectness();
     UpdateRoutes(route, routerId);
 
+    Get<RouterTable>().VerifyAllocationCorrectness();
+
 exit:
+
+    Get<RouterTable>().VerifyAllocationCorrectness();
     if (aNeighbor && aNeighbor->GetRloc16() != sourceAddress)
     {
         // Remove stale neighbors
+        otLogCritMle("Removing stale neighbor: %04x != %04x", aNeighbor->GetRloc16(), sourceAddress);
         RemoveNeighbor(*aNeighbor);
     }
-
+    Get<RouterTable>().VerifyAllocationCorrectness();
     return error;
 }
 
@@ -1619,6 +1659,10 @@ otError MleRouter::HandleParentRequest(const Message &aMessage, const Ip6::Messa
 
     // 3. Its current routing path cost to the Leader is infinite.
     leader = mRouterTable.GetLeader();
+    if (leader == NULL)
+    {
+        otLogCritMle("HandleParentRequest: GetLeaderId()=%d", GetLeaderId());
+    }
     OT_ASSERT(leader != NULL);
 
     VerifyOrExit(IsLeader() || GetLinkCost(GetLeaderId()) < kMaxRouteCost ||
@@ -3318,8 +3362,22 @@ void MleRouter::RemoveRouterLink(Router &aRouter)
 
 void MleRouter::RemoveNeighbor(Neighbor &aNeighbor)
 {
+    VerifyOrExit(!aNeighbor.IsStateInvalid());
+
+    OT_ASSERT(aNeighbor.GetRloc16() != 0xFFFF);
+    Get<RouterTable>().VerifyAllocationCorrectness(__BASE_FILE__, __LINE__);
+
     if (&aNeighbor == &mParent)
     {
+        if (IsChild())
+        {
+            BecomeDetached();
+        }
+        Get<RouterTable>().VerifyAllocationCorrectness(__BASE_FILE__, __LINE__);
+    }
+    else if (&aNeighbor == &mParentCandidate)
+    {
+        mParentCandidate.Clear();
         if (IsChild())
         {
             BecomeDetached();
@@ -3332,24 +3390,41 @@ void MleRouter::RemoveNeighbor(Neighbor &aNeighbor)
             Signal(OT_NEIGHBOR_TABLE_EVENT_CHILD_REMOVED, aNeighbor);
         }
 
+        Get<RouterTable>().VerifyAllocationCorrectness(__BASE_FILE__, __LINE__);
+
+        OT_ASSERT(!mRouterTable.IsRouter(static_cast<Router &>(aNeighbor)));
+        OT_ASSERT(&static_cast<Router &>(aNeighbor) != &mParent);
+        OT_ASSERT(&static_cast<Router &>(aNeighbor) != &mParentCandidate);
+        OT_ASSERT(mChildTable.GetChildIndex(static_cast<Child &>(aNeighbor)) < kMaxChildren);
+        OT_ASSERT_OTHERWISE(mChildTable.GetChildIndex(static_cast<Child &>(aNeighbor)) < kMaxChildren,
+                            otLogCritMle("bad neighbor: %p rloc16=%d, state=%d, index=%d", &aNeighbor,
+                                         aNeighbor.GetRloc16(), aNeighbor.GetState(),
+                                         mChildTable.GetChildIndex(static_cast<Child &>(aNeighbor))));
+        OT_ASSERT(0 <= mChildTable.GetChildIndex(static_cast<Child &>(aNeighbor)));
         Get<IndirectSender>().ClearAllMessagesForSleepyChild(static_cast<Child &>(aNeighbor));
+        Get<RouterTable>().VerifyAllocationCorrectness(__BASE_FILE__, __LINE__);
 
         if (aNeighbor.IsFullThreadDevice())
         {
             // Clear all EID-to-RLOC entries associated with the child.
             Get<AddressResolver>().Remove(aNeighbor.GetRloc16());
         }
-
+        Get<RouterTable>().VerifyAllocationCorrectness(__BASE_FILE__, __LINE__);
         RemoveStoredChild(aNeighbor.GetRloc16());
+        Get<RouterTable>().VerifyAllocationCorrectness(__BASE_FILE__, __LINE__);
     }
     else if (aNeighbor.IsStateValid())
     {
         Signal(OT_NEIGHBOR_TABLE_EVENT_ROUTER_REMOVED, aNeighbor);
         mRouterTable.RemoveRouterLink(static_cast<Router &>(aNeighbor));
+        Get<RouterTable>().VerifyAllocationCorrectness(__BASE_FILE__, __LINE__);
     }
 
     aNeighbor.GetLinkInfo().Clear();
     aNeighbor.SetState(Neighbor::kStateInvalid);
+    Get<RouterTable>().VerifyAllocationCorrectness(__BASE_FILE__, __LINE__);
+exit:
+    return;
 }
 
 Neighbor *MleRouter::GetNeighbor(uint16_t aAddress)
@@ -4200,6 +4275,7 @@ void MleRouter::HandleAddressSolicit(Coap::Message &aMessage, const Ip6::Message
     }
 
 exit:
+    Get<RouterTable>().VerifyAllocationCorrectness();
 
     if (error == OT_ERROR_NONE)
     {
@@ -4521,6 +4597,14 @@ void MleRouter::FillRouteTlv(RouteTlv &aTlv)
 otError MleRouter::AppendRoute(Message &aMessage)
 {
     RouteTlv tlv;
+
+    if (Get<RouterTable>().GetLeader() == NULL)
+    {
+        otLogCritMle("AppendRoute bad: L=%d, id=%d", GetLeaderId(), GetRloc16());
+    }
+
+    OT_ASSERT(Get<RouterTable>().GetLeader() != NULL);
+    OT_ASSERT(Get<RouterTable>().IsAllocated(GetLeaderId()));
 
     tlv.Init();
     FillRouteTlv(tlv);

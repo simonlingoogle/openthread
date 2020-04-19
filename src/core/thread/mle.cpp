@@ -2971,10 +2971,19 @@ otError Mle::HandleAdvertisement(const Message &aMessage, const Ip6::MessageInfo
                 {
                     // Overwrite Route Data
                     Get<MleRouter>().ProcessRouteTlv(route);
+                    OT_ASSERT(Get<RouterTable>().IsAllocated(leaderData.GetLeaderRouterId()));
+                }
+                else
+                {
+                    OT_ASSERT(false);
                 }
             }
-#endif
 
+            OT_ASSERT(Get<RouterTable>().GetLeader() != NULL);
+            OT_ASSERT(Get<RouterTable>().IsAllocated(GetLeaderId()));
+
+            Get<RouterTable>().VerifyAllocationCorrectness();
+#endif
             mRetrieveNewNetworkData = true;
         }
 
@@ -3577,6 +3586,12 @@ otError Mle::HandleChildIdResponse(const Message &         aMessage,
         {
             SuccessOrExit(error = Get<MleRouter>().ProcessRouteTlv(route));
         }
+        else
+        {
+            OT_ASSERT(false);
+        }
+
+        Get<RouterTable>().VerifyAllocationCorrectness();
     }
 #endif
 
@@ -3590,6 +3605,10 @@ otError Mle::HandleChildIdResponse(const Message &         aMessage,
 
     SetStateChild(shortAddress);
 
+#if OPENTHREAD_FTD
+    OT_ASSERT(Get<RouterTable>().GetLeader() != NULL);
+    OT_ASSERT(Get<RouterTable>().IsAllocated(GetLeaderId()));
+#endif
 exit:
 
     if (error != OT_ERROR_NONE)

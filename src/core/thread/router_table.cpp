@@ -120,6 +120,35 @@ bool RouterTable::IsAllocated(uint8_t aRouterId) const
     return mAllocatedRouterIds.Contains(aRouterId);
 }
 
+void RouterTable::VerifyAllocationCorrectness(const char *file, int lineno)
+{
+    if (file == NULL)
+    {
+        file   = __BASE_FILE__;
+        lineno = __LINE__;
+    }
+
+    for (uint8_t routerId = 0; routerId <= Mle::kMaxRouterId; routerId++)
+    {
+        if (IsAllocated(routerId))
+        {
+            OT_ASSERT(GetRouter(routerId) != NULL);
+            OT_ASSERT(GetRouter(routerId)->GetRouterId() == routerId);
+        }
+        else
+        {
+            OT_ASSERT_OTHERWISE(GetRouter(routerId) == NULL || GetRouter(routerId)->GetRloc16() == 0xFFFF,
+                                otLogCritMle("%s|%d| VerifyAllocationCorrectness not allocated: routerId=%d, rloc=%04x",
+                                             file, lineno, routerId, GetRouter(routerId)->GetRloc16()););
+        }
+    }
+    if (Get<Mle::MleRouter>().IsAttached())
+    {
+        OT_ASSERT(GetLeader() != NULL);
+        OT_ASSERT(IsAllocated(Get<Mle::MleRouter>().GetLeaderId()));
+    }
+} // namespace ot
+
 void RouterTable::UpdateAllocation(void)
 {
     uint8_t indexMap[Mle::kMaxRouterId + 1];
@@ -256,6 +285,8 @@ Router *RouterTable::Allocate(uint8_t aRouterId)
     mAllocatedRouterIds.Add(aRouterId);
     UpdateAllocation();
 
+    OT_ASSERT(GetLeader() != NULL);
+
     rval = GetRouter(aRouterId);
     rval->SetLastHeard(TimerMilli::GetNow());
 
@@ -264,6 +295,7 @@ Router *RouterTable::Allocate(uint8_t aRouterId)
     Get<Mle::MleRouter>().ResetAdvertiseInterval();
 
     otLogNoteMle("Allocate router id %d", aRouterId);
+    OT_ASSERT(IsAllocated(Get<Mle::MleRouter>().GetLeaderId()));
 
 exit:
     return rval;
@@ -281,6 +313,8 @@ otError RouterTable::Release(uint8_t aRouterId)
 
     mAllocatedRouterIds.Remove(aRouterId);
     UpdateAllocation();
+    OT_ASSERT(IsAllocated(Get<Mle::MleRouter>().GetLeaderId()));
+    OT_ASSERT(GetLeader() != NULL);
 
     mRouterIdReuseDelay[aRouterId] = Mle::kRouterIdReuseDelay;
 
@@ -516,6 +550,11 @@ void RouterTable::UpdateRouterIdSet(uint8_t aRouterIdSequence, const Mle::Router
         {
             Router *router = GetRouter(routerId);
 
+            if (router == NULL)
+            {
+                otLogCritMle("Router %d not found", routerId);
+            }
+
             OT_ASSERT(router != NULL);
             router->SetNextHop(Mle::kInvalidRouterId);
             RemoveRouterLink(*router);
@@ -526,6 +565,8 @@ void RouterTable::UpdateRouterIdSet(uint8_t aRouterIdSequence, const Mle::Router
 
     mAllocatedRouterIds = aRouterIdSet;
     UpdateAllocation();
+
+    OT_ASSERT(IsAllocated(Get<Mle::MleRouter>().GetLeaderId()));
     Get<Mle::MleRouter>().ResetAdvertiseInterval();
 
 exit:
