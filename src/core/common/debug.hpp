@@ -46,16 +46,16 @@
 #include <assert.h>
 #include <unistd.h>
 
-#define OT_ASSERT(cond)                            \
-    do                                             \
-    {                                              \
-        if (!(cond))                               \
-        {                                          \
-            fflush(stdout);                        \
-            fflush(stdin);                         \
-            sleep(3);                              \
-            assert(false);                         \
-        }                                          \
+#define OT_ASSERT(cond)     \
+    do                      \
+    {                       \
+        if (!(cond))        \
+        {                   \
+            fflush(stdout); \
+            fflush(stderr); \
+            sleep(3);       \
+            assert(false);  \
+        }                   \
     } while (0)
 
 #elif OPENTHREAD_CONFIG_PLATFORM_ASSERT_MANAGEMENT
