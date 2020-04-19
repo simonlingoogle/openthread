@@ -29,6 +29,8 @@
 cmake_minimum_required(VERSION 3.13.1)
 project(openthread)
 
+ADD_COMPILE_DEFINITIONS(OPENTHREAD_CONFIG_MLE_LONG_ROUTES_ENABLE=1)
+
 option(OT_BUILD_EXECUTABLES "Build executables" ON)
 option(OT_BUILTIN_MBEDTLS "Enable builtin mbedTLS" ON)
 option(OT_COVERAGE "enable coverage" OFF)

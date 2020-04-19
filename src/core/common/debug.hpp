@@ -44,8 +44,19 @@
 #if defined(OPENTHREAD_TARGET_DARWIN) || defined(OPENTHREAD_TARGET_LINUX)
 
 #include <assert.h>
+#include <unistd.h>
 
-#define OT_ASSERT(cond) assert(cond)
+#define OT_ASSERT(cond)                            \
+    do                                             \
+    {                                              \
+        if (!(cond))                               \
+        {                                          \
+            fflush(stdout);                        \
+            fflush(stdin);                         \
+            sleep(3);                              \
+            assert(false);                         \
+        }                                          \
+    } while (0)
 
 #elif OPENTHREAD_CONFIG_PLATFORM_ASSERT_MANAGEMENT
 
