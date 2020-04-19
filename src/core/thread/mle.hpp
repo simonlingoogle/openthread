@@ -1695,6 +1695,7 @@ protected:
     TimerMilli    mMessageTransmissionTimer; ///< The timer for (re-)sending of MLE messages (e.g. Child Update).
     uint8_t       mParentLeaderCost;
 
+    Router    mParentCandidate;
 private:
     enum
     {
@@ -1834,7 +1835,6 @@ private:
     bool       mReceivedResponseFromParent;
     LeaderData mParentLeaderData;
 
-    Router    mParentCandidate;
     Challenge mParentCandidateChallenge;
 
     Ip6::UdpSocket mSocket;
