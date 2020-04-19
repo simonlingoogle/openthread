@@ -58,6 +58,22 @@
         }                   \
     } while (0)
 
+#define OT_ASSERT_OTHERWISE(cond, stmt) \
+    do                                  \
+    {                                   \
+        if (!(cond))                    \
+        {                               \
+            while (1)                   \
+            {                           \
+                stmt;                   \
+                fflush(stdout);         \
+                fflush(stderr);         \
+                sleep(1);               \
+            }                           \
+            assert(false);              \
+        }                               \
+    } while (0)
+
 #elif OPENTHREAD_CONFIG_PLATFORM_ASSERT_MANAGEMENT
 
 #include "openthread/platform/misc.h"
