@@ -184,7 +184,7 @@ ExtensionBase &ExtensionBase::Init(Instance &aInstance)
 {
     ExtensionBase *ext = reinterpret_cast<ExtensionBase *>(&sExtensionRaw);
 
-    VerifyOrExit(!ext->mIsInitialized);
+    VerifyOrExit(!ext->mIsInitialized, OT_NOOP);
 
     ext = new (&sExtensionRaw) LegacyPairingExtension(aInstance);
 
@@ -438,11 +438,11 @@ bool LegacyPairingExtension::HandleUdpReceive(const otMessage *aMessage, const o
 
     // Ensure message length is smaller than max legacy MLE packet
     length = otMessageGetLength(aMessage) - otMessageGetOffset(aMessage);
-    VerifyOrExit(length < MLE_MSG_BUFFER_SIZE);
+    VerifyOrExit(length < MLE_MSG_BUFFER_SIZE, OT_NOOP);
 
     // Read and check the security suite
     otMessageRead(aMessage, otMessageGetOffset(aMessage), &securitySuite, sizeof(securitySuite));
-    VerifyOrExit(securitySuite == HEADER_SEC_SUITE_ENABLE);
+    VerifyOrExit(securitySuite == HEADER_SEC_SUITE_ENABLE, OT_NOOP);
 
     // Leave space for two IP address at start of buffer (used for AES security header)
     bufPtr = &buffer[2 * sizeof(otIp6Address)];
@@ -450,16 +450,16 @@ bool LegacyPairingExtension::HandleUdpReceive(const otMessage *aMessage, const o
     // Copy the rest of message content into local buffer (skip the security suit which is already checked
     // and should be excluded from the AES-CCM header)
     length = otMessageRead(aMessage, otMessageGetOffset(aMessage) + 1, bufPtr, MLE_MSG_BUFFER_SIZE);
-    VerifyOrExit(length < MLE_MSG_BUFFER_SIZE);
+    VerifyOrExit(length < MLE_MSG_BUFFER_SIZE, OT_NOOP);
 
     //-----------------------------
     // Parse the security header
 
     // Make sure the packet includes security header, 1 byte for MLE command and MIC
-    VerifyOrExit(length >= SECURITY_HEADER_LENGTH + SECURITY_MIC_LENGTH + 1);
+    VerifyOrExit(length >= SECURITY_HEADER_LENGTH + SECURITY_MIC_LENGTH + 1, OT_NOOP);
 
     // Check the security control: KeyIdMode 2 | EncMic32
-    VerifyOrExit(bufPtr[0] == (HEADER_SEC_CTRL_KEY_ID_MODE_1 | HEADER_SEC_CTRL_ENC_MIC_32));
+    VerifyOrExit(bufPtr[0] == (HEADER_SEC_CTRL_KEY_ID_MODE_1 | HEADER_SEC_CTRL_ENC_MIC_32), OT_NOOP);
     bufPtr += sizeof(uint8_t);
 
     // Read the frame counter (little endian)
@@ -467,7 +467,7 @@ bool LegacyPairingExtension::HandleUdpReceive(const otMessage *aMessage, const o
     bufPtr += sizeof(uint32_t);
 
     // Check Key Index
-    VerifyOrExit(bufPtr[0] == HEADER_KEY_INDEX_DEFAULT_VALUE);
+    VerifyOrExit(bufPtr[0] == HEADER_KEY_INDEX_DEFAULT_VALUE, OT_NOOP);
     bufPtr++;
 
     //----------------------------
@@ -506,7 +506,7 @@ bool LegacyPairingExtension::HandleUdpReceive(const otMessage *aMessage, const o
     );
 
     // Verify the calculated MIC matches the received one
-    VerifyOrExit(memcmp(calculatedMic, micPtr, SECURITY_MIC_LENGTH) == 0);
+    VerifyOrExit(memcmp(calculatedMic, micPtr, SECURITY_MIC_LENGTH) == 0, OT_NOOP);
 
     //---------------------------------
     // Get the decrypted payload and process the MLE command
@@ -560,17 +560,17 @@ void LegacyPairingExtension::HandleMleLinkRequest(const uint8_t *      aBufPtr,
         switch (type)
         {
         case TLV_MODE_TYPE:
-            VerifyOrExit(len == TLV_MODE_LENGTH);
+            VerifyOrExit(len == TLV_MODE_LENGTH, OT_NOOP);
             hasModeTlv = true;
             break;
 
         case TLV_CHALLENGE_TYPE:
-            VerifyOrExit(len == TLV_CHALLENGE_LENGTH);
+            VerifyOrExit(len == TLV_CHALLENGE_LENGTH, OT_NOOP);
             challenge = aBufPtr;
             break;
 
         case TLV_TIMEOUT_TYPE:
-            VerifyOrExit(len == TLV_TIMEOUT_LENGTH);
+            VerifyOrExit(len == TLV_TIMEOUT_LENGTH, OT_NOOP);
             timeout =
                 static_cast<uint32_t>((aBufPtr[0] << 24) + (aBufPtr[1] << 16) + (aBufPtr[2] << 8) + (aBufPtr[3] << 0));
             hasTimeoutTlv = true;
@@ -582,7 +582,7 @@ void LegacyPairingExtension::HandleMleLinkRequest(const uint8_t *      aBufPtr,
 
     // Mode and Timeout tlvs are considered optional in Link Request.
 
-    VerifyOrExit(challenge != NULL);
+    VerifyOrExit(challenge != NULL, OT_NOOP);
 
     SendMleCommand(MLE_CMD_LINK_ACCEPT_REQUEST, challenge, &aMessageInfo->mPeerAddr);
 
@@ -612,7 +612,7 @@ void LegacyPairingExtension::HandleMleLinkAcceptAndRequest(uint8_t              
     uint8_t        type;
     uint8_t        len;
 
-    VerifyOrExit((aCommand == MLE_CMD_LINK_ACCEPT_REQUEST) || (aCommand == MLE_CMD_LINK_ACCEPT));
+    VerifyOrExit((aCommand == MLE_CMD_LINK_ACCEPT_REQUEST) || (aCommand == MLE_CMD_LINK_ACCEPT), OT_NOOP);
 
     // Parse tlvs
     while (aBufPtr < bufferEnd)
@@ -623,29 +623,29 @@ void LegacyPairingExtension::HandleMleLinkAcceptAndRequest(uint8_t              
         switch (type)
         {
         case TLV_MODE_TYPE:
-            VerifyOrExit(len == TLV_MODE_LENGTH);
+            VerifyOrExit(len == TLV_MODE_LENGTH, OT_NOOP);
             hasModeTlv = true;
             break;
 
         case TLV_CHALLENGE_TYPE:
-            VerifyOrExit(len == TLV_CHALLENGE_LENGTH);
+            VerifyOrExit(len == TLV_CHALLENGE_LENGTH, OT_NOOP);
             challenge = aBufPtr;
             break;
 
         case TLV_RESPONSE_TYPE:
-            VerifyOrExit(len == TLV_RESPONSE_LENGTH);
+            VerifyOrExit(len == TLV_RESPONSE_LENGTH, OT_NOOP);
             response = aBufPtr;
             break;
 
         case TLV_LL_FRAME_COUNTER_TYPE:
-            VerifyOrExit(len == TLV_LL_FRAME_COUNTER_LENGTH);
+            VerifyOrExit(len == TLV_LL_FRAME_COUNTER_LENGTH, OT_NOOP);
             hasFrameCounterTlv = true;
             frameCounter =
                 static_cast<uint32_t>((aBufPtr[0] << 24) + (aBufPtr[1] << 16) + (aBufPtr[2] << 8) + (aBufPtr[3] << 0));
             break;
 
         case TLV_ULA_PREFIX_TYPE:
-            VerifyOrExit(len == TLV_ULA_PREFIX_LENGTH);
+            VerifyOrExit(len == TLV_ULA_PREFIX_LENGTH, OT_NOOP);
             ulaPrefix = aBufPtr;
             break;
         }
@@ -654,11 +654,11 @@ void LegacyPairingExtension::HandleMleLinkAcceptAndRequest(uint8_t              
     }
 
     // Frame counter is required in both LinkAcceptAndRequest and in LinkAccept.
-    VerifyOrExit(hasFrameCounterTlv);
+    VerifyOrExit(hasFrameCounterTlv, OT_NOOP);
 
     // Ensure the response matches the previously sent challenge.
-    VerifyOrExit(response != NULL);
-    VerifyOrExit(memcmp(response, mChallenge, TLV_CHALLENGE_LENGTH) == 0);
+    VerifyOrExit(response != NULL, OT_NOOP);
+    VerifyOrExit(memcmp(response, mChallenge, TLV_CHALLENGE_LENGTH) == 0, OT_NOOP);
 
     // If prefix ULA TLV is available, update local copy (if different).
     if ((ulaPrefix != NULL) && IsUlaPrefixValid(ulaPrefix))
@@ -676,7 +676,7 @@ void LegacyPairingExtension::HandleMleLinkAcceptAndRequest(uint8_t              
     case MLE_CMD_LINK_ACCEPT_REQUEST:
 
         // LinkAcceptAndRequest must include a challenge TLV
-        VerifyOrExit(challenge != NULL);
+        VerifyOrExit(challenge != NULL, OT_NOOP);
 
         // Send a LinkAccept in response to the received LinkAcceptAndRequest.
         SendMleCommand(MLE_CMD_LINK_ACCEPT, challenge, &aMessageInfo->mPeerAddr);
@@ -794,23 +794,23 @@ void LegacyPairingExtension::SendMleCommand(uint8_t aCommand, const uint8_t *aRe
     msgSettings.mLinkSecurityEnabled = false;
     msgSettings.mPriority            = OT_MESSAGE_PRIORITY_NORMAL;
     udpMessage                       = otUdpNewMessage(&GetInstance(), &msgSettings);
-    VerifyOrExit(udpMessage != NULL);
+    VerifyOrExit(udpMessage != NULL, OT_NOOP);
 
     // Add the security suite
     securitySuite = HEADER_SEC_SUITE_ENABLE;
     error         = otMessageAppend(udpMessage, &securitySuite, sizeof(uint8_t));
-    VerifyOrExit(error == OT_ERROR_NONE);
+    VerifyOrExit(error == OT_ERROR_NONE, OT_NOOP);
 
     // Append the udp content (security header + encrypted payload + MIC)
     bufPtr = &buffer[2 * sizeof(otIp6Address)];
     error  = otMessageAppend(udpMessage, bufPtr, length + SECURITY_HEADER_LENGTH);
-    VerifyOrExit(error == OT_ERROR_NONE);
+    VerifyOrExit(error == OT_ERROR_NONE, OT_NOOP);
 
     //-----------------------------
     // Send out the udp packet
 
     error = otUdpSendDatagram(&GetInstance(), udpMessage, &msgInfo);
-    VerifyOrExit(error == OT_ERROR_NONE);
+    VerifyOrExit(error == OT_ERROR_NONE, OT_NOOP);
 
     udpMessage = NULL;
     IncrementFrameCounter();
@@ -848,7 +848,7 @@ uint8_t *LegacyPairingExtension::AppendTlvs(uint8_t *aBufPtr, uint8_t aCommand, 
     case MLE_CMD_LINK_ACCEPT:
     case MLE_CMD_LINK_ACCEPT_REQUEST:
 
-        VerifyOrExit(aResponse != NULL, );
+        VerifyOrExit(aResponse != NULL, OT_NOOP);
         *aBufPtr++ = TLV_RESPONSE_TYPE;
         *aBufPtr++ = TLV_RESPONSE_LENGTH;
         memcpy(aBufPtr, aResponse, TLV_RESPONSE_LENGTH);
