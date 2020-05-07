@@ -236,7 +236,7 @@ void LegacyPairingExtension::AfterInstanceInit(void)
 void LegacyPairingExtension::AfterNcpInit(Ncp::NcpBase &aNcpBase)
 {
     OT_UNUSED_VARIABLE(aNcpBase);
-    Init();
+    IgnoreError(Init());
 }
 
 void LegacyPairingExtension::HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags)
