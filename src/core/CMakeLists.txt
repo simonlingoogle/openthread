@@ -34,7 +34,7 @@ set_target_properties(
     openthread-ftd openthread-mtd openthread-radio
     PROPERTIES
         C_STANDARD 99
-        CXX_STANDARD 98
+        CXX_STANDARD 11
 )
 
 target_compile_definitions(openthread-ftd PRIVATE
@@ -176,6 +176,7 @@ set(COMMON_SOURCES
     thread/announce_begin_server.cpp
     thread/announce_sender.cpp
     thread/child_table.cpp
+    thread/dua_manager.cpp
     thread/energy_scan_server.cpp
     thread/indirect_sender.cpp
     thread/key_manager.cpp
@@ -245,10 +246,10 @@ target_sources(openthread-radio PRIVATE
 
 target_link_libraries(openthread-ftd
     PRIVATE
-        mbedtls
+        ${OT_MBEDTLS}
 )
 
 target_link_libraries(openthread-mtd
     PRIVATE
-        mbedtls
+        ${OT_MBEDTLS}
 )

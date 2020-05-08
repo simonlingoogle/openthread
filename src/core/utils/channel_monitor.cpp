@@ -105,7 +105,7 @@ uint16_t ChannelMonitor::GetChannelOccupancy(uint8_t aChannel) const
 {
     uint16_t occupancy = 0;
 
-    VerifyOrExit((Radio::kChannelMin <= aChannel) && (aChannel <= Radio::kChannelMax));
+    VerifyOrExit((Radio::kChannelMin <= aChannel) && (aChannel <= Radio::kChannelMax), OT_NOOP);
     occupancy = mChannelOccupancy[aChannel - Radio::kChannelMin];
 
 exit:
@@ -119,7 +119,8 @@ void ChannelMonitor::HandleTimer(Timer &aTimer)
 
 void ChannelMonitor::HandleTimer(void)
 {
-    Get<Mac::Mac>().EnergyScan(mScanChannelMasks[mChannelMaskIndex], 0, &ChannelMonitor::HandleEnergyScanResult, this);
+    IgnoreError(Get<Mac::Mac>().EnergyScan(mScanChannelMasks[mChannelMaskIndex], 0,
+                                           &ChannelMonitor::HandleEnergyScanResult, this));
 
     mTimer.StartAt(mTimer.GetFireTime(), Random::NonCrypto::AddJitter(kTimerInterval, kMaxJitterInterval));
 }
@@ -194,7 +195,7 @@ void ChannelMonitor::LogResults(void)
 
     for (size_t i = 0; i < kNumChannels; i++)
     {
-        logString.Append("%02x ", mChannelOccupancy[i] >> 8);
+        IgnoreError(logString.Append("%02x ", mChannelOccupancy[i] >> 8));
     }
 
     otLogInfoUtil("ChannelMonitor: %u [%s]", mSampleCount, logString.AsCString());

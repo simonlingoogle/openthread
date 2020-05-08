@@ -127,8 +127,7 @@ Mle::Mle(Instance &aInstance)
 
     // link-local 64
     mLinkLocal64.Clear();
-    mLinkLocal64.GetAddress().mFields.m16[0] = HostSwap16(0xfe80);
-    mLinkLocal64.GetAddress().SetIid(Get<Mac::Mac>().GetExtAddress());
+    mLinkLocal64.GetAddress().SetToLinkLocalAddress(Get<Mac::Mac>().GetExtAddress());
     mLinkLocal64.mPrefixLength = 64;
     mLinkLocal64.mPreferred    = true;
     mLinkLocal64.mValid        = true;
@@ -157,42 +156,13 @@ Mle::Mle(Instance &aInstance)
 
 #endif
 
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-
-    // Primary Backbone Router Aloc
-    mBackboneRouterPrimaryAloc.Clear();
-
-    mBackboneRouterPrimaryAloc.mPrefixLength       = MeshLocalPrefix::kLength;
-    mBackboneRouterPrimaryAloc.mPreferred          = true;
-    mBackboneRouterPrimaryAloc.mValid              = true;
-    mBackboneRouterPrimaryAloc.mScopeOverride      = Ip6::Address::kRealmLocalScope;
-    mBackboneRouterPrimaryAloc.mScopeOverrideValid = true;
-    mBackboneRouterPrimaryAloc.GetAddress().SetLocator(kAloc16BackboneRouterPrimary);
-
-    // All Network Backbone Routers Multicast Address.
-    mAllNetworkBackboneRouters.Clear();
-
-    mAllNetworkBackboneRouters.GetAddress().mFields.m8[0]  = 0xff; // Multicast
-    mAllNetworkBackboneRouters.GetAddress().mFields.m8[1]  = 0x32; // Flags = 3, Scope = 2
-    mAllNetworkBackboneRouters.GetAddress().mFields.m8[2]  = 0;    // Reserved
-    mAllNetworkBackboneRouters.GetAddress().mFields.m8[15] = 3;    // Group ID = 3
-
-    // All Domain Backbone Routers Multicast Address.
-    mAllDomainBackboneRouters.Clear();
-
-    mAllDomainBackboneRouters.GetAddress().mFields.m8[0]  = 0xff; // Multicast
-    mAllDomainBackboneRouters.GetAddress().mFields.m8[1]  = 0x32; // Flags = 3, Scope = 2
-    mAllDomainBackboneRouters.GetAddress().mFields.m8[2]  = 0;    // Reserved
-    mAllDomainBackboneRouters.GetAddress().mFields.m8[15] = 3;    // Group ID = 3
-#endif
-
     // initialize Mesh Local Prefix
     meshLocalPrefix.SetFromExtendedPanId(Get<Mac::Mac>().GetExtendedPanId());
 
     // mesh-local 64
     mMeshLocal64.Clear();
-    Random::NonCrypto::FillBuffer(mMeshLocal64.GetAddress().mFields.m8 + OT_IP6_PREFIX_SIZE,
-                                  OT_IP6_ADDRESS_SIZE - OT_IP6_PREFIX_SIZE);
+    IgnoreError(Random::Crypto::FillBuffer(mMeshLocal64.GetAddress().mFields.m8 + OT_IP6_PREFIX_SIZE,
+                                           OT_IP6_ADDRESS_SIZE - OT_IP6_PREFIX_SIZE));
 
     mMeshLocal64.mPrefixLength       = MeshLocalPrefix::kLength;
     mMeshLocal64.mPreferred          = true;
@@ -202,15 +172,13 @@ Mle::Mle(Instance &aInstance)
 
     // mesh-local 16
     mMeshLocal16.Clear();
-    mMeshLocal16.GetAddress().mFields.m16[4] = HostSwap16(0x0000);
-    mMeshLocal16.GetAddress().mFields.m16[5] = HostSwap16(0x00ff);
-    mMeshLocal16.GetAddress().mFields.m16[6] = HostSwap16(0xfe00);
-    mMeshLocal16.mPrefixLength               = MeshLocalPrefix::kLength;
-    mMeshLocal16.mPreferred                  = true;
-    mMeshLocal16.mValid                      = true;
-    mMeshLocal16.mScopeOverride              = Ip6::Address::kRealmLocalScope;
-    mMeshLocal16.mScopeOverrideValid         = true;
-    mMeshLocal16.mRloc                       = true;
+    mMeshLocal16.GetAddress().SetIidToLocator(0);
+    mMeshLocal16.mPrefixLength       = MeshLocalPrefix::kLength;
+    mMeshLocal16.mPreferred          = true;
+    mMeshLocal16.mValid              = true;
+    mMeshLocal16.mScopeOverride      = Ip6::Address::kRealmLocalScope;
+    mMeshLocal16.mScopeOverrideValid = true;
+    mMeshLocal16.mRloc               = true;
 
     // Store RLOC address reference in MPL module.
     Get<Ip6::Mpl>().SetMatchingAddress(mMeshLocal16.GetAddress());
@@ -300,21 +268,21 @@ otError Mle::Start(bool aAnnounceAttach)
 
     if (aAnnounceAttach || (GetRloc16() == Mac::kShortAddrInvalid))
     {
-        BecomeChild(kAttachAny);
+        IgnoreError(BecomeChild(kAttachAny));
     }
 #if OPENTHREAD_FTD
     else if (IsActiveRouter(GetRloc16()))
     {
         if (Get<MleRouter>().BecomeRouter(ThreadStatusTlv::kTooFewRouters) != OT_ERROR_NONE)
         {
-            BecomeChild(kAttachAny);
+            IgnoreError(BecomeChild(kAttachAny));
         }
     }
 #endif
     else
     {
         mChildUpdateAttempts = 0;
-        SendChildUpdateRequest();
+        IgnoreError(SendChildUpdateRequest());
     }
 
 exit:
@@ -329,14 +297,14 @@ void Mle::Stop(bool aClearNetworkDatasets)
         Get<MeshCoP::PendingDataset>().HandleDetach();
     }
 
-    VerifyOrExit(!IsDisabled());
+    VerifyOrExit(!IsDisabled(), OT_NOOP);
 
     Get<KeyManager>().Stop();
     SetStateDetached();
-    Get<ThreadNetif>().UnsubscribeMulticast(mRealmLocalAllThreadNodes);
-    Get<ThreadNetif>().UnsubscribeMulticast(mLinkLocalAllThreadNodes);
-    Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal16);
-    Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal64);
+    IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mRealmLocalAllThreadNodes));
+    IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mLinkLocalAllThreadNodes));
+    IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal16));
+    IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal64));
 
     SetRole(kRoleDisabled);
 
@@ -383,7 +351,7 @@ exit:
 
 void Mle::SetAttachState(AttachState aState)
 {
-    VerifyOrExit(aState != mAttachState);
+    VerifyOrExit(aState != mAttachState, OT_NOOP);
     otLogInfoMle("AttachState %s -> %s", AttachStateToString(mAttachState), AttachStateToString(aState));
     mAttachState = aState;
 
@@ -397,8 +365,8 @@ otError Mle::Restore(void)
     Settings::NetworkInfo networkInfo;
     Settings::ParentInfo  parentInfo;
 
-    Get<MeshCoP::ActiveDataset>().Restore();
-    Get<MeshCoP::PendingDataset>().Restore();
+    IgnoreError(Get<MeshCoP::ActiveDataset>().Restore());
+    IgnoreError(Get<MeshCoP::PendingDataset>().Restore());
 
     SuccessOrExit(error = Get<Settings>().ReadNetworkInfo(networkInfo));
 
@@ -408,7 +376,7 @@ otError Mle::Restore(void)
     mDeviceMode.Set(networkInfo.GetDeviceMode());
 
     // force re-attach when version mismatch.
-    VerifyOrExit(networkInfo.GetVersion() == kThreadVersion);
+    VerifyOrExit(networkInfo.GetVersion() == kThreadVersion, OT_NOOP);
 
     switch (networkInfo.GetRole())
     {
@@ -598,9 +566,8 @@ otError Mle::Discover(const Mac::ChannelMask &aScanChannels,
     tlv.SetLength(static_cast<uint8_t>(message->GetLength() - startOffset));
     message->Write(startOffset - sizeof(tlv), sizeof(tlv), &tlv);
 
-    destination.Clear();
-    destination.mFields.m16[0] = HostSwap16(0xff02);
-    destination.mFields.m16[7] = HostSwap16(0x0002);
+    destination.SetToLinkLocalAllRoutersMulticast();
+
     SuccessOrExit(error = SendMessage(*message, destination));
 
     mDiscoverInProgress = true;
@@ -634,7 +601,7 @@ otError Mle::BecomeDetached(void)
     // (i.e., waiting to start an attach attempt), there is no need to make any
     // changes.
 
-    VerifyOrExit(!IsDetached() || mAttachState != kAttachStateStart);
+    VerifyOrExit(!IsDetached() || mAttachState != kAttachStateStart, OT_NOOP);
 
     // not in reattach stage after reset
     if (mReattachState == kReattachStop)
@@ -649,7 +616,7 @@ otError Mle::BecomeDetached(void)
     SetStateDetached();
     mParent.SetState(Neighbor::kStateInvalid);
     SetRloc16(Mac::kShortAddrInvalid);
-    BecomeChild(kAttachAny);
+    IgnoreError(BecomeChild(kAttachAny));
 
 exit:
     return error;
@@ -720,7 +687,7 @@ uint32_t Mle::GetAttachStartDelay(void) const
     uint32_t delay = 1;
     uint32_t jitter;
 
-    VerifyOrExit(IsDetached());
+    VerifyOrExit(IsDetached(), OT_NOOP);
 
     if (mAttachCounter == 0)
     {
@@ -780,7 +747,7 @@ void Mle::SetStateDetached(void)
 
     if (IsLeader())
     {
-        Get<ThreadNetif>().RemoveUnicastAddress(mLeaderAloc);
+        IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mLeaderAloc));
     }
 
     SetRole(kRoleDetached);
@@ -806,7 +773,7 @@ void Mle::SetStateChild(uint16_t aRloc16)
 {
     if (IsLeader())
     {
-        Get<ThreadNetif>().RemoveUnicastAddress(mLeaderAloc);
+        IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mLeaderAloc));
     }
 
     SetRloc16(aRloc16);
@@ -823,7 +790,7 @@ void Mle::SetStateChild(uint16_t aRloc16)
 #if OPENTHREAD_FTD
     if (IsFullThreadDevice())
     {
-        Get<MleRouter>().HandleChildStart(mParentRequestMode);
+        IgnoreError(Get<MleRouter>().HandleChildStart(mParentRequestMode));
     }
 #endif
 
@@ -840,22 +807,23 @@ void Mle::SetStateChild(uint16_t aRloc16)
 #endif
 
 #if OPENTHREAD_CONFIG_MLE_INFORM_PREVIOUS_PARENT_ON_REATTACH
-    InformPreviousParent();
+    IgnoreError(InformPreviousParent());
     mPreviousParentRloc = mParent.GetRloc16();
 #endif
 }
 
 void Mle::InformPreviousChannel(void)
 {
-    VerifyOrExit(mAlternatePanId != Mac::kPanIdBroadcast);
-    VerifyOrExit(IsChild() || IsRouter());
+    VerifyOrExit(mAlternatePanId != Mac::kPanIdBroadcast, OT_NOOP);
+    VerifyOrExit(IsChild() || IsRouter(), OT_NOOP);
 
 #if OPENTHREAD_FTD
-    VerifyOrExit(!IsFullThreadDevice() || IsRouter() || Get<MleRouter>().GetRouterSelectionJitterTimeout() == 0);
+    VerifyOrExit(!IsFullThreadDevice() || IsRouter() || Get<MleRouter>().GetRouterSelectionJitterTimeout() == 0,
+                 OT_NOOP);
 #endif
 
     mAlternatePanId = Mac::kPanIdBroadcast;
-    Get<AnnounceBeginServer>().SendAnnounce(1 << mAlternateChannel);
+    IgnoreError(Get<AnnounceBeginServer>().SendAnnounce(1 << mAlternateChannel));
 
 exit:
     return;
@@ -863,7 +831,7 @@ exit:
 
 void Mle::SetTimeout(uint32_t aTimeout)
 {
-    VerifyOrExit(mTimeout != aTimeout);
+    VerifyOrExit(mTimeout != aTimeout, OT_NOOP);
 
     if (aTimeout < kMinTimeout)
     {
@@ -876,7 +844,7 @@ void Mle::SetTimeout(uint32_t aTimeout)
 
     if (IsChild())
     {
-        SendChildUpdateRequest();
+        IgnoreError(SendChildUpdateRequest());
     }
 
 exit:
@@ -889,12 +857,12 @@ otError Mle::SetDeviceMode(DeviceMode aDeviceMode)
     DeviceMode oldMode = mDeviceMode;
 
     VerifyOrExit(aDeviceMode.IsValid(), error = OT_ERROR_INVALID_ARGS);
-    VerifyOrExit(mDeviceMode != aDeviceMode);
+    VerifyOrExit(mDeviceMode != aDeviceMode, OT_NOOP);
     mDeviceMode = aDeviceMode;
 
     otLogNoteMle("Mode 0x%02x -> 0x%02x [%s]", oldMode.Get(), mDeviceMode.Get(), mDeviceMode.ToString().AsCString());
 
-    Store();
+    IgnoreError(Store());
 
     switch (mRole)
     {
@@ -904,19 +872,19 @@ otError Mle::SetDeviceMode(DeviceMode aDeviceMode)
     case kRoleDetached:
         mAttachCounter = 0;
         SetStateDetached();
-        BecomeChild(kAttachAny);
+        IgnoreError(BecomeChild(kAttachAny));
         break;
 
     case kRoleChild:
         SetStateChild(GetRloc16());
-        SendChildUpdateRequest();
+        IgnoreError(SendChildUpdateRequest());
         break;
 
     case kRoleRouter:
     case kRoleLeader:
         if (oldMode.IsFullThreadDevice() && !mDeviceMode.IsFullThreadDevice())
         {
-            BecomeDetached();
+            IgnoreError(BecomeDetached());
         }
 
         break;
@@ -928,9 +896,9 @@ exit:
 
 void Mle::UpdateLinkLocalAddress(void)
 {
-    Get<ThreadNetif>().RemoveUnicastAddress(mLinkLocal64);
+    IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mLinkLocal64));
     mLinkLocal64.GetAddress().SetIid(Get<Mac::Mac>().GetExtAddress());
-    Get<ThreadNetif>().AddUnicastAddress(mLinkLocal64);
+    IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mLinkLocal64));
 
     Get<Notifier>().Signal(OT_CHANGED_THREAD_LL_ADDR);
 }
@@ -941,38 +909,21 @@ void Mle::SetMeshLocalPrefix(const MeshLocalPrefix &aMeshLocalPrefix)
 
     if (Get<ThreadNetif>().IsUp())
     {
-        Get<ThreadNetif>().RemoveUnicastAddress(mLeaderAloc);
+        IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mLeaderAloc));
+
         // We must remove the old addresses before adding the new ones.
-        Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal64);
-        Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal16);
-        Get<ThreadNetif>().UnsubscribeMulticast(mLinkLocalAllThreadNodes);
-        Get<ThreadNetif>().UnsubscribeMulticast(mRealmLocalAllThreadNodes);
-
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-
-        if (Get<BackboneRouter::Local>().IsPrimary())
-        {
-            Get<ThreadNetif>().RemoveUnicastAddress(mBackboneRouterPrimaryAloc);
-        }
-
-        if (Get<BackboneRouter::Local>().IsEnabled())
-        {
-            Get<ThreadNetif>().UnsubscribeMulticast(mAllNetworkBackboneRouters);
-        }
-
-#endif
+        IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal64));
+        IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal16));
+        IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mLinkLocalAllThreadNodes));
+        IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mRealmLocalAllThreadNodes));
     }
 
     mMeshLocal64.GetAddress().SetPrefix(aMeshLocalPrefix);
     mMeshLocal16.GetAddress().SetPrefix(aMeshLocalPrefix);
     mLeaderAloc.GetAddress().SetPrefix(aMeshLocalPrefix);
 
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-    mBackboneRouterPrimaryAloc.GetAddress().SetPrefix(aMeshLocalPrefix);
-#endif
-
     // Just keep mesh local prefix if network interface is down
-    VerifyOrExit(Get<ThreadNetif>().IsUp());
+    VerifyOrExit(Get<ThreadNetif>().IsUp(), OT_NOOP);
 
     ApplyMeshLocalPrefix();
 
@@ -985,53 +936,52 @@ void Mle::ApplyMeshLocalPrefix(void)
     mLinkLocalAllThreadNodes.GetAddress().SetMulticastNetworkPrefix(GetMeshLocalPrefix());
     mRealmLocalAllThreadNodes.GetAddress().SetMulticastNetworkPrefix(GetMeshLocalPrefix());
 
-    VerifyOrExit(!IsDisabled());
+    VerifyOrExit(!IsDisabled(), OT_NOOP);
 
     // Add the addresses back into the table.
-    Get<ThreadNetif>().AddUnicastAddress(mMeshLocal64);
-    Get<ThreadNetif>().SubscribeMulticast(mLinkLocalAllThreadNodes);
-    Get<ThreadNetif>().SubscribeMulticast(mRealmLocalAllThreadNodes);
+    IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mMeshLocal64));
+    IgnoreError(Get<ThreadNetif>().SubscribeMulticast(mLinkLocalAllThreadNodes));
+    IgnoreError(Get<ThreadNetif>().SubscribeMulticast(mRealmLocalAllThreadNodes));
 
     if (IsAttached())
     {
-        Get<ThreadNetif>().AddUnicastAddress(mMeshLocal16);
+        IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mMeshLocal16));
     }
 
     // update Leader ALOC
     if (IsLeader())
     {
-        Get<ThreadNetif>().AddUnicastAddress(mLeaderAloc);
+        IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mLeaderAloc));
     }
+
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_COMMISSIONER_ENABLE
+    Get<MeshCoP::Commissioner>().ApplyMeshLocalPrefix();
+#endif
+
+#if OPENTHREAD_CONFIG_BORDER_AGENT_ENABLE
+    Get<MeshCoP::BorderAgent>().ApplyMeshLocalPrefix();
+#endif
+
+#if OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
+    Get<Dhcp6::Dhcp6Server>().ApplyMeshLocalPrefix();
+#endif
 
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 
-    for (uint8_t i = 0; i < OT_ARRAY_LENGTH(mServiceAlocs); i++)
+    for (size_t i = 0; i < OT_ARRAY_LENGTH(mServiceAlocs); i++)
     {
         if (mServiceAlocs[i].GetAddress().GetLocator() != Mac::kShortAddrInvalid)
         {
-            Get<ThreadNetif>().RemoveUnicastAddress(mServiceAlocs[i]);
+            IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mServiceAlocs[i]));
             mServiceAlocs[i].GetAddress().SetPrefix(GetMeshLocalPrefix());
-            Get<ThreadNetif>().AddUnicastAddress(mServiceAlocs[i]);
+            IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mServiceAlocs[i]));
         }
     }
 
 #endif
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-
-    if (Get<BackboneRouter::Local>().IsPrimary())
-    {
-        Get<ThreadNetif>().AddUnicastAddress(mBackboneRouterPrimaryAloc);
-    }
-
-    mAllNetworkBackboneRouters.GetAddress().SetMulticastNetworkPrefix(GetMeshLocalPrefix());
-
-    if (Get<BackboneRouter::Local>().IsEnabled())
-    {
-        // Subscribe All Network Backbone Routers Multicast Address for both Secondary and Primary state.
-        Get<ThreadNetif>().SubscribeMulticast(mAllNetworkBackboneRouters);
-    }
-
+    Get<BackboneRouter::Local>().ApplyMeshLocalPrefix();
 #endif
 
 exit:
@@ -1059,7 +1009,7 @@ void Mle::SetRloc16(uint16_t aRloc16)
         }
     }
 
-    Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal16);
+    IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mMeshLocal16));
 
     Get<Mac::Mac>().SetShortAddress(aRloc16);
     Get<Ip6::Mpl>().SetSeedId(aRloc16);
@@ -1068,7 +1018,7 @@ void Mle::SetRloc16(uint16_t aRloc16)
     {
         // mesh-local 16
         mMeshLocal16.GetAddress().SetLocator(aRloc16);
-        Get<ThreadNetif>().AddUnicastAddress(mMeshLocal16);
+        IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mMeshLocal16));
 #if OPENTHREAD_FTD
         Get<AddressResolver>().RestartAddressQueries();
 #endif
@@ -1101,11 +1051,7 @@ otError Mle::GetLeaderAddress(Ip6::Address &aAddress) const
 
     VerifyOrExit(GetRloc16() != Mac::kShortAddrInvalid, error = OT_ERROR_DETACHED);
 
-    aAddress.SetPrefix(GetMeshLocalPrefix());
-    aAddress.mFields.m16[4] = HostSwap16(0x0000);
-    aAddress.mFields.m16[5] = HostSwap16(0x00ff);
-    aAddress.mFields.m16[6] = HostSwap16(0xfe00);
-    aAddress.SetLocator(Rloc16FromRouterId(mLeaderData.GetLeaderRouterId()));
+    aAddress.SetToRoutingLocator(GetMeshLocalPrefix(), Rloc16FromRouterId(mLeaderData.GetLeaderRouterId()));
 
 exit:
     return error;
@@ -1129,12 +1075,7 @@ otError Mle::GetServiceAloc(uint8_t aServiceId, Ip6::Address &aAddress) const
     otError error = OT_ERROR_NONE;
 
     VerifyOrExit(GetRloc16() != Mac::kShortAddrInvalid, error = OT_ERROR_DETACHED);
-
-    aAddress.SetPrefix(GetMeshLocalPrefix());
-    aAddress.mFields.m16[4] = HostSwap16(0x0000);
-    aAddress.mFields.m16[5] = HostSwap16(0x00ff);
-    aAddress.mFields.m16[6] = HostSwap16(0xfe00);
-    aAddress.SetLocator(ServiceAlocFromId(aServiceId));
+    aAddress.SetToAnycastLocator(GetMeshLocalPrefix(), ServiceAlocFromId(aServiceId));
 
 exit:
     return error;
@@ -1168,7 +1109,7 @@ Message *Mle::NewMleMessage(void)
     otMessageSettings settings = {false, static_cast<otMessagePriority>(kMleMessagePriority)};
 
     message = mSocket.NewMessage(0, &settings);
-    VerifyOrExit(message != NULL);
+    VerifyOrExit(message != NULL, OT_NOOP);
 
     message->SetSubType(Message::kSubTypeMleGeneral);
 
@@ -1316,7 +1257,7 @@ otError Mle::AppendNetworkData(Message &aMessage, bool aStableOnly)
     VerifyOrExit(!mRetrieveNewNetworkData, error = OT_ERROR_INVALID_STATE);
 
     length = sizeof(networkData);
-    Get<NetworkData::Leader>().GetNetworkData(aStableOnly, networkData, length);
+    IgnoreError(Get<NetworkData::Leader>().GetNetworkData(aStableOnly, networkData, length));
 
     error = Tlv::AppendTlv(aMessage, Tlv::kNetworkData, networkData, length);
 
@@ -1404,6 +1345,8 @@ otError Mle::AppendAddressRegistration(Message &aMessage, AddressRegistrationMod
     uint8_t                  length      = 0;
     uint8_t                  counter     = 0;
     uint16_t                 startOffset = aMessage.GetLength();
+    uint8_t                  iterator    = 0; // used to iterate external multicast addresses.
+    Ip6::Address             address;
 
     tlv.SetType(Tlv::kAddressRegistration);
     SuccessOrExit(error = aMessage.Append(&tlv, sizeof(tlv)));
@@ -1415,8 +1358,27 @@ otError Mle::AppendAddressRegistration(Message &aMessage, AddressRegistrationMod
     length += entry.GetLength();
 
     // Continue to append the other addresses if not `kAppendMeshLocalOnly` mode
-    VerifyOrExit(aMode != kAppendMeshLocalOnly);
+    VerifyOrExit(aMode != kAppendMeshLocalOnly, OT_NOOP);
     counter++;
+
+#if OPENTHREAD_CONFIG_DUA_ENABLE
+    // Cache Domain Unicast Address.
+    address = Get<DuaManager>().GetDomainUnicastAddress();
+
+    if (Get<ThreadNetif>().IsUnicastAddress(address))
+    {
+        error = Get<NetworkData::Leader>().GetContext(address, context);
+
+        OT_ASSERT(error == OT_ERROR_NONE);
+
+        // Prioritize DUA, compressed entry
+        entry.SetContextId(context.mContextId);
+        entry.SetIid(address.GetIid());
+        SuccessOrExit(error = aMessage.Append(&entry, entry.GetLength()));
+        length += entry.GetLength();
+        counter++;
+    }
+#endif // OPENTHREAD_CONFIG_DUA_ENABLE
 
     for (const Ip6::NetifUnicastAddress *addr = Get<ThreadNetif>().GetUnicastAddresses(); addr; addr = addr->GetNext())
     {
@@ -1425,6 +1387,14 @@ otError Mle::AppendAddressRegistration(Message &aMessage, AddressRegistrationMod
         {
             continue;
         }
+
+#if OPENTHREAD_CONFIG_DUA_ENABLE
+        // Skip DUA that was already appended above.
+        if (addr->GetAddress() == address)
+        {
+            continue;
+        }
+#endif
 
         if (Get<NetworkData::Leader>().GetContext(addr->GetAddress(), context) == OT_ERROR_NONE)
         {
@@ -1443,18 +1413,31 @@ otError Mle::AppendAddressRegistration(Message &aMessage, AddressRegistrationMod
         length += entry.GetLength();
         counter++;
         // only continue to append if there is available entry.
-        VerifyOrExit(counter < OPENTHREAD_CONFIG_MLE_IP_ADDRS_TO_REGISTER);
+        VerifyOrExit(counter < OPENTHREAD_CONFIG_MLE_IP_ADDRS_TO_REGISTER, OT_NOOP);
     }
 
-    // For sleepy end device, register external multicast addresses to the parent for indirect transmission
-    if (!IsRxOnWhenIdle())
+    // Append external multicast addresses.  For sleepy end device,
+    // register all external multicast addresses with the parent for
+    // indirect transmission. Since Thread 1.2, non-sleepy MED should
+    // also register external multicast addresses of scope larger than
+    // realm with a 1.2 or higher parent.
+    if (!IsRxOnWhenIdle()
+#if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+        || !GetParent().IsThreadVersion1p1()
+#endif
+    )
     {
-        uint8_t      iterator = 0;
-        Ip6::Address address;
-
-        // append external multicast address
         while (Get<ThreadNetif>().GetNextExternalMulticast(iterator, address) == OT_ERROR_NONE)
         {
+#if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+            // For Thread 1.2 MED, skip multicast address with scope not
+            // larger than realm local when registering.
+            if (IsRxOnWhenIdle() && !address.IsMulticastLargerThanRealmLocal())
+            {
+                continue;
+            }
+#endif
+
             entry.SetUncompressed();
             entry.SetIp6Address(address);
             SuccessOrExit(error = aMessage.Append(&entry, entry.GetLength()));
@@ -1462,7 +1445,7 @@ otError Mle::AppendAddressRegistration(Message &aMessage, AddressRegistrationMod
 
             counter++;
             // only continue to append if there is available entry.
-            VerifyOrExit(counter < OPENTHREAD_CONFIG_MLE_IP_ADDRS_TO_REGISTER);
+            VerifyOrExit(counter < OPENTHREAD_CONFIG_MLE_IP_ADDRS_TO_REGISTER, OT_NOOP);
         }
     }
 
@@ -1545,7 +1528,7 @@ void Mle::HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlag
 
 void Mle::HandleStateChanged(otChangedFlags aFlags)
 {
-    VerifyOrExit(!IsDisabled());
+    VerifyOrExit(!IsDisabled(), OT_NOOP);
 
     if (aFlags & OT_CHANGED_THREAD_ROLE)
     {
@@ -1567,10 +1550,10 @@ void Mle::HandleStateChanged(otChangedFlags aFlags)
         if (!Get<ThreadNetif>().IsUnicastAddress(mMeshLocal64.GetAddress()))
         {
             // Mesh Local EID was removed, choose a new one and add it back
-            Random::NonCrypto::FillBuffer(mMeshLocal64.GetAddress().mFields.m8 + OT_IP6_PREFIX_SIZE,
-                                          OT_IP6_ADDRESS_SIZE - OT_IP6_PREFIX_SIZE);
+            IgnoreError(Random::Crypto::FillBuffer(mMeshLocal64.GetAddress().mFields.m8 + OT_IP6_PREFIX_SIZE,
+                                                   OT_IP6_ADDRESS_SIZE - OT_IP6_PREFIX_SIZE));
 
-            Get<ThreadNetif>().AddUnicastAddress(mMeshLocal64);
+            IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mMeshLocal64));
             Get<Notifier>().Signal(OT_CHANGED_THREAD_ML_ADDR);
         }
 
@@ -1583,7 +1566,16 @@ void Mle::HandleStateChanged(otChangedFlags aFlags)
 
     if ((aFlags & (OT_CHANGED_IP6_MULTICAST_SUBSCRIBED | OT_CHANGED_IP6_MULTICAST_UNSUBSCRIBED)) != 0)
     {
-        if (IsChild() && !IsFullThreadDevice() && !IsRxOnWhenIdle())
+        // When multicast subscription changes, SED always notifies its parent as it depends on its
+        // parent for indirect transmission. Since Thread 1.2, MED MAY also notify its parent of 1.2
+        // or higher version as it could depend on its parent to perform Multicast Listener Report.
+        if (IsChild() && !IsFullThreadDevice() &&
+            (!IsRxOnWhenIdle()
+#if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+             || !GetParent().IsThreadVersion1p1()
+#endif
+                 ))
+
         {
             mChildUpdateRequestState = kChildUpdateRequestPending;
             ScheduleMessageTransmissionTimer();
@@ -1615,7 +1607,7 @@ void Mle::HandleStateChanged(otChangedFlags aFlags)
 #endif
 
 #if OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
-        Get<Dhcp6::Dhcp6Server>().UpdateService();
+        IgnoreError(Get<Dhcp6::Dhcp6Server>().UpdateService());
 #endif // OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
 
 #if OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
@@ -1630,42 +1622,14 @@ void Mle::HandleStateChanged(otChangedFlags aFlags)
 
         if ((aFlags & OT_CHANGED_THREAD_KEY_SEQUENCE_COUNTER) || IsAttached())
         {
-            Store();
+            IgnoreError(Store());
         }
     }
 
     if (aFlags & OT_CHANGED_SECURITY_POLICY)
     {
-        Get<Ip6::Filter>().AllowNativeCommissioner(
-            (Get<KeyManager>().GetSecurityPolicyFlags() & OT_SECURITY_POLICY_NATIVE_COMMISSIONING) != 0);
+        Get<Ip6::Filter>().AllowNativeCommissioner(Get<KeyManager>().IsNativeCommissioningAllowed());
     }
-
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-
-    if (aFlags & OT_CHANGED_THREAD_BACKBONE_ROUTER_STATE)
-    {
-        if (Get<BackboneRouter::Local>().IsPrimary())
-        {
-            // Add Primary Backbone Router Aloc for Primary Backbone Router.
-            Get<ThreadNetif>().AddUnicastAddress(mBackboneRouterPrimaryAloc);
-        }
-        else
-        {
-            Get<ThreadNetif>().RemoveUnicastAddress(mBackboneRouterPrimaryAloc);
-        }
-
-        if (Get<BackboneRouter::Local>().IsEnabled())
-        {
-            // Subscribe All Network Backbone Routers Multicast Address for both Secondary and Primary state.
-            Get<ThreadNetif>().SubscribeMulticast(mAllNetworkBackboneRouters);
-        }
-        else
-        {
-            Get<ThreadNetif>().UnsubscribeMulticast(mAllNetworkBackboneRouters);
-        }
-    }
-
-#endif
 
 exit:
     return;
@@ -1677,11 +1641,11 @@ void Mle::UpdateServiceAlocs(void)
     uint16_t              rloc               = GetRloc16();
     uint16_t              serviceAloc        = 0;
     uint8_t               serviceId          = 0;
-    int                   i                  = 0;
     NetworkData::Iterator serviceIterator    = NetworkData::kIteratorInit;
-    int                   serviceAlocsLength = OT_ARRAY_LENGTH(mServiceAlocs);
+    size_t                serviceAlocsLength = OT_ARRAY_LENGTH(mServiceAlocs);
+    size_t                i                  = 0;
 
-    VerifyOrExit(!IsDisabled());
+    VerifyOrExit(!IsDisabled(), OT_NOOP);
 
     // First remove all alocs which are no longer necessary, to free up space in mServiceAlocs
     for (i = 0; i < serviceAlocsLength; i++)
@@ -1691,7 +1655,7 @@ void Mle::UpdateServiceAlocs(void)
         if ((serviceAloc != Mac::kShortAddrInvalid) &&
             (!Get<NetworkData::Leader>().ContainsService(Mle::ServiceIdFromAloc(serviceAloc), rloc)))
         {
-            Get<ThreadNetif>().RemoveUnicastAddress(mServiceAlocs[i]);
+            IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mServiceAlocs[i]));
             mServiceAlocs[i].GetAddress().SetLocator(Mac::kShortAddrInvalid);
         }
     }
@@ -1719,7 +1683,7 @@ void Mle::UpdateServiceAlocs(void)
                 if (serviceAloc == Mac::kShortAddrInvalid)
                 {
                     SuccessOrExit(GetServiceAloc(serviceId, mServiceAlocs[i].GetAddress()));
-                    Get<ThreadNetif>().AddUnicastAddress(mServiceAlocs[i]);
+                    IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mServiceAlocs[i]));
                     break;
                 }
             }
@@ -1779,7 +1743,7 @@ void Mle::HandleAttachTimer(void)
     {
     case kAttachStateIdle:
         OT_ASSERT(false);
-        break;
+        OT_UNREACHABLE_CODE(break);
 
     case kAttachStateProcessAnnounce:
         ProcessAnnounce();
@@ -1806,14 +1770,14 @@ void Mle::HandleAttachTimer(void)
         // during reattach when losing connectivity.
         if (mParentRequestMode == kAttachSame1 || mParentRequestMode == kAttachSame2)
         {
-            SendParentRequest(kParentRequestTypeRoutersAndReeds);
+            IgnoreError(SendParentRequest(kParentRequestTypeRoutersAndReeds));
             delay = kParentRequestReedTimeout;
         }
         // initial MLE Parent Request has only R flag set in Scan Mask TLV for
         // during initial attach or downgrade process
         else
         {
-            SendParentRequest(kParentRequestTypeRouters);
+            IgnoreError(SendParentRequest(kParentRequestTypeRouters));
             delay = kParentRequestRouterTimeout;
         }
 
@@ -1821,7 +1785,7 @@ void Mle::HandleAttachTimer(void)
 
     case kAttachStateParentRequestRouter:
         SetAttachState(kAttachStateParentRequestReed);
-        SendParentRequest(kParentRequestTypeRoutersAndReeds);
+        IgnoreError(SendParentRequest(kParentRequestTypeRoutersAndReeds));
         delay = kParentRequestReedTimeout;
         break;
 
@@ -1831,7 +1795,7 @@ void Mle::HandleAttachTimer(void)
         if (shouldAnnounce)
         {
             SetAttachState(kAttachStateAnnounce);
-            SendParentRequest(kParentRequestTypeRoutersAndReeds);
+            IgnoreError(SendParentRequest(kParentRequestTypeRoutersAndReeds));
             mAnnounceChannel = Mac::ChannelMask::kChannelIteratorFirst;
             delay            = mAnnounceDelay;
             break;
@@ -1872,7 +1836,8 @@ bool Mle::PrepareAnnounceState(void)
     Mac::ChannelMask channelMask;
 
     VerifyOrExit(!IsChild() && (mReattachState == kReattachStop) &&
-                 (Get<MeshCoP::ActiveDataset>().IsPartiallyComplete() || !IsFullThreadDevice()));
+                     (Get<MeshCoP::ActiveDataset>().IsPartiallyComplete() || !IsFullThreadDevice()),
+                 OT_NOOP);
 
     if (Get<MeshCoP::ActiveDataset>().GetChannelMask(channelMask) != OT_ERROR_NONE)
     {
@@ -1900,7 +1865,7 @@ uint32_t Mle::Reattach(void)
     {
         if (Get<MeshCoP::PendingDataset>().Restore() == OT_ERROR_NONE)
         {
-            Get<MeshCoP::PendingDataset>().ApplyConfiguration();
+            IgnoreError(Get<MeshCoP::PendingDataset>().ApplyConfiguration());
             mReattachState = kReattachPending;
             SetAttachState(kAttachStateStart);
             delay = 1 + Random::NonCrypto::GetUint32InRange(0, kAttachStartJitter);
@@ -1913,10 +1878,10 @@ uint32_t Mle::Reattach(void)
     else if (mReattachState == kReattachPending)
     {
         mReattachState = kReattachStop;
-        Get<MeshCoP::ActiveDataset>().Restore();
+        IgnoreError(Get<MeshCoP::ActiveDataset>().Restore());
     }
 
-    VerifyOrExit(mReattachState == kReattachStop);
+    VerifyOrExit(mReattachState == kReattachStop, OT_NOOP);
 
     switch (mParentRequestMode)
     {
@@ -1925,10 +1890,10 @@ uint32_t Mle::Reattach(void)
         {
             if (mAlternatePanId != Mac::kPanIdBroadcast)
             {
-                Get<Mac::Mac>().SetPanChannel(mAlternateChannel);
+                IgnoreError(Get<Mac::Mac>().SetPanChannel(mAlternateChannel));
                 Get<Mac::Mac>().SetPanId(mAlternatePanId);
                 mAlternatePanId = Mac::kPanIdBroadcast;
-                BecomeDetached();
+                IgnoreError(BecomeDetached());
             }
 #if OPENTHREAD_FTD
             else if (IsFullThreadDevice() && Get<MleRouter>().BecomeLeader() == OT_ERROR_NONE)
@@ -1938,7 +1903,7 @@ uint32_t Mle::Reattach(void)
 #endif
             else
             {
-                BecomeDetached();
+                IgnoreError(BecomeDetached());
             }
         }
         else if (!IsRxOnWhenIdle())
@@ -1951,12 +1916,12 @@ uint32_t Mle::Reattach(void)
         break;
 
     case kAttachSame1:
-        BecomeChild(kAttachSame2);
+        IgnoreError(BecomeChild(kAttachSame2));
         break;
 
     case kAttachSame2:
     case kAttachSameDowngrade:
-        BecomeChild(kAttachAny);
+        IgnoreError(BecomeChild(kAttachAny));
         break;
 
     case kAttachBetter:
@@ -1995,7 +1960,7 @@ void Mle::HandleDelayedResponseTimer(void)
         }
         else
         {
-            mDelayedResponses.Dequeue(*message);
+            IgnoreError(mDelayedResponses.Dequeue(*message));
             metadata.RemoveFrom(*message);
 
             if (SendMessage(*message, metadata.mDestination) == OT_ERROR_NONE)
@@ -2036,7 +2001,7 @@ void Mle::RemoveDelayedDataResponseMessage(void)
 
         if (message->GetSubType() == Message::kSubTypeMleDataResponse)
         {
-            mDelayedResponses.Dequeue(*message);
+            IgnoreError(mDelayedResponses.Dequeue(*message));
             message->Free();
             LogMleMessage("Remove Delayed Data Response", metadata.mDestination);
 
@@ -2078,9 +2043,7 @@ otError Mle::SendParentRequest(ParentRequestType aType)
     SuccessOrExit(error = AppendTimeRequest(*message));
 #endif
 
-    destination.Clear();
-    destination.mFields.m16[0] = HostSwap16(0xff02);
-    destination.mFields.m16[7] = HostSwap16(0x0002);
+    destination.SetToLinkLocalAllRoutersMulticast();
     SuccessOrExit(error = SendMessage(*message, destination));
 
     switch (aType)
@@ -2109,7 +2072,7 @@ void Mle::RequestShorterChildIdRequest(void)
     if (mAttachState == kAttachStateChildIdRequest)
     {
         mAddressRegistrationMode = kAppendMeshLocalOnly;
-        SendChildIdRequest();
+        IgnoreError(SendChildIdRequest());
     }
 }
 
@@ -2163,9 +2126,7 @@ otError Mle::SendChildIdRequest(void)
 
     mParentCandidate.SetState(Neighbor::kStateValid);
 
-    destination.Clear();
-    destination.mFields.m16[0] = HostSwap16(0xfe80);
-    destination.SetIid(mParentCandidate.GetExtAddress());
+    destination.SetToLinkLocalAddress(mParentCandidate.GetExtAddress());
     SuccessOrExit(error = SendMessage(*message, destination));
 
     if (mAddressRegistrationMode == kAppendMeshLocalOnly)
@@ -2307,11 +2268,9 @@ void Mle::HandleMessageTransmissionTimer(void)
             static const uint8_t tlvs[] = {Tlv::kNetworkData};
             Ip6::Address         destination;
 
-            VerifyOrExit(mDataRequestAttempts < kMaxChildKeepAliveAttempts, BecomeDetached());
+            VerifyOrExit(mDataRequestAttempts < kMaxChildKeepAliveAttempts, IgnoreError(BecomeDetached()));
 
-            destination.Clear();
-            destination.mFields.m16[0] = HostSwap16(0xfe80);
-            destination.SetIid(mParent.GetExtAddress());
+            destination.SetToLinkLocalAddress(mParent.GetExtAddress());
 
             if (SendDataRequest(destination, tlvs, sizeof(tlvs), 0) == OT_ERROR_NONE)
             {
@@ -2322,7 +2281,7 @@ void Mle::HandleMessageTransmissionTimer(void)
         }
 
         // Keep-alive "Child Update Request" only on a non-sleepy child
-        VerifyOrExit(IsChild() && IsRxOnWhenIdle());
+        VerifyOrExit(IsChild() && IsRxOnWhenIdle(), OT_NOOP);
         break;
 
     case kChildUpdateRequestPending:
@@ -2342,7 +2301,7 @@ void Mle::HandleMessageTransmissionTimer(void)
         break;
     }
 
-    VerifyOrExit(mChildUpdateAttempts < kMaxChildKeepAliveAttempts, BecomeDetached());
+    VerifyOrExit(mChildUpdateAttempts < kMaxChildKeepAliveAttempts, IgnoreError(BecomeDetached()));
 
     if (SendChildUpdateRequest() == OT_ERROR_NONE)
     {
@@ -2362,7 +2321,7 @@ otError Mle::SendChildUpdateRequest(void)
     if (!mParent.IsStateValidOrRestoring())
     {
         otLogWarnMle("No valid parent when sending Child Update Request");
-        BecomeDetached();
+        IgnoreError(BecomeDetached());
         ExitNow();
     }
 
@@ -2396,12 +2355,10 @@ otError Mle::SendChildUpdateRequest(void)
     case kRoleRouter:
     case kRoleLeader:
         OT_ASSERT(false);
-        break;
+        OT_UNREACHABLE_CODE(break);
     }
 
-    destination.Clear();
-    destination.mFields.m16[0] = HostSwap16(0xfe80);
-    destination.SetIid(mParent.GetExtAddress());
+    destination.SetToLinkLocalAddress(mParent.GetExtAddress());
     SuccessOrExit(error = SendMessage(*message, destination));
 
     LogMleMessage("Send Child Update Request to parent", destination);
@@ -2478,16 +2435,14 @@ otError Mle::SendChildUpdateResponse(const uint8_t *aTlvs, uint8_t aNumTlvs, con
         }
     }
 
-    destination.Clear();
-    destination.mFields.m16[0] = HostSwap16(0xfe80);
-    destination.SetIid(mParent.GetExtAddress());
+    destination.SetToLinkLocalAddress(mParent.GetExtAddress());
     SuccessOrExit(error = SendMessage(*message, destination));
 
     LogMleMessage("Send Child Update Response to parent", destination);
 
     if (checkAddress && HasUnregisteredAddress())
     {
-        SendChildUpdateRequest();
+        IgnoreError(SendChildUpdateRequest());
     }
 
 exit:
@@ -2504,9 +2459,7 @@ otError Mle::SendAnnounce(uint8_t aChannel, bool aOrphanAnnounce)
 {
     Ip6::Address destination;
 
-    destination.Clear();
-    destination.mFields.m16[0] = HostSwap16(0xff02);
-    destination.mFields.m16[7] = HostSwap16(0x0001);
+    destination.SetToLinkLocalAllNodesMulticast();
 
     return SendAnnounce(aChannel, aOrphanAnnounce, destination);
 }
@@ -2571,7 +2524,7 @@ otError Mle::SendOrphanAnnounce(void)
 
     SuccessOrExit(error = channelMask.GetNextChannel(mAnnounceChannel));
 
-    SendAnnounce(mAnnounceChannel, true);
+    IgnoreError(SendAnnounce(mAnnounceChannel, true));
 
 exit:
     return error;
@@ -2613,14 +2566,14 @@ otError Mle::SendMessage(Message &aMessage, const Ip6::Address &aDestination)
         aesCcm.Header(&aDestination, sizeof(aDestination));
         aesCcm.Header(header.GetBytes() + 1, header.GetHeaderLength());
 
-        aMessage.SetOffset(header.GetLength() - 1);
+        IgnoreError(aMessage.SetOffset(header.GetLength() - 1));
 
         while (aMessage.GetOffset() < aMessage.GetLength())
         {
             length = aMessage.Read(aMessage.GetOffset(), sizeof(buf), buf);
             aesCcm.Payload(buf, buf, length, true);
             aMessage.Write(aMessage.GetOffset(), length, buf);
-            aMessage.MoveOffset(length);
+            IgnoreError(aMessage.MoveOffset(length));
         }
 
         tagLength = sizeof(tag);
@@ -2650,7 +2603,7 @@ otError Mle::AddDelayedResponse(Message &aMessage, const Ip6::Address &aDestinat
     metadata.mDestination = aDestination;
 
     SuccessOrExit(error = metadata.AppendTo(aMessage));
-    mDelayedResponses.Enqueue(aMessage);
+    IgnoreError(mDelayedResponses.Enqueue(aMessage));
 
     mDelayedResponseTimer.FireAtIfEarlier(metadata.mSendTime);
 
@@ -2685,7 +2638,7 @@ void Mle::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageIn
 
     otLogDebgMle("Receive UDP message");
 
-    VerifyOrExit(aMessageInfo.GetLinkInfo() != NULL);
+    VerifyOrExit(aMessageInfo.GetLinkInfo() != NULL, OT_NOOP);
     VerifyOrExit(aMessageInfo.GetHopLimit() == kMleHopLimit, error = OT_ERROR_PARSE);
 
     length = aMessage.Read(aMessage.GetOffset(), sizeof(header), &header);
@@ -2693,18 +2646,18 @@ void Mle::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageIn
 
     if (header.GetSecuritySuite() == Header::kNoSecurity)
     {
-        aMessage.MoveOffset(header.GetLength());
+        IgnoreError(aMessage.MoveOffset(header.GetLength()));
 
         switch (header.GetCommand())
         {
 #if OPENTHREAD_FTD
         case Header::kCommandDiscoveryRequest:
-            Get<MleRouter>().HandleDiscoveryRequest(aMessage, aMessageInfo);
+            IgnoreError(Get<MleRouter>().HandleDiscoveryRequest(aMessage, aMessageInfo));
             break;
 #endif
 
         case Header::kCommandDiscoveryResponse:
-            HandleDiscoveryResponse(aMessage, aMessageInfo);
+            IgnoreError(HandleDiscoveryResponse(aMessage, aMessageInfo));
             break;
 
         default:
@@ -2730,7 +2683,7 @@ void Mle::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageIn
 
     VerifyOrExit(aMessage.GetOffset() + header.GetLength() + sizeof(messageTag) <= aMessage.GetLength(),
                  error = OT_ERROR_PARSE);
-    aMessage.MoveOffset(header.GetLength() - 1);
+    IgnoreError(aMessage.MoveOffset(header.GetLength() - 1));
 
     aMessage.Read(aMessage.GetLength() - sizeof(messageTag), sizeof(messageTag), messageTag);
     SuccessOrExit(error = aMessage.SetLength(aMessage.GetLength() - sizeof(messageTag)));
@@ -2758,7 +2711,7 @@ void Mle::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageIn
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
         aMessage.Write(aMessage.GetOffset(), length, buf);
 #endif
-        aMessage.MoveOffset(length);
+        IgnoreError(aMessage.MoveOffset(length));
     }
 
     tagLength = sizeof(tag);
@@ -2772,10 +2725,10 @@ void Mle::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageIn
         Get<KeyManager>().SetCurrentKeySequence(keySequence);
     }
 
-    aMessage.SetOffset(mleOffset);
+    IgnoreError(aMessage.SetOffset(mleOffset));
 
     aMessage.Read(aMessage.GetOffset(), sizeof(command), &command);
-    aMessage.MoveOffset(sizeof(command));
+    IgnoreError(aMessage.MoveOffset(sizeof(command)));
 
     switch (mRole)
     {
@@ -2821,35 +2774,35 @@ void Mle::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageIn
     switch (command)
     {
     case Header::kCommandAdvertisement:
-        HandleAdvertisement(aMessage, aMessageInfo, neighbor);
+        IgnoreError(HandleAdvertisement(aMessage, aMessageInfo, neighbor));
         break;
 
     case Header::kCommandDataResponse:
-        HandleDataResponse(aMessage, aMessageInfo, neighbor);
+        IgnoreError(HandleDataResponse(aMessage, aMessageInfo, neighbor));
         break;
 
     case Header::kCommandParentResponse:
-        HandleParentResponse(aMessage, aMessageInfo, keySequence);
+        IgnoreError(HandleParentResponse(aMessage, aMessageInfo, keySequence));
         break;
 
     case Header::kCommandChildIdResponse:
-        HandleChildIdResponse(aMessage, aMessageInfo, neighbor);
+        IgnoreError(HandleChildIdResponse(aMessage, aMessageInfo, neighbor));
         break;
 
     case Header::kCommandAnnounce:
-        HandleAnnounce(aMessage, aMessageInfo);
+        IgnoreError(HandleAnnounce(aMessage, aMessageInfo));
         break;
 
     case Header::kCommandChildUpdateRequest:
 #if OPENTHREAD_FTD
         if (IsRouterOrLeader())
         {
-            Get<MleRouter>().HandleChildUpdateRequest(aMessage, aMessageInfo, keySequence);
+            IgnoreError(Get<MleRouter>().HandleChildUpdateRequest(aMessage, aMessageInfo, keySequence));
         }
         else
 #endif
         {
-            HandleChildUpdateRequest(aMessage, aMessageInfo, neighbor);
+            IgnoreError(HandleChildUpdateRequest(aMessage, aMessageInfo, neighbor));
         }
 
         break;
@@ -2858,39 +2811,39 @@ void Mle::HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageIn
 #if OPENTHREAD_FTD
         if (IsRouterOrLeader())
         {
-            Get<MleRouter>().HandleChildUpdateResponse(aMessage, aMessageInfo, keySequence, neighbor);
+            IgnoreError(Get<MleRouter>().HandleChildUpdateResponse(aMessage, aMessageInfo, keySequence, neighbor));
         }
         else
 #endif
         {
-            HandleChildUpdateResponse(aMessage, aMessageInfo, neighbor);
+            IgnoreError(HandleChildUpdateResponse(aMessage, aMessageInfo, neighbor));
         }
 
         break;
 
 #if OPENTHREAD_FTD
     case Header::kCommandLinkRequest:
-        Get<MleRouter>().HandleLinkRequest(aMessage, aMessageInfo, neighbor);
+        IgnoreError(Get<MleRouter>().HandleLinkRequest(aMessage, aMessageInfo, neighbor));
         break;
 
     case Header::kCommandLinkAccept:
-        Get<MleRouter>().HandleLinkAccept(aMessage, aMessageInfo, keySequence, neighbor);
+        IgnoreError(Get<MleRouter>().HandleLinkAccept(aMessage, aMessageInfo, keySequence, neighbor));
         break;
 
     case Header::kCommandLinkAcceptAndRequest:
-        Get<MleRouter>().HandleLinkAcceptAndRequest(aMessage, aMessageInfo, keySequence, neighbor);
+        IgnoreError(Get<MleRouter>().HandleLinkAcceptAndRequest(aMessage, aMessageInfo, keySequence, neighbor));
         break;
 
     case Header::kCommandDataRequest:
-        Get<MleRouter>().HandleDataRequest(aMessage, aMessageInfo, neighbor);
+        IgnoreError(Get<MleRouter>().HandleDataRequest(aMessage, aMessageInfo, neighbor));
         break;
 
     case Header::kCommandParentRequest:
-        Get<MleRouter>().HandleParentRequest(aMessage, aMessageInfo);
+        IgnoreError(Get<MleRouter>().HandleParentRequest(aMessage, aMessageInfo));
         break;
 
     case Header::kCommandChildIdRequest:
-        Get<MleRouter>().HandleChildIdRequest(aMessage, aMessageInfo, keySequence);
+        IgnoreError(Get<MleRouter>().HandleChildIdRequest(aMessage, aMessageInfo, keySequence));
         break;
 
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
@@ -2943,7 +2896,7 @@ otError Mle::HandleAdvertisement(const Message &aMessage, const Ip6::MessageInfo
             if ((aNeighbor == &mParent) && (mParent.GetRloc16() != sourceAddress))
             {
                 // Remove stale parent.
-                BecomeDetached();
+                IgnoreError(BecomeDetached());
             }
         }
     }
@@ -2955,7 +2908,7 @@ otError Mle::HandleAdvertisement(const Message &aMessage, const Ip6::MessageInfo
         ExitNow();
 
     case kRoleChild:
-        VerifyOrExit(aNeighbor == &mParent);
+        VerifyOrExit(aNeighbor == &mParent, OT_NOOP);
 
         if ((mParent.GetRloc16() == sourceAddress) && (leaderData.GetPartitionId() != mLeaderData.GetPartitionId() ||
                                                        leaderData.GetLeaderRouterId() != GetLeaderId()))
@@ -2970,7 +2923,7 @@ otError Mle::HandleAdvertisement(const Message &aMessage, const Ip6::MessageInfo
                 if ((Tlv::GetTlv(aMessage, Tlv::kRoute, sizeof(route), route) == OT_ERROR_NONE) && route.IsValid())
                 {
                     // Overwrite Route Data
-                    Get<MleRouter>().ProcessRouteTlv(route);
+                    IgnoreError(Get<MleRouter>().ProcessRouteTlv(route));
                 }
             }
 #endif
@@ -2983,14 +2936,14 @@ otError Mle::HandleAdvertisement(const Message &aMessage, const Ip6::MessageInfo
 
     case kRoleRouter:
     case kRoleLeader:
-        VerifyOrExit(aNeighbor && aNeighbor->IsStateValid());
+        VerifyOrExit(aNeighbor && aNeighbor->IsStateValid(), OT_NOOP);
         break;
     }
 
     if (mRetrieveNewNetworkData || IsNetworkDataNewer(leaderData))
     {
         delay = Random::NonCrypto::GetUint16InRange(0, kMleMaxResponseDelay);
-        SendDataRequest(aMessageInfo.GetPeerAddr(), tlvs, sizeof(tlvs), delay);
+        IgnoreError(SendDataRequest(aMessageInfo.GetPeerAddr(), tlvs, sizeof(tlvs), delay));
     }
 
 exit:
@@ -3022,7 +2975,7 @@ otError Mle::HandleDataResponse(const Message &         aMessage,
         // running out the specified number. E.g. other component also trigger fast poll, and
         // is waiting for response; or the corner case where multiple Mle Data Request attempts
         // happened due to the retransmission mechanism.
-        IgnoreReturnValue(Get<DataPollSender>().StopFastPolls());
+        IgnoreError(Get<DataPollSender>().StopFastPolls());
     }
 
 exit:
@@ -3081,7 +3034,7 @@ otError Mle::HandleLeaderData(const Message &aMessage, const Ip6::MessageInfo &a
     }
     else if (!mRetrieveNewNetworkData)
     {
-        VerifyOrExit(IsNetworkDataNewer(leaderData));
+        VerifyOrExit(IsNetworkDataNewer(leaderData), OT_NOOP);
     }
 
     // Active Timestamp
@@ -3144,8 +3097,8 @@ otError Mle::HandleLeaderData(const Message &aMessage, const Ip6::MessageInfo &a
         if (activeDatasetOffset > 0)
         {
             aMessage.Read(activeDatasetOffset, sizeof(tlv), &tlv);
-            Get<MeshCoP::ActiveDataset>().Save(activeTimestamp, aMessage, activeDatasetOffset + sizeof(tlv),
-                                               tlv.GetLength());
+            IgnoreError(Get<MeshCoP::ActiveDataset>().Save(activeTimestamp, aMessage, activeDatasetOffset + sizeof(tlv),
+                                                           tlv.GetLength()));
         }
     }
 
@@ -3155,8 +3108,8 @@ otError Mle::HandleLeaderData(const Message &aMessage, const Ip6::MessageInfo &a
         if (pendingDatasetOffset > 0)
         {
             aMessage.Read(pendingDatasetOffset, sizeof(tlv), &tlv);
-            Get<MeshCoP::PendingDataset>().Save(pendingTimestamp, aMessage, pendingDatasetOffset + sizeof(tlv),
-                                                tlv.GetLength());
+            IgnoreError(Get<MeshCoP::PendingDataset>().Save(pendingTimestamp, aMessage,
+                                                            pendingDatasetOffset + sizeof(tlv), tlv.GetLength()));
         }
     }
 
@@ -3181,7 +3134,7 @@ exit:
             delay = 10;
         }
 
-        SendDataRequest(aMessageInfo.GetPeerAddr(), tlvs, sizeof(tlvs), delay);
+        IgnoreError(SendDataRequest(aMessageInfo.GetPeerAddr(), tlvs, sizeof(tlvs), delay));
     }
     else if (error == OT_ERROR_NONE)
     {
@@ -3350,25 +3303,26 @@ otError Mle::HandleParentResponse(const Message &aMessage, const Ip6::MessageInf
         switch (mParentRequestMode)
         {
         case kAttachAny:
-            VerifyOrExit(leaderData.GetPartitionId() != mLeaderData.GetPartitionId() || diff > 0);
+            VerifyOrExit(leaderData.GetPartitionId() != mLeaderData.GetPartitionId() || diff > 0, OT_NOOP);
             break;
 
         case kAttachSame1:
         case kAttachSame2:
-            VerifyOrExit(leaderData.GetPartitionId() == mLeaderData.GetPartitionId());
-            VerifyOrExit(diff > 0);
+            VerifyOrExit(leaderData.GetPartitionId() == mLeaderData.GetPartitionId(), OT_NOOP);
+            VerifyOrExit(diff > 0, OT_NOOP);
             break;
 
         case kAttachSameDowngrade:
-            VerifyOrExit(leaderData.GetPartitionId() == mLeaderData.GetPartitionId());
-            VerifyOrExit(diff >= 0);
+            VerifyOrExit(leaderData.GetPartitionId() == mLeaderData.GetPartitionId(), OT_NOOP);
+            VerifyOrExit(diff >= 0, OT_NOOP);
             break;
 
         case kAttachBetter:
-            VerifyOrExit(leaderData.GetPartitionId() != mLeaderData.GetPartitionId());
+            VerifyOrExit(leaderData.GetPartitionId() != mLeaderData.GetPartitionId(), OT_NOOP);
 
             VerifyOrExit(MleRouter::ComparePartitions(connectivity.GetActiveRouters() <= 1, leaderData,
-                                                      Get<MleRouter>().IsSingleton(), mLeaderData) > 0);
+                                                      Get<MleRouter>().IsSingleton(), mLeaderData) > 0,
+                         OT_NOOP);
             break;
         }
     }
@@ -3391,12 +3345,13 @@ otError Mle::HandleParentResponse(const Message &aMessage, const Ip6::MessageInf
         }
 
         // only consider partitions that are the same or better
-        VerifyOrExit(compare >= 0);
+        VerifyOrExit(compare >= 0, OT_NOOP);
 #endif
 
         // only consider better parents if the partitions are the same
         VerifyOrExit(compare != 0 || IsBetterParent(sourceAddress, linkQuality, linkMargin, connectivity,
-                                                    static_cast<uint8_t>(version)));
+                                                    static_cast<uint8_t>(version)),
+                     OT_NOOP);
     }
 
     // Link Frame Counter
@@ -3419,7 +3374,7 @@ otError Mle::HandleParentResponse(const Message &aMessage, const Ip6::MessageInf
     // Time Parameter
     if (Tlv::GetTlv(aMessage, Tlv::kTimeParameter, sizeof(timeParameter), timeParameter) == OT_ERROR_NONE)
     {
-        VerifyOrExit(timeParameter.IsValid());
+        VerifyOrExit(timeParameter.IsValid(), OT_NOOP);
 
         Get<TimeSync>().SetTimeSyncPeriod(timeParameter.GetTimeSyncPeriod());
         Get<TimeSync>().SetXtalThreshold(timeParameter.GetXtalThreshold());
@@ -3496,7 +3451,7 @@ otError Mle::HandleChildIdResponse(const Message &         aMessage,
 
     VerifyOrExit(aNeighbor && aNeighbor->IsStateValid(), error = OT_ERROR_SECURITY);
 
-    VerifyOrExit(mAttachState == kAttachStateChildIdRequest);
+    VerifyOrExit(mAttachState == kAttachStateChildIdRequest, OT_NOOP);
 
     // Leader Data
     SuccessOrExit(error = ReadLeaderData(aMessage, leaderData));
@@ -3517,7 +3472,8 @@ otError Mle::HandleChildIdResponse(const Message &         aMessage,
         if (Tlv::GetOffset(aMessage, Tlv::kActiveDataset, offset) == OT_ERROR_NONE)
         {
             aMessage.Read(offset, sizeof(tlv), &tlv);
-            Get<MeshCoP::ActiveDataset>().Save(activeTimestamp, aMessage, offset + sizeof(tlv), tlv.GetLength());
+            IgnoreError(
+                Get<MeshCoP::ActiveDataset>().Save(activeTimestamp, aMessage, offset + sizeof(tlv), tlv.GetLength()));
         }
     }
 
@@ -3536,7 +3492,8 @@ otError Mle::HandleChildIdResponse(const Message &         aMessage,
         if (Tlv::GetOffset(aMessage, Tlv::kPendingDataset, offset) == OT_ERROR_NONE)
         {
             aMessage.Read(offset, sizeof(tlv), &tlv);
-            Get<MeshCoP::PendingDataset>().Save(pendingTimestamp, aMessage, offset + sizeof(tlv), tlv.GetLength());
+            IgnoreError(
+                Get<MeshCoP::PendingDataset>().Save(pendingTimestamp, aMessage, offset + sizeof(tlv), tlv.GetLength()));
         }
     }
     else
@@ -3585,8 +3542,9 @@ otError Mle::HandleChildIdResponse(const Message &         aMessage,
 
     mParent.SetRloc16(sourceAddress);
 
-    Get<NetworkData::Leader>().SetNetworkData(leaderData.GetDataVersion(), leaderData.GetStableDataVersion(),
-                                              !IsFullNetworkData(), aMessage, networkDataOffset);
+    IgnoreError(Get<NetworkData::Leader>().SetNetworkData(leaderData.GetDataVersion(),
+                                                          leaderData.GetStableDataVersion(), !IsFullNetworkData(),
+                                                          aMessage, networkDataOffset));
 
     SetStateChild(shortAddress);
 
@@ -3639,7 +3597,7 @@ otError Mle::HandleChildUpdateRequest(const Message &         aMessage,
         switch (Tlv::ReadUint8Tlv(aMessage, Tlv::kStatus, status))
         {
         case OT_ERROR_NONE:
-            VerifyOrExit(status != StatusTlv::kError, BecomeDetached());
+            VerifyOrExit(status != StatusTlv::kError, IgnoreError(BecomeDetached()));
             break;
         case OT_ERROR_NOT_FOUND:
             break;
@@ -3649,7 +3607,7 @@ otError Mle::HandleChildUpdateRequest(const Message &         aMessage,
 
         if (mParent.GetRloc16() != sourceAddress)
         {
-            BecomeDetached();
+            IgnoreError(BecomeDetached());
             ExitNow();
         }
 
@@ -3723,13 +3681,13 @@ otError Mle::HandleChildUpdateResponse(const Message &         aMessage,
 
     default:
         OT_ASSERT(false);
-        break;
+        OT_UNREACHABLE_CODE(break);
     }
 
     // Status
     if (Tlv::ReadUint8Tlv(aMessage, Tlv::kStatus, status) == OT_ERROR_NONE)
     {
-        BecomeDetached();
+        IgnoreError(BecomeDetached());
         ExitNow();
     }
 
@@ -3769,7 +3727,7 @@ otError Mle::HandleChildUpdateResponse(const Message &         aMessage,
 
         if (RouterIdFromRloc16(sourceAddress) != RouterIdFromRloc16(GetRloc16()))
         {
-            BecomeDetached();
+            IgnoreError(BecomeDetached());
             ExitNow();
         }
 
@@ -3802,7 +3760,7 @@ otError Mle::HandleChildUpdateResponse(const Message &         aMessage,
 
     default:
         OT_ASSERT(false);
-        break;
+        OT_UNREACHABLE_CODE(break);
     }
 
 exit:
@@ -3856,11 +3814,12 @@ otError Mle::HandleAnnounce(const Message &aMessage, const Ip6::MessageInfo &aMe
         // Announce message.
 
         VerifyOrExit(!IsDetached() || (Get<Mac::Mac>().GetPanChannel() != channel) ||
-                     (Get<Mac::Mac>().GetPanId() != panId));
+                         (Get<Mac::Mac>().GetPanId() != panId),
+                     OT_NOOP);
 
         if (mAttachState == kAttachStateProcessAnnounce)
         {
-            VerifyOrExit(mAlternateTimestamp < timestamp.GetSeconds());
+            VerifyOrExit(mAlternateTimestamp < timestamp.GetSeconds(), OT_NOOP);
         }
 
         mAlternateTimestamp = timestamp.GetSeconds();
@@ -3873,10 +3832,10 @@ otError Mle::HandleAnnounce(const Message &aMessage, const Ip6::MessageInfo &aMe
     }
     else if (localTimestamp->Compare(timestamp) < 0)
     {
-        SendAnnounce(channel, false);
+        IgnoreError(SendAnnounce(channel, false));
 
 #if OPENTHREAD_CONFIG_MLE_SEND_UNICAST_ANNOUNCE_RESPONSE
-        SendAnnounce(channel, false, aMessageInfo.GetPeerAddr());
+        IgnoreError(SendAnnounce(channel, false, aMessageInfo.GetPeerAddr()));
 #endif
     }
     else
@@ -3913,10 +3872,10 @@ void Mle::ProcessAnnounce(void)
     mAlternatePanId     = Get<Mac::Mac>().GetPanId();
     mAlternateTimestamp = 0;
 
-    Get<Mac::Mac>().SetPanChannel(newChannel);
+    IgnoreError(Get<Mac::Mac>().SetPanChannel(newChannel));
     Get<Mac::Mac>().SetPanId(newPanId);
 
-    Start(/* aAnnounceAttach */ true);
+    IgnoreError(Start(/* aAnnounceAttach */ true));
 }
 
 otError Mle::HandleDiscoveryResponse(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo)
@@ -3975,7 +3934,7 @@ otError Mle::HandleDiscoveryResponse(const Message &aMessage, const Ip6::Message
 
         case MeshCoP::Tlv::kNetworkName:
             aMessage.Read(offset, sizeof(networkName), &networkName);
-            static_cast<Mac::NetworkName &>(result.mNetworkName).Set(networkName.GetNetworkName());
+            IgnoreError(static_cast<Mac::NetworkName &>(result.mNetworkName).Set(networkName.GetNetworkName()));
             break;
 
         case MeshCoP::Tlv::kSteeringData:
@@ -3985,7 +3944,8 @@ otError Mle::HandleDiscoveryResponse(const Message &aMessage, const Ip6::Message
             if (mDiscoverEnableFiltering)
             {
                 VerifyOrExit((steeringData.GetBit(mDiscoverCcittIndex % steeringData.GetNumBits()) &&
-                              steeringData.GetBit(mDiscoverAnsiIndex % steeringData.GetNumBits())));
+                              steeringData.GetBit(mDiscoverAnsiIndex % steeringData.GetNumBits())),
+                             OT_NOOP);
             }
 
             didCheckSteeringData         = true;
@@ -4007,7 +3967,7 @@ otError Mle::HandleDiscoveryResponse(const Message &aMessage, const Ip6::Message
         offset += sizeof(meshcopTlv) + meshcopTlv.GetLength();
     }
 
-    VerifyOrExit(!mDiscoverEnableFiltering || didCheckSteeringData);
+    VerifyOrExit(!mDiscoverEnableFiltering || didCheckSteeringData, OT_NOOP);
 
     mDiscoverHandler(&result, mDiscoverContext);
 
@@ -4082,20 +4042,17 @@ uint16_t Mle::GetNextHop(uint16_t aDestination) const
 
 bool Mle::IsRoutingLocator(const Ip6::Address &aAddress) const
 {
-    return memcmp(&mMeshLocal16, &aAddress, kRlocPrefixLength) == 0 &&
-           aAddress.mFields.m8[14] < Ip6::Address::kAloc16Mask &&
-           (aAddress.mFields.m8[14] & Ip6::Address::kRloc16ReservedBitMask) == 0;
+    return IsMeshLocalAddress(aAddress) && aAddress.IsIidRoutingLocator();
 }
 
 bool Mle::IsAnycastLocator(const Ip6::Address &aAddress) const
 {
-    return memcmp(&mMeshLocal16, &aAddress, kRlocPrefixLength) == 0 &&
-           aAddress.mFields.m8[14] == Ip6::Address::kAloc16Mask;
+    return IsMeshLocalAddress(aAddress) && aAddress.IsIidAnycastLocator();
 }
 
 bool Mle::IsMeshLocalAddress(const Ip6::Address &aAddress) const
 {
-    return aAddress.PrefixMatch(GetMeshLocal16()) >= MeshLocalPrefix::kLength;
+    return (memcmp(&GetMeshLocalPrefix(), &aAddress, MeshLocalPrefix::kSize) == 0);
 }
 
 otError Mle::CheckReachability(uint16_t aMeshDest, Ip6::Header &aIp6Header)
@@ -4121,7 +4078,8 @@ otError Mle::InformPreviousParent(void)
     Message *        message = NULL;
     Ip6::MessageInfo messageInfo;
 
-    VerifyOrExit((mPreviousParentRloc != Mac::kShortAddrInvalid) && (mPreviousParentRloc != mParent.GetRloc16()));
+    VerifyOrExit((mPreviousParentRloc != Mac::kShortAddrInvalid) && (mPreviousParentRloc != mParent.GetRloc16()),
+                 OT_NOOP);
 
     mCounters.mParentChanges++;
 
@@ -4179,18 +4137,18 @@ void Mle::HandleParentSearchTimer(void)
 
     mParentSearchIsInBackoff = false;
 
-    VerifyOrExit(IsChild());
+    VerifyOrExit(IsChild(), OT_NOOP);
 
     parentRss = GetParent().GetLinkInfo().GetAverageRss();
     otLogInfoMle("PeriodicParentSearch: Parent RSS %d", parentRss);
-    VerifyOrExit(parentRss != OT_RADIO_RSSI_INVALID);
+    VerifyOrExit(parentRss != OT_RADIO_RSSI_INVALID, OT_NOOP);
 
     if (parentRss < kParentSearchRssThreadhold)
     {
         otLogInfoMle("PeriodicParentSearch: Parent RSS less than %d, searching for new parents",
                      kParentSearchRssThreadhold);
         mParentSearchIsInBackoff = true;
-        BecomeChild(kAttachAny);
+        IgnoreError(BecomeChild(kAttachAny));
     }
 
 exit:
@@ -4417,7 +4375,7 @@ void Mle::RegisterParentResponseStatsCallback(otThreadParentResponseCallback aCa
 void Mle::Challenge::GenerateRandom(void)
 {
     mLength = kMaxChallengeSize;
-    Random::Crypto::FillBuffer(mBuffer, mLength);
+    IgnoreError(Random::Crypto::FillBuffer(mBuffer, mLength));
 }
 
 bool Mle::Challenge::Matches(const uint8_t *aBuffer, uint8_t aLength) const
@@ -4439,34 +4397,6 @@ void Mle::DelayedResponseMetadata::RemoveFrom(Message &aMessage) const
     OT_ASSERT(error == OT_ERROR_NONE);
     OT_UNUSED_VARIABLE(error);
 }
-
-#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-void Mle::UpdateAllDomainBackboneRouters(BackboneRouter::Leader::DomainPrefixState aState)
-{
-    if (!Get<BackboneRouter::Local>().IsEnabled())
-    {
-        Get<ThreadNetif>().UnsubscribeMulticast(mAllDomainBackboneRouters);
-        ExitNow();
-    }
-
-    if (aState == BackboneRouter::Leader::kDomainPrefixRemoved ||
-        aState == BackboneRouter::Leader::kDomainPrefixRefreshed)
-    {
-        Get<ThreadNetif>().UnsubscribeMulticast(mAllDomainBackboneRouters);
-    }
-
-    if (aState == BackboneRouter::Leader::kDomainPrefixAdded ||
-        aState == BackboneRouter::Leader::kDomainPrefixRefreshed)
-    {
-        mAllDomainBackboneRouters.GetAddress().SetMulticastNetworkPrefix(
-            *Get<BackboneRouter::Leader>().GetDomainPrefix());
-        Get<ThreadNetif>().SubscribeMulticast(mAllDomainBackboneRouters);
-    }
-
-exit:
-    return;
-}
-#endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
 
 } // namespace Mle
 } // namespace ot

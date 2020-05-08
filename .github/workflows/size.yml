@@ -1,6 +1,5 @@
-#!/bin/bash
 #
-#  Copyright (c) 2019, The OpenThread Authors.
+#  Copyright (c) 2020, The OpenThread Authors.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -27,26 +26,33 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-[ -n "$BUILD_TARGET" ] || exit 0
+name: Size
 
-set -e
+on: [push, pull_request]
 
-codecov_upload() {
-    curl -s https://codecov.io/bash > codecov
-    chmod a+x codecov
+jobs:
 
-    # Assume gcov by default, and llvm-cov if CC is clang
-    if [[ -z $CC ]]; then
-        ./codecov
-    elif  "$CC" --version | grep -q gcc; then
-        ./codecov
-    elif "$CC" --version | grep -q clang; then
-        ./codecov -x "llvm-cov gcov"
-    fi
-}
+  cancel-previous-runs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: rokroskar/workflow-run-cleanup-action@master
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      if: "github.ref != 'refs/heads/master'"
 
-main() {
-    codecov_upload
-}
-
-main "$@"
+  size-report:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Bootstrap
+      if: "github.event_name == 'push'"
+      run: |
+        python3 -m pip install --upgrade setuptools wheel
+        python3 -m pip install mdv
+    - name: Run
+      env:
+        OT_BASE_BRANCH: "${{ github.base_ref }}"
+        SIZE_REPORT_URL: "https://openthread-size-report.glitch.me/size-report/1354027"
+      run: |
+        export PATH=$PATH:$HOME/.local/bin
+        ./script/check-size

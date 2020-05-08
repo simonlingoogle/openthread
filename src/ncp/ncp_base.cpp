@@ -260,7 +260,7 @@ NcpBase::NcpBase(Instance *aInstance)
 
 #if OPENTHREAD_MTD || OPENTHREAD_FTD
     otMessageQueueInit(&mMessageQueue);
-    otSetStateChangedCallback(mInstance, &NcpBase::HandleStateChanged, this);
+    IgnoreError(otSetStateChangedCallback(mInstance, &NcpBase::HandleStateChanged, this));
     otIp6SetReceiveCallback(mInstance, &NcpBase::HandleDatagramFromStack, this);
     otIp6SetReceiveFilterEnabled(mInstance, true);
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
@@ -285,7 +285,7 @@ NcpBase::NcpBase(Instance *aInstance)
 #endif
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
     mChangedPropsSet.AddLastStatus(SPINEL_STATUS_RESET_UNKNOWN);
-    mUpdateChangedPropsTask.Post();
+    IgnoreError(mUpdateChangedPropsTask.Post());
 
 #if OPENTHREAD_ENABLE_VENDOR_EXTENSION
     aInstance->Get<Extension::ExtensionBase>().SignalNcpInit(*this);
@@ -341,14 +341,14 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
     // Skip if there is no header byte to read or this isn't a spinel frame.
 
     SuccessOrExit(mDecoder.ReadUint8(header));
-    VerifyOrExit((SPINEL_HEADER_FLAG & header) == SPINEL_HEADER_FLAG);
+    VerifyOrExit((SPINEL_HEADER_FLAG & header) == SPINEL_HEADER_FLAG, OT_NOOP);
 
     mRxSpinelFrameCounter++;
 
     // We only support IID zero for now.
     if (SPINEL_HEADER_GET_IID(header) != 0)
     {
-        WriteLastStatusFrame(header, SPINEL_STATUS_INVALID_INTERFACE);
+        IgnoreError(WriteLastStatusFrame(header, SPINEL_STATUS_INVALID_INTERFACE));
         ExitNow();
     }
 
@@ -356,7 +356,7 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
 
     if (error != OT_ERROR_NONE)
     {
-        PrepareLastStatusResponse(header, ThreadErrorToSpinelStatus(error));
+        IgnoreError(PrepareLastStatusResponse(header, ThreadErrorToSpinelStatus(error)));
     }
 
     if (!IsResponseQueueEmpty())
@@ -368,7 +368,7 @@ void NcpBase::HandleReceive(const uint8_t *aBuf, uint16_t aBufLength)
         // from `HandleFrameRemovedFromNcpBuffer()` when buffer space
         // becomes available.
 
-        IgnoreReturnValue(SendQueuedResponses());
+        IgnoreError(SendQueuedResponses());
     }
 
     // Check for out of sequence TIDs and update `mNextExpectedTid`,
@@ -499,7 +499,7 @@ exit:
     if (error == OT_ERROR_NO_BUFS)
     {
         mChangedPropsSet.AddLastStatus(SPINEL_STATUS_NOMEM);
-        mUpdateChangedPropsTask.Post();
+        IgnoreError(mUpdateChangedPropsTask.Post());
     }
 
     return error;
@@ -608,6 +608,10 @@ unsigned int NcpBase::ConvertLogRegion(otLogRegion aLogRegion)
     case OT_LOG_REGION_UTIL:
         spinelLogRegion = SPINEL_NCP_LOG_REGION_OT_UTIL;
         break;
+
+    case OT_LOG_REGION_BBR:
+        spinelLogRegion = SPINEL_NCP_LOG_REGION_OT_BBR;
+        break;
     }
 
     return spinelLogRegion;
@@ -619,7 +623,7 @@ void NcpBase::Log(otLogLevel aLogLevel, otLogRegion aLogRegion, const char *aLog
     uint8_t header = SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0;
 
     VerifyOrExit(!mDisableStreamWrite, error = OT_ERROR_INVALID_STATE);
-    VerifyOrExit(!mChangedPropsSet.IsPropertyFiltered(SPINEL_PROP_STREAM_LOG));
+    VerifyOrExit(!mChangedPropsSet.IsPropertyFiltered(SPINEL_PROP_STREAM_LOG), OT_NOOP);
 
     // If there is a pending queued response we do not allow any new log
     // stream writes. This is to ensure that log messages can not continue
@@ -639,7 +643,7 @@ exit:
     if (error == OT_ERROR_NO_BUFS)
     {
         mChangedPropsSet.AddLastStatus(SPINEL_STATUS_NOMEM);
-        mUpdateChangedPropsTask.Post();
+        IgnoreError(mUpdateChangedPropsTask.Post());
     }
 }
 
@@ -807,7 +811,7 @@ void NcpBase::UpdateChangedProps(void)
     ProcessThreadChangedFlags();
 #endif
 
-    VerifyOrExit(!mChangedPropsSet.IsEmpty());
+    VerifyOrExit(!mChangedPropsSet.IsEmpty(), OT_NOOP);
 
     entry = mChangedPropsSet.GetSupportedEntries(numEntries);
 
@@ -837,7 +841,7 @@ void NcpBase::UpdateChangedProps(void)
         }
 
         mChangedPropsSet.RemoveEntry(index);
-        VerifyOrExit(!mChangedPropsSet.IsEmpty());
+        VerifyOrExit(!mChangedPropsSet.IsEmpty(), OT_NOOP);
     }
 
 exit:
@@ -974,7 +978,7 @@ otError NcpBase::HandleCommandPropertySet(uint8_t aHeader, spinel_prop_key_t aKe
 
         bool didHandle = HandlePropertySetForSpecialProperties(aHeader, aKey, error);
 
-        VerifyOrExit(!didHandle);
+        VerifyOrExit(!didHandle, OT_NOOP);
 
 #if OPENTHREAD_ENABLE_NCP_VENDOR_HOOK
         if (aKey >= SPINEL_PROP_VENDOR__BEGIN && aKey < SPINEL_PROP_VENDOR__END)
@@ -1031,7 +1035,7 @@ otError NcpBase::HandleCommandPropertyInsertRemove(uint8_t aHeader, spinel_prop_
 
     default:
         OT_ASSERT(false);
-        break;
+        OT_UNREACHABLE_CODE(break);
     }
 
     VerifyOrExit(handler != NULL, error = PrepareLastStatusResponse(aHeader, SPINEL_STATUS_PROP_NOT_FOUND));
@@ -1042,8 +1046,8 @@ otError NcpBase::HandleCommandPropertyInsertRemove(uint8_t aHeader, spinel_prop_
     // that the `PropertyHandler` method can parse the content.
 
     mDecoder.SavePosition();
-    mDecoder.ReadData(valuePtr, valueLen);
-    mDecoder.ResetToSaved();
+    IgnoreError(mDecoder.ReadData(valuePtr, valueLen));
+    IgnoreError(mDecoder.ResetToSaved());
 
     mDisableStreamWrite = false;
 
@@ -1175,8 +1179,8 @@ otError NcpBase::CommandHandler_RESET(uint8_t aHeader)
     // platform doesn't support resetting.
     // In such a case we fake it.
 
-    otThreadSetEnabled(mInstance, false);
-    otIp6SetEnabled(mInstance, false);
+    IgnoreError(otThreadSetEnabled(mInstance, false));
+    IgnoreError(otIp6SetEnabled(mInstance, false));
 #endif
 
     error = WriteLastStatusFrame(SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0, SPINEL_STATUS_RESET_SOFTWARE);
@@ -1184,7 +1188,7 @@ otError NcpBase::CommandHandler_RESET(uint8_t aHeader)
     if (error != OT_ERROR_NONE)
     {
         mChangedPropsSet.AddLastStatus(SPINEL_STATUS_RESET_UNKNOWN);
-        mUpdateChangedPropsTask.Post();
+        IgnoreError(mUpdateChangedPropsTask.Post());
     }
 
     sNcpInstance = NULL;
@@ -1670,7 +1674,7 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_UNSOL_UPDATE_FILTER>(
     {
         SuccessOrExit(error = mDecoder.ReadUintPacked(propKey));
 
-        IgnoreReturnValue(mChangedPropsSet.EnablePropertyFilter(static_cast<spinel_prop_key_t>(propKey), true));
+        IgnoreError(mChangedPropsSet.EnablePropertyFilter(static_cast<spinel_prop_key_t>(propKey), true));
     }
 
 exit:
@@ -1681,7 +1685,7 @@ exit:
 
     if (error != OT_ERROR_NONE)
     {
-        IgnoreReturnValue(
+        IgnoreError(
             WritePropertyValueIsFrame(SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0, SPINEL_PROP_UNSOL_UPDATE_FILTER));
     }
 
@@ -1938,13 +1942,13 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_MCU_POWER_STATE>(void
     {
         if (otThreadGetDeviceRole(mInstance) != OT_DEVICE_ROLE_DISABLED)
         {
-            otThreadSetEnabled(mInstance, false);
+            IgnoreError(otThreadSetEnabled(mInstance, false));
             StopLegacy();
         }
 
         if (otIp6IsEnabled(mInstance))
         {
-            otIp6SetEnabled(mInstance, false);
+            IgnoreError(otIp6SetEnabled(mInstance, false));
         }
     }
 #endif // #if OPENTHREAD_FTD || OPENTHREAD_MTD
@@ -2246,10 +2250,10 @@ template <> otError NcpBase::HandlePropertySet<SPINEL_PROP_DEBUG_NCP_LOG_LEVEL>(
 
     default:
         ExitNow(error = OT_ERROR_INVALID_ARGS);
-        break;
+        OT_UNREACHABLE_CODE(break);
     }
 
-    otLoggingSetLevel(logLevel);
+    IgnoreError(otLoggingSetLevel(logLevel));
 
 exit:
     return error;
@@ -2405,7 +2409,7 @@ extern "C" void otNcpPlatLogv(otLogLevel aLogLevel, otLogRegion aLogRegion, cons
             charsWritten = static_cast<int>(sizeof(logString) - 1);
         }
 
-        otNcpStreamWrite(0, reinterpret_cast<uint8_t *>(logString), charsWritten);
+        IgnoreError(otNcpStreamWrite(0, reinterpret_cast<uint8_t *>(logString), charsWritten));
     }
 }
 

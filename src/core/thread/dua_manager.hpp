@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, The OpenThread Authors.
+ *  Copyright (c) 2020, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -28,57 +28,73 @@
 
 /**
  * @file
- *   This file includes definitions for the spinel interface to Radio Co-processor (RCP)
+ *   This file includes definitions for managing Domain Unicast Address feature defined in Thread 1.2.
+ */
+
+#ifndef DUA_MANAGER_HPP_
+#define DUA_MANAGER_HPP_
+
+#include "openthread-core-config.h"
+
+#if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+
+#include "backbone_router/leader.hpp"
+#include "common/locator.hpp"
+#include "net/netif.hpp"
+
+namespace ot {
+
+/**
+ * @addtogroup core-dua
+ *
+ * @brief
+ *   This module includes definitions for generating, managing, registering Domain Unicast Address.
+ *
+ * @{
+ *
+ * @defgroup core-dua Dua
+ *
+ * @}
  *
  */
 
-#ifndef POSIX_APP_SPINEL_INTERFACE_HPP_
-#define POSIX_APP_SPINEL_INTERFACE_HPP_
-
-#include "openthread-posix-config.h"
-
-#include "lib/hdlc/hdlc.hpp"
-
-namespace ot {
-namespace Posix {
-
-class SpinelInterface
+/**
+ * This class implements managing DUA.
+ *
+ */
+class DuaManager : public InstanceLocator
 {
 public:
-    enum
-    {
-        kMaxFrameSize = 2048, ///< Maximum frame size (number of bytes).
-    };
-
     /**
-     * This type defines a receive frame buffer to store received spinel frame(s).
+     * This constructor initializes the object.
      *
-     * @note The receive frame buffer is an `Hdlc::MultiFrameBuffer` and therefore it is capable of storing multiple
-     * frames in a FIFO queue manner.
+     * @param[in]  aInstance     A reference to the OpenThread instance.
      *
      */
-    typedef Hdlc::MultiFrameBuffer<kMaxFrameSize> RxFrameBuffer;
+    explicit DuaManager(Instance &aInstance);
 
     /**
-     * This class defines the callbacks provided by `SpinelInterface` to its owner/user.
+     * This method updates Domain Unicast Address.
+     *
+     * @param[in]  aState  The Domain Prefix state or state change.
      *
      */
-    class Callbacks
-    {
-    public:
-        /**
-         * This callback is invoked to notify owner/user of `SpinelInterface` of a received spinel frame.
-         *
-         * The newly received frame is available in `RxFrameBuffer` from `SpinelInterface::GetRxFrameBuffer()`.
-         * User can read and process the frame. The callback is expected to either discard the new frame using
-         * `RxFrameBuffer::DiscardFrame()` or save the frame using `RxFrameBuffer::SaveFrame()` to be read and
-         * processed later.
-         *
-         */
-        void HandleReceivedFrame(void);
-    };
+    void UpdateDomainUnicastAddress(BackboneRouter::Leader::DomainPrefixState aState);
+
+    /**
+     * This method returns a reference to the Domain Unicast Address.
+     *
+     * @returns A reference to the Domain Unicast Address.
+     *
+     */
+    const Ip6::Address &GetDomainUnicastAddress(void) const { return mDomainUnicastAddress.GetAddress(); }
+
+private:
+    Ip6::NetifUnicastAddress mDomainUnicastAddress;
+    uint8_t                  mDadCounter;
 };
-} // namespace Posix
+
 } // namespace ot
 
-#endif // POSIX_APP_SPINEL_INTERFACE_HPP_
+#endif // (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
+#endif // DUA_MANAGER_HPP_

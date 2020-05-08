@@ -155,7 +155,7 @@ public:
 private:
     void UpdateBackboneRouterPrimary(void);
     void UpdateDomainPrefixConfig(void);
-#if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_NETDATA == 1)
+#if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_BBR == 1)
     void               LogBackboneRouterPrimary(State aState, const BackboneRouterConfig &aConfig) const;
     void               LogDomainPrefix(DomainPrefixState aState, const otIp6Prefix &aPrefix) const;
     static const char *StateToString(State aState);
@@ -166,7 +166,7 @@ private:
 #endif
 
     BackboneRouterConfig mConfig;       ///< Primary Backbone Router information.
-    otIp6Prefix          mDomainPrefix; ///< Domain Prefix on the Thread Network.
+    otIp6Prefix          mDomainPrefix; ///< Domain Prefix in the Thread network.
 };
 
 } // namespace BackboneRouter

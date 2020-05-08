@@ -60,8 +60,8 @@ Leader::Leader(Instance &aInstance)
     , mDelayTimerMinimal(DelayTimerTlv::kDelayTimerMinimal)
     , mSessionId(Random::NonCrypto::GetUint16())
 {
-    Get<Coap::Coap>().AddResource(mPetition);
-    Get<Coap::Coap>().AddResource(mKeepAlive);
+    IgnoreError(Get<Coap::Coap>().AddResource(mPetition));
+    IgnoreError(Get<Coap::Coap>().AddResource(mKeepAlive));
 }
 
 void Leader::HandlePetition(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
@@ -80,14 +80,15 @@ void Leader::HandlePetition(Coap::Message &aMessage, const Ip6::MessageInfo &aMe
 
     otLogInfoMeshCoP("received petition");
 
-    VerifyOrExit(Get<Mle::MleRouter>().IsRoutingLocator(aMessageInfo.GetPeerAddr()));
+    VerifyOrExit(Get<Mle::MleRouter>().IsRoutingLocator(aMessageInfo.GetPeerAddr()), OT_NOOP);
     SuccessOrExit(Tlv::GetTlv(aMessage, Tlv::kCommissionerId, sizeof(commissionerId), commissionerId));
 
     if (mTimer.IsRunning())
     {
         VerifyOrExit((commissionerId.GetCommissionerIdLength() == mCommissionerId.GetCommissionerIdLength()) &&
-                     (!strncmp(commissionerId.GetCommissionerId(), mCommissionerId.GetCommissionerId(),
-                               commissionerId.GetCommissionerIdLength())));
+                         (!strncmp(commissionerId.GetCommissionerId(), mCommissionerId.GetCommissionerId(),
+                                   commissionerId.GetCommissionerIdLength())),
+                     OT_NOOP);
 
         ResignCommissioner();
     }
@@ -116,7 +117,7 @@ void Leader::HandlePetition(Coap::Message &aMessage, const Ip6::MessageInfo &aMe
     mTimer.Start(Time::SecToMsec(kTimeoutLeaderPetition));
 
 exit:
-    SendPetitionResponse(aMessage, aMessageInfo, state);
+    IgnoreError(SendPetitionResponse(aMessage, aMessageInfo, state));
 }
 
 otError Leader::SendPetitionResponse(const Coap::Message &   aRequest,
@@ -202,7 +203,7 @@ void Leader::HandleKeepAlive(Coap::Message &aMessage, const Ip6::MessageInfo &aM
         mTimer.Start(Time::SecToMsec(kTimeoutLeaderPetition));
     }
 
-    SendKeepAliveResponse(aMessage, aMessageInfo, responseState);
+    IgnoreError(SendKeepAliveResponse(aMessage, aMessageInfo, responseState));
 
 exit:
     return;
@@ -286,7 +287,7 @@ void Leader::HandleTimer(Timer &aTimer)
 
 void Leader::HandleTimer(void)
 {
-    VerifyOrExit(Get<Mle::MleRouter>().IsLeader());
+    VerifyOrExit(Get<Mle::MleRouter>().IsLeader(), OT_NOOP);
 
     ResignCommissioner();
 
@@ -301,8 +302,8 @@ void Leader::SetEmptyCommissionerData(void)
     mCommissionerSessionId.Init();
     mCommissionerSessionId.SetCommissionerSessionId(++mSessionId);
 
-    Get<NetworkData::Leader>().SetCommissioningData(reinterpret_cast<uint8_t *>(&mCommissionerSessionId),
-                                                    sizeof(Tlv) + mCommissionerSessionId.GetLength());
+    IgnoreError(Get<NetworkData::Leader>().SetCommissioningData(reinterpret_cast<uint8_t *>(&mCommissionerSessionId),
+                                                                sizeof(Tlv) + mCommissionerSessionId.GetLength()));
 }
 
 void Leader::ResignCommissioner(void)

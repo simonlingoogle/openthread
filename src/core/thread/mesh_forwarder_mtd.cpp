@@ -42,11 +42,11 @@ otError MeshForwarder::SendMessage(Message &aMessage)
     otError error;
 
     aMessage.SetDirectTransmission();
-    aMessage.SetOffset(0);
+    IgnoreError(aMessage.SetOffset(0));
     aMessage.SetDatagramTag(0);
 
     SuccessOrExit(error = mSendQueue.Enqueue(aMessage));
-    mScheduleTransmissionTask.Post();
+    IgnoreError(mScheduleTransmissionTask.Post());
 
 exit:
     return error;
@@ -57,7 +57,7 @@ otError MeshForwarder::EvictMessage(uint8_t aPriority)
     otError  error = OT_ERROR_NOT_FOUND;
     Message *message;
 
-    VerifyOrExit((message = mSendQueue.GetTail()) != NULL);
+    VerifyOrExit((message = mSendQueue.GetTail()) != NULL, OT_NOOP);
 
     if (message->GetPriority() < aPriority)
     {

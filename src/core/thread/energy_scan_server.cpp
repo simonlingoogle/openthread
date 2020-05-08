@@ -59,7 +59,7 @@ EnergyScanServer::EnergyScanServer(Instance &aInstance)
     , mNotifierCallback(aInstance, &EnergyScanServer::HandleStateChanged, this)
     , mEnergyScan(OT_URI_PATH_ENERGY_SCAN, &EnergyScanServer::HandleRequest, this)
 {
-    Get<Coap::Coap>().AddResource(mEnergyScan);
+    IgnoreError(Get<Coap::Coap>().AddResource(mEnergyScan));
 }
 
 void EnergyScanServer::HandleRequest(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
@@ -76,13 +76,13 @@ void EnergyScanServer::HandleRequest(Coap::Message &aMessage, const Ip6::Message
     Ip6::MessageInfo responseInfo(aMessageInfo);
     uint32_t         mask;
 
-    VerifyOrExit(aMessage.GetCode() == OT_COAP_CODE_POST);
+    VerifyOrExit(aMessage.GetCode() == OT_COAP_CODE_POST, OT_NOOP);
 
     SuccessOrExit(Tlv::ReadUint8Tlv(aMessage, MeshCoP::Tlv::kCount, count));
     SuccessOrExit(Tlv::ReadUint16Tlv(aMessage, MeshCoP::Tlv::kPeriod, period));
     SuccessOrExit(Tlv::ReadUint16Tlv(aMessage, MeshCoP::Tlv::kScanDuration, scanDuration));
 
-    VerifyOrExit((mask = MeshCoP::ChannelMaskTlv::GetChannelMask(aMessage)) != 0);
+    VerifyOrExit((mask = MeshCoP::ChannelMaskTlv::GetChannelMask(aMessage)) != 0, OT_NOOP);
 
     mChannelMask        = mask;
     mChannelMaskCurrent = mChannelMask;
@@ -112,17 +112,17 @@ void EnergyScanServer::HandleTimer(Timer &aTimer)
 
 void EnergyScanServer::HandleTimer(void)
 {
-    VerifyOrExit(mActive);
+    VerifyOrExit(mActive, OT_NOOP);
 
     if (mCount)
     {
         // grab the lowest channel to scan
         uint32_t channelMask = mChannelMaskCurrent & ~(mChannelMaskCurrent - 1);
-        Get<Mac::Mac>().EnergyScan(channelMask, mScanDuration, HandleScanResult, this);
+        IgnoreError(Get<Mac::Mac>().EnergyScan(channelMask, mScanDuration, HandleScanResult, this));
     }
     else
     {
-        SendReport();
+        IgnoreError(SendReport());
     }
 
 exit:
@@ -136,11 +136,11 @@ void EnergyScanServer::HandleScanResult(Mac::EnergyScanResult *aResult, void *aC
 
 void EnergyScanServer::HandleScanResult(Mac::EnergyScanResult *aResult)
 {
-    VerifyOrExit(mActive);
+    VerifyOrExit(mActive, OT_NOOP);
 
     if (aResult)
     {
-        VerifyOrExit(mScanResultsLength < OPENTHREAD_CONFIG_TMF_ENERGY_SCAN_MAX_RESULTS);
+        VerifyOrExit(mScanResultsLength < OPENTHREAD_CONFIG_TMF_ENERGY_SCAN_MAX_RESULTS, OT_NOOP);
         mScanResults[mScanResultsLength++] = aResult->mMaxRssi;
     }
     else

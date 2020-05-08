@@ -57,22 +57,48 @@ Local::Local(Instance &aInstance)
     , mIsServiceAdded(false)
 {
     mDomainPrefixConfig.mPrefix.mLength = 0;
+
+    // Primary Backbone Router Aloc
+    mBackboneRouterPrimaryAloc.Clear();
+
+    mBackboneRouterPrimaryAloc.mPrefixLength       = Mle::MeshLocalPrefix::kLength;
+    mBackboneRouterPrimaryAloc.mPreferred          = true;
+    mBackboneRouterPrimaryAloc.mValid              = true;
+    mBackboneRouterPrimaryAloc.mScopeOverride      = Ip6::Address::kRealmLocalScope;
+    mBackboneRouterPrimaryAloc.mScopeOverrideValid = true;
+    mBackboneRouterPrimaryAloc.GetAddress().SetLocator(Mle::kAloc16BackboneRouterPrimary);
+
+    // All Network Backbone Routers Multicast Address.
+    mAllNetworkBackboneRouters.Clear();
+
+    mAllNetworkBackboneRouters.GetAddress().mFields.m8[0]  = 0xff; // Multicast
+    mAllNetworkBackboneRouters.GetAddress().mFields.m8[1]  = 0x32; // Flags = 3, Scope = 2
+    mAllNetworkBackboneRouters.GetAddress().mFields.m8[2]  = 0;    // Reserved
+    mAllNetworkBackboneRouters.GetAddress().mFields.m8[15] = 3;    // Group ID = 3
+
+    // All Domain Backbone Routers Multicast Address.
+    mAllDomainBackboneRouters.Clear();
+
+    mAllDomainBackboneRouters.GetAddress().mFields.m8[0]  = 0xff; // Multicast
+    mAllDomainBackboneRouters.GetAddress().mFields.m8[1]  = 0x32; // Flags = 3, Scope = 2
+    mAllDomainBackboneRouters.GetAddress().mFields.m8[2]  = 0;    // Reserved
+    mAllDomainBackboneRouters.GetAddress().mFields.m8[15] = 3;    // Group ID = 3
 }
 
 void Local::SetEnabled(bool aEnable)
 {
-    VerifyOrExit(aEnable == (mState == OT_BACKBONE_ROUTER_STATE_DISABLED));
+    VerifyOrExit(aEnable == (mState == OT_BACKBONE_ROUTER_STATE_DISABLED), OT_NOOP);
 
     if (aEnable)
     {
         SetState(OT_BACKBONE_ROUTER_STATE_SECONDARY);
         AddDomainPrefixToNetworkData();
-        AddService();
+        IgnoreError(AddService());
     }
     else
     {
         RemoveDomainPrefixFromNetworkData();
-        RemoveService();
+        IgnoreError(RemoveService());
         SetState(OT_BACKBONE_ROUTER_STATE_DISABLED);
     }
 
@@ -84,7 +110,7 @@ exit:
 
 void Local::Reset(void)
 {
-    VerifyOrExit(mState != OT_BACKBONE_ROUTER_STATE_DISABLED);
+    VerifyOrExit(mState != OT_BACKBONE_ROUTER_STATE_DISABLED, OT_NOOP);
 
     if (RemoveService() == OT_ERROR_NONE)
     {
@@ -151,13 +177,14 @@ otError Local::AddService(bool aForce)
     uint8_t                               serviceData = NetworkData::ServiceTlv::kServiceDataBackboneRouter;
     NetworkData::BackboneRouterServerData serverData;
 
-    VerifyOrExit(mState != OT_BACKBONE_ROUTER_STATE_DISABLED && Get<Mle::Mle>().IsAttached());
+    VerifyOrExit(mState != OT_BACKBONE_ROUTER_STATE_DISABLED && Get<Mle::Mle>().IsAttached(), OT_NOOP);
 
     VerifyOrExit(aForce /* if register by force */ ||
-                 !Get<BackboneRouter::Leader>().HasPrimary() /* if no available Backbone Router service */ ||
-                 Get<BackboneRouter::Leader>().GetServer16() == Get<Mle::MleRouter>().GetRloc16()
+                     !Get<BackboneRouter::Leader>().HasPrimary() /* if no available Backbone Router service */ ||
+                     Get<BackboneRouter::Leader>().GetServer16() == Get<Mle::MleRouter>().GetRloc16()
                  /* If the device itself should be BBR. */
-    );
+                 ,
+                 OT_NOOP);
 
     serverData.SetSequenceNumber(mSequenceNumber);
     serverData.SetReregistrationDelay(mReregistrationDelay);
@@ -191,9 +218,32 @@ exit:
 
 void Local::SetState(BackboneRouterState aState)
 {
-    VerifyOrExit(mState != aState);
+    VerifyOrExit(mState != aState, OT_NOOP);
+
+    if (mState == OT_BACKBONE_ROUTER_STATE_DISABLED)
+    {
+        // Subscribe All Network Backbone Routers Multicast Address for both Secondary and Primary state.
+        mAllNetworkBackboneRouters.GetAddress().SetMulticastNetworkPrefix(Get<Mle::MleRouter>().GetMeshLocalPrefix());
+        IgnoreError(Get<ThreadNetif>().SubscribeMulticast(mAllNetworkBackboneRouters));
+    }
+    else if (aState == OT_BACKBONE_ROUTER_STATE_DISABLED)
+    {
+        IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mAllNetworkBackboneRouters));
+    }
+
+    if (mState == OT_BACKBONE_ROUTER_STATE_PRIMARY)
+    {
+        IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mBackboneRouterPrimaryAloc));
+    }
+    else if (aState == OT_BACKBONE_ROUTER_STATE_PRIMARY)
+    {
+        // Add Primary Backbone Router Aloc for Primary Backbone Router.
+        mBackboneRouterPrimaryAloc.GetAddress().SetPrefix(Get<Mle::MleRouter>().GetMeshLocalPrefix());
+        IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mBackboneRouterPrimaryAloc));
+    }
 
     mState = aState;
+
     Get<Notifier>().Signal(OT_CHANGED_THREAD_BACKBONE_ROUTER_STATE);
 
 exit:
@@ -204,7 +254,7 @@ void Local::UpdateBackboneRouterPrimary(Leader::State aState, const BackboneRout
 {
     OT_UNUSED_VARIABLE(aState);
 
-    VerifyOrExit(mState != OT_BACKBONE_ROUTER_STATE_DISABLED && Get<Mle::MleRouter>().IsAttached());
+    VerifyOrExit(mState != OT_BACKBONE_ROUTER_STATE_DISABLED && Get<Mle::MleRouter>().IsAttached(), OT_NOOP);
 
     // Wait some jitter before trying to Register.
     if (aConfig.mServer16 == Mac::kShortAddrInvalid)
@@ -297,6 +347,48 @@ void Local::SetDomainPrefix(const NetworkData::OnMeshPrefixConfig &aConfig)
     }
 }
 
+void Local::ApplyMeshLocalPrefix(void)
+{
+    VerifyOrExit(IsEnabled(), OT_NOOP);
+
+    IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mAllNetworkBackboneRouters));
+    mAllNetworkBackboneRouters.GetAddress().SetMulticastNetworkPrefix(Get<Mle::MleRouter>().GetMeshLocalPrefix());
+    IgnoreError(Get<ThreadNetif>().SubscribeMulticast(mAllNetworkBackboneRouters));
+
+    if (IsPrimary())
+    {
+        IgnoreError(Get<ThreadNetif>().RemoveUnicastAddress(mBackboneRouterPrimaryAloc));
+        mBackboneRouterPrimaryAloc.GetAddress().SetPrefix(Get<Mle::MleRouter>().GetMeshLocalPrefix());
+        IgnoreError(Get<ThreadNetif>().AddUnicastAddress(mBackboneRouterPrimaryAloc));
+    }
+
+exit:
+    return;
+}
+
+void Local::UpdateAllDomainBackboneRouters(Leader::DomainPrefixState aState)
+{
+    if (!IsEnabled())
+    {
+        IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mAllDomainBackboneRouters));
+        ExitNow();
+    }
+
+    if (aState == Leader::kDomainPrefixRemoved || aState == Leader::kDomainPrefixRefreshed)
+    {
+        IgnoreError(Get<ThreadNetif>().UnsubscribeMulticast(mAllDomainBackboneRouters));
+    }
+
+    if (aState == Leader::kDomainPrefixAdded || aState == Leader::kDomainPrefixRefreshed)
+    {
+        mAllDomainBackboneRouters.GetAddress().SetMulticastNetworkPrefix(*Get<Leader>().GetDomainPrefix());
+        IgnoreError(Get<ThreadNetif>().SubscribeMulticast(mAllDomainBackboneRouters));
+    }
+
+exit:
+    return;
+}
+
 void Local::RemoveDomainPrefixFromNetworkData(void)
 {
     otError error = OT_ERROR_NOT_FOUND; // only used for logging.
@@ -322,20 +414,20 @@ void Local::AddDomainPrefixToNetworkData(void)
     LogDomainPrefix("Add", error);
 }
 
-#if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_NETDATA == 1)
+#if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_BBR == 1)
 void Local::LogDomainPrefix(const char *aAction, otError aError)
 {
-    otLogInfoNetData("%s Domain Prefix: %s/%d, %s", aAction,
-                     mDomainPrefixConfig.mPrefix.mLength > 0
-                         ? (*static_cast<Ip6::Address *>(&mDomainPrefixConfig.mPrefix.mPrefix)).ToString().AsCString()
-                         : "",
-                     mDomainPrefixConfig.mPrefix.mLength, otThreadErrorToString(aError));
+    otLogInfoBbr("%s Domain Prefix: %s/%d, %s", aAction,
+                 mDomainPrefixConfig.mPrefix.mLength > 0
+                     ? (*static_cast<Ip6::Address *>(&mDomainPrefixConfig.mPrefix.mPrefix)).ToString().AsCString()
+                     : "",
+                 mDomainPrefixConfig.mPrefix.mLength, otThreadErrorToString(aError));
 }
 
 void Local::LogBackboneRouterService(const char *aAction, otError aError)
 {
-    otLogInfoNetData("%s BBR Service: seqno (%d), delay (%ds), timeout (%ds), %s", aAction, mSequenceNumber,
-                     mReregistrationDelay, mMlrTimeout, otThreadErrorToString(aError));
+    otLogInfoBbr("%s BBR Service: seqno (%d), delay (%ds), timeout (%ds), %s", aAction, mSequenceNumber,
+                 mReregistrationDelay, mMlrTimeout, otThreadErrorToString(aError));
 }
 #endif
 

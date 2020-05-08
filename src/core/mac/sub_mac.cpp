@@ -130,7 +130,7 @@ otError SubMac::Enable(void)
 {
     otError error = OT_ERROR_NONE;
 
-    VerifyOrExit(mState == kStateDisabled);
+    VerifyOrExit(mState == kStateDisabled, OT_NOOP);
 
     SuccessOrExit(error = Get<Radio>().Enable());
     SuccessOrExit(error = Get<Radio>().Sleep());
@@ -207,7 +207,7 @@ otError SubMac::Send(void)
     case kStateTransmit:
     case kStateEnergyScan:
         ExitNow(error = OT_ERROR_INVALID_STATE);
-        break;
+        OT_UNREACHABLE_CODE(break);
 
     case kStateSleep:
     case kStateReceive:
@@ -241,11 +241,11 @@ void SubMac::StartCsmaBackoff(void)
 
     if (mRxOnWhenBackoff)
     {
-        Get<Radio>().Receive(mTransmitFrame.GetChannel());
+        IgnoreError(Get<Radio>().Receive(mTransmitFrame.GetChannel()));
     }
     else
     {
-        Get<Radio>().Sleep();
+        IgnoreError(Get<Radio>().Sleep());
     }
 
 #if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
@@ -264,7 +264,7 @@ void SubMac::BeginTransmit(void)
 
     OT_UNUSED_VARIABLE(error);
 
-    VerifyOrExit(mState == kStateCsmaBackoff);
+    VerifyOrExit(mState == kStateCsmaBackoff, OT_NOOP);
 
     mTransmitFrame.SetCsmaCaEnabled(true);
 
@@ -400,7 +400,7 @@ otError SubMac::EnergyScan(uint8_t aScanChannel, uint16_t aScanDuration)
 
     if (RadioSupportsEnergyScan())
     {
-        Get<Radio>().EnergyScan(aScanChannel, aScanDuration);
+        IgnoreError(Get<Radio>().EnergyScan(aScanChannel, aScanDuration));
         SetState(kStateEnergyScan);
     }
     else if (ShouldHandleEnergyScan())
@@ -471,7 +471,7 @@ void SubMac::HandleTimer(void)
 
     case kStateTransmit:
         otLogDebgMac("Ack timer timed out");
-        Get<Radio>().Receive(mTransmitFrame.GetChannel());
+        IgnoreError(Get<Radio>().Receive(mTransmitFrame.GetChannel()));
         HandleTransmitDone(mTransmitFrame, NULL, OT_ERROR_NO_ACK);
         break;
 
@@ -491,7 +491,7 @@ bool SubMac::ShouldHandleCsmaBackOff(void) const
     VerifyOrExit(!RadioSupportsCsmaBackoff(), swCsma = false);
 
 #if OPENTHREAD_CONFIG_LINK_RAW_ENABLE
-    VerifyOrExit(Get<LinkRaw>().IsEnabled());
+    VerifyOrExit(Get<LinkRaw>().IsEnabled(), OT_NOOP);
 #endif
 
 #if OPENTHREAD_CONFIG_LINK_RAW_ENABLE || OPENTHREAD_RADIO
@@ -509,7 +509,7 @@ bool SubMac::ShouldHandleAckTimeout(void) const
     VerifyOrExit(!RadioSupportsAckTimeout(), swAckTimeout = false);
 
 #if OPENTHREAD_CONFIG_LINK_RAW_ENABLE
-    VerifyOrExit(Get<LinkRaw>().IsEnabled());
+    VerifyOrExit(Get<LinkRaw>().IsEnabled(), OT_NOOP);
 #endif
 
 #if OPENTHREAD_CONFIG_LINK_RAW_ENABLE || OPENTHREAD_RADIO
@@ -527,7 +527,7 @@ bool SubMac::ShouldHandleRetries(void) const
     VerifyOrExit(!RadioSupportsRetries(), swRetries = false);
 
 #if OPENTHREAD_CONFIG_LINK_RAW_ENABLE
-    VerifyOrExit(Get<LinkRaw>().IsEnabled());
+    VerifyOrExit(Get<LinkRaw>().IsEnabled(), OT_NOOP);
 #endif
 
 #if OPENTHREAD_CONFIG_LINK_RAW_ENABLE || OPENTHREAD_RADIO
@@ -545,7 +545,7 @@ bool SubMac::ShouldHandleEnergyScan(void) const
     VerifyOrExit(!RadioSupportsEnergyScan(), swEnergyScan = false);
 
 #if OPENTHREAD_CONFIG_LINK_RAW_ENABLE
-    VerifyOrExit(Get<LinkRaw>().IsEnabled());
+    VerifyOrExit(Get<LinkRaw>().IsEnabled(), OT_NOOP);
 #endif
 
 #if OPENTHREAD_CONFIG_LINK_RAW_ENABLE || OPENTHREAD_RADIO
