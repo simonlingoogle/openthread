@@ -74,9 +74,9 @@ OPENTHREAD_PUBLIC_CFLAGS += -DOPENTHREAD_CONFIG_UDP_FORWARD_ENABLE=1
 endif
 
 ifeq ($(USE_OT_RCP_BUS), spi)
-OPENTHREAD_PUBLIC_CFLAGS += -DOPENTHREAD_POSIX_CONFIG_RCP_SPI_ENABLE=1
+OPENTHREAD_PUBLIC_CFLAGS += -DOPENTHREAD_POSIX_CONFIG_RCP_BUS=OT_POSIX_RCP_BUS_SPI
 else
-OPENTHREAD_PUBLIC_CFLAGS += -DOPENTHREAD_POSIX_CONFIG_RCP_UART_ENABLE=1
+OPENTHREAD_PUBLIC_CFLAGS += -DOPENTHREAD_POSIX_CONFIG_RCP_BUS=OT_POSIX_RCP_BUS_UART
 endif
 
 # Enable all optional features for CI tests.
@@ -239,6 +239,7 @@ LOCAL_SRC_FILES                                          := \
     src/core/thread/announce_begin_server.cpp               \
     src/core/thread/announce_sender.cpp                     \
     src/core/thread/child_table.cpp                         \
+    src/core/thread/dua_manager.cpp                         \
     src/core/thread/energy_scan_server.cpp                  \
     src/core/thread/indirect_sender.cpp                     \
     src/core/thread/key_manager.cpp                         \
@@ -269,6 +270,7 @@ LOCAL_SRC_FILES                                          := \
     src/core/utils/parse_cmdline.cpp                        \
     src/core/utils/slaac_address.cpp                        \
     src/lib/hdlc/hdlc.cpp                                   \
+    src/lib/platform/exit_code.c                            \
     src/lib/spinel/spinel.c                                 \
     src/lib/spinel/spinel_decoder.cpp                       \
     src/lib/spinel/spinel_encoder.cpp                       \
@@ -278,7 +280,7 @@ LOCAL_SRC_FILES                                          := \
     src/posix/platform/logging.cpp                          \
     src/posix/platform/misc.cpp                             \
     src/posix/platform/netif.cpp                            \
-    src/posix/platform/radio_spinel.cpp                     \
+    src/posix/platform/radio.cpp                            \
     src/posix/platform/settings.cpp                         \
     src/posix/platform/spi_interface.cpp                    \
     src/posix/platform/system.cpp                           \
@@ -486,6 +488,7 @@ LOCAL_CFLAGS                                               := \
 LOCAL_C_INCLUDES                                         := \
     $(OPENTHREAD_PROJECT_INCLUDES)                          \
     $(LOCAL_PATH)/include                                   \
+    $(LOCAL_PATH)/src/                                      \
     $(LOCAL_PATH)/src/core                                  \
     $(LOCAL_PATH)/src/posix/platform                        \
     $(LOCAL_PATH)/src/posix/platform/include                \

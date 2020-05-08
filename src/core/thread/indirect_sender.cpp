@@ -70,7 +70,7 @@ IndirectSender::IndirectSender(Instance &aInstance)
 
 void IndirectSender::Stop(void)
 {
-    VerifyOrExit(mEnabled);
+    VerifyOrExit(mEnabled, OT_NOOP);
 
     for (ChildTable::Iterator iter(GetInstance(), Child::kInStateAnyExceptInvalid); !iter.IsDone(); iter++)
     {
@@ -124,7 +124,7 @@ void IndirectSender::ClearAllMessagesForSleepyChild(Child &aChild)
     Message *message;
     Message *nextMessage;
 
-    VerifyOrExit(aChild.GetIndirectMessageCount() > 0);
+    VerifyOrExit(aChild.GetIndirectMessageCount() > 0, OT_NOOP);
 
     for (message = Get<MeshForwarder>().mSendQueue.GetHead(); message; message = nextMessage)
     {
@@ -139,7 +139,7 @@ void IndirectSender::ClearAllMessagesForSleepyChild(Child &aChild)
                 Get<MeshForwarder>().mSendMessage = NULL;
             }
 
-            Get<MeshForwarder>().mSendQueue.Dequeue(*message);
+            IgnoreError(Get<MeshForwarder>().mSendQueue.Dequeue(*message));
             message->Free();
         }
     }
@@ -155,7 +155,7 @@ exit:
 
 void IndirectSender::SetChildUseShortAddress(Child &aChild, bool aUseShortAddress)
 {
-    VerifyOrExit(aChild.IsIndirectSourceMatchShort() != aUseShortAddress);
+    VerifyOrExit(aChild.IsIndirectSourceMatchShort() != aUseShortAddress, OT_NOOP);
 
     mSourceMatchController.SetSrcMatchAsShort(aChild, aUseShortAddress);
 
@@ -219,7 +219,7 @@ Message *IndirectSender::FindIndirectMessage(Child &aChild)
             {
                 message->ClearChildMask(childIndex);
                 mSourceMatchController.DecrementMessageCount(aChild);
-                Get<MeshForwarder>().mSendQueue.Dequeue(*message);
+                IgnoreError(Get<MeshForwarder>().mSendQueue.Dequeue(*message));
                 message->Free();
                 continue;
             }
@@ -260,11 +260,11 @@ void IndirectSender::RequestMessageUpdate(Child &aChild)
         ExitNow();
     }
 
-    VerifyOrExit(!aChild.IsWaitingForMessageUpdate());
+    VerifyOrExit(!aChild.IsWaitingForMessageUpdate(), OT_NOOP);
 
     newMessage = FindIndirectMessage(aChild);
 
-    VerifyOrExit(curMessage != newMessage);
+    VerifyOrExit(curMessage != newMessage, OT_NOOP);
 
     if (curMessage == NULL)
     {
@@ -281,7 +281,7 @@ void IndirectSender::RequestMessageUpdate(Child &aChild)
     // fragment. If a next fragment frame for message is already
     // prepared, we wait for the entire message to be delivered.
 
-    VerifyOrExit(aChild.GetIndirectFragmentOffset() == 0);
+    VerifyOrExit(aChild.GetIndirectFragmentOffset() == 0, OT_NOOP);
 
     aChild.SetWaitingForMessageUpdate(true);
     mDataPollHandler.RequestFrameChange(DataPollHandler::kReplaceFrame, aChild);
@@ -292,7 +292,7 @@ exit:
 
 void IndirectSender::HandleFrameChangeDone(Child &aChild)
 {
-    VerifyOrExit(aChild.IsWaitingForMessageUpdate());
+    VerifyOrExit(aChild.IsWaitingForMessageUpdate(), OT_NOOP);
     UpdateIndirectMessage(aChild);
 
 exit:
@@ -345,7 +345,7 @@ otError IndirectSender::PrepareFrameForChild(Mac::TxFrame &aFrame, FrameContext 
 
     default:
         OT_ASSERT(false);
-        break;
+        OT_UNREACHABLE_CODE(break);
     }
 
 exit:
@@ -377,11 +377,11 @@ uint16_t IndirectSender::PrepareDataFrame(Mac::TxFrame &aFrame, Child &aChild, M
     // Prepare the data frame from previous child's indirect offset.
 
     directTxOffset = aMessage.GetOffset();
-    aMessage.SetOffset(aChild.GetIndirectFragmentOffset());
+    IgnoreError(aMessage.SetOffset(aChild.GetIndirectFragmentOffset()));
 
     nextOffset = Get<MeshForwarder>().PrepareDataFrame(aFrame, aMessage, macSource, macDest);
 
-    aMessage.SetOffset(directTxOffset);
+    IgnoreError(aMessage.SetOffset(directTxOffset));
 
     // Set `FramePending` if there are more queued messages (excluding
     // the current one being sent out) for the child (note `> 1` check).
@@ -424,7 +424,7 @@ void IndirectSender::PrepareEmptyFrame(Mac::TxFrame &aFrame, Child &aChild, bool
     aFrame.InitMacHeader(fcf, Mac::Frame::kKeyIdMode1 | Mac::Frame::kSecEncMic32);
 
     aFrame.SetDstPanId(Get<Mac::Mac>().GetPanId());
-    aFrame.SetSrcPanId(Get<Mac::Mac>().GetPanId());
+    IgnoreError(aFrame.SetSrcPanId(Get<Mac::Mac>().GetPanId()));
     aFrame.SetDstAddr(macDest);
     aFrame.SetSrcAddr(macSource);
     aFrame.SetPayloadLength(0);
@@ -439,7 +439,7 @@ void IndirectSender::HandleSentFrameToChild(const Mac::TxFrame &aFrame,
     Message *message    = aChild.GetIndirectMessage();
     uint16_t nextOffset = aContext.mMessageNextOffset;
 
-    VerifyOrExit(mEnabled);
+    VerifyOrExit(mEnabled, OT_NOOP);
 
     switch (aError)
     {
@@ -467,7 +467,7 @@ void IndirectSender::HandleSentFrameToChild(const Mac::TxFrame &aFrame,
 
     default:
         OT_ASSERT(false);
-        break;
+        OT_UNREACHABLE_CODE(break);
     }
 
     if ((message != NULL) && (nextOffset < message->GetLength()))
@@ -517,7 +517,7 @@ void IndirectSender::HandleSentFrameToChild(const Mac::TxFrame &aFrame,
 
         if (!aFrame.IsEmpty())
         {
-            aFrame.GetDstAddr(macDest);
+            IgnoreError(aFrame.GetDstAddr(macDest));
             Get<MeshForwarder>().LogMessage(MeshForwarder::kMessageTransmit, *message, &macDest, txError);
         }
 
@@ -541,7 +541,7 @@ void IndirectSender::HandleSentFrameToChild(const Mac::TxFrame &aFrame,
 
         if (!message->GetDirectTransmission() && !message->IsChildPending())
         {
-            Get<MeshForwarder>().mSendQueue.Dequeue(*message);
+            IgnoreError(Get<MeshForwarder>().mSendQueue.Dequeue(*message));
             message->Free();
         }
     }

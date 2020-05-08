@@ -107,7 +107,8 @@ bool Neighbor::MatchesFilter(StateFilter aFilter) const
 
 void Neighbor::GenerateChallenge(void)
 {
-    Random::Crypto::FillBuffer(mValidPending.mPending.mChallenge, sizeof(mValidPending.mPending.mChallenge));
+    IgnoreError(
+        Random::Crypto::FillBuffer(mValidPending.mPending.mChallenge, sizeof(mValidPending.mPending.mChallenge)));
 }
 
 void Child::Clear(void)
@@ -169,7 +170,7 @@ otError Child::GetNextIp6Address(Ip6AddressIterator &aIterator, Ip6::Address &aA
     if (aIterator.Get() == 0)
     {
         aIterator.Increment();
-        VerifyOrExit(GetMeshLocalIp6Address(aAddress) == OT_ERROR_NOT_FOUND);
+        VerifyOrExit(GetMeshLocalIp6Address(aAddress) == OT_ERROR_NOT_FOUND, OT_NOOP);
     }
 
     index = aIterator.Get() - 1;
@@ -234,7 +235,7 @@ otError Child::RemoveIp6Address(const Ip6::Address &aAddress)
 
     for (index = 0; index < kNumIp6Addresses; index++)
     {
-        VerifyOrExit(!mIp6Address[index].IsUnspecified());
+        VerifyOrExit(!mIp6Address[index].IsUnspecified(), OT_NOOP);
 
         if (mIp6Address[index] == aAddress)
         {
@@ -260,7 +261,7 @@ bool Child::HasIp6Address(const Ip6::Address &aAddress) const
 {
     bool retval = false;
 
-    VerifyOrExit(!aAddress.IsUnspecified());
+    VerifyOrExit(!aAddress.IsUnspecified(), OT_NOOP);
 
     if (Get<Mle::MleRouter>().IsMeshLocalAddress(aAddress))
     {
@@ -270,7 +271,7 @@ bool Child::HasIp6Address(const Ip6::Address &aAddress) const
 
     for (uint16_t index = 0; index < kNumIp6Addresses; index++)
     {
-        VerifyOrExit(!mIp6Address[index].IsUnspecified());
+        VerifyOrExit(!mIp6Address[index].IsUnspecified(), OT_NOOP);
 
         if (mIp6Address[index] == aAddress)
         {
@@ -284,7 +285,7 @@ exit:
 
 void Child::GenerateChallenge(void)
 {
-    Random::Crypto::FillBuffer(mAttachChallenge, sizeof(mAttachChallenge));
+    IgnoreError(Random::Crypto::FillBuffer(mAttachChallenge, sizeof(mAttachChallenge)));
 }
 
 void Router::Clear(void)

@@ -65,10 +65,10 @@ MessagePool::MessagePool(Instance &aInstance)
 
 Message *MessagePool::New(uint8_t aType, uint16_t aReserveHeader, uint8_t aPriority)
 {
-    otError  error   = OT_ERROR_NONE;
-    Message *message = NULL;
+    otError  error = OT_ERROR_NONE;
+    Message *message;
 
-    VerifyOrExit((message = static_cast<Message *>(NewBuffer(aPriority))) != NULL);
+    VerifyOrExit((message = static_cast<Message *>(NewBuffer(aPriority))) != NULL, OT_NOOP);
 
     memset(message, 0, sizeof(*message));
     message->SetMessagePool(this);
@@ -289,7 +289,7 @@ otError Message::SetLength(uint16_t aLength)
     // Correct offset in case shorter length is set.
     if (GetOffset() > aLength)
     {
-        SetOffset(aLength);
+        IgnoreError(SetOffset(aLength));
     }
 
 exit:
@@ -367,19 +367,19 @@ otError Message::SetPriority(uint8_t aPriority)
     VerifyOrExit(aPriority < kNumPriorities, error = OT_ERROR_INVALID_ARGS);
 
     VerifyOrExit(IsInAQueue(), mBuffer.mHead.mInfo.mPriority = aPriority);
-    VerifyOrExit(mBuffer.mHead.mInfo.mPriority != aPriority);
+    VerifyOrExit(mBuffer.mHead.mInfo.mPriority != aPriority, OT_NOOP);
 
     if (mBuffer.mHead.mInfo.mInPriorityQ)
     {
         priorityQueue = mBuffer.mHead.mInfo.mQueue.mPriority;
-        priorityQueue->Dequeue(*this);
+        IgnoreError(priorityQueue->Dequeue(*this));
     }
 
     mBuffer.mHead.mInfo.mPriority = aPriority;
 
     if (priorityQueue != NULL)
     {
-        priorityQueue->Enqueue(*this);
+        IgnoreError(priorityQueue->Enqueue(*this));
     }
 
 exit:
@@ -426,7 +426,7 @@ otError Message::Prepend(const void *aBuf, uint16_t aLength)
 
     SetReserved(GetReserved() - aLength);
     mBuffer.mHead.mInfo.mLength += aLength;
-    SetOffset(GetOffset() + aLength);
+    IgnoreError(SetOffset(GetOffset() + aLength));
 
     if (aBuf != NULL)
     {
@@ -641,7 +641,7 @@ Message *Message::Clone(uint16_t aLength) const
 
     // Copy selected message information.
     offset = GetOffset() < aLength ? GetOffset() : aLength;
-    messageCopy->SetOffset(offset);
+    IgnoreError(messageCopy->SetOffset(offset));
 
     messageCopy->SetSubType(GetSubType());
     messageCopy->SetLinkSecurityEnabled(IsLinkSecurityEnabled());

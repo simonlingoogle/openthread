@@ -124,7 +124,7 @@ otError LeaderBase::GetBackboneRouterPrimary(BackboneRouter::BackboneRouterConfi
         }
     }
 
-    VerifyOrExit(rvalServerTlv != NULL);
+    VerifyOrExit(rvalServerTlv != NULL, OT_NOOP);
 
     aConfig.mServer16            = rvalServerTlv->GetServer16();
     aConfig.mSequenceNumber      = rvalServerData->GetSequenceNumber();
@@ -455,7 +455,7 @@ otError LeaderBase::SetCommissioningData(const uint8_t *aValue, uint8_t aValueLe
     otError               error = OT_ERROR_NONE;
     CommissioningDataTlv *commissioningDataTlv;
 
-    RemoveCommissioningData();
+    IgnoreError(RemoveCommissioningData());
 
     if (aValueLength > 0)
     {
@@ -485,22 +485,11 @@ const MeshCoP::Tlv *LeaderBase::GetCommissioningDataSubTlv(MeshCoP::Tlv::Type aT
 {
     const MeshCoP::Tlv *  rval = NULL;
     const NetworkDataTlv *commissioningDataTlv;
-    const MeshCoP::Tlv *  cur;
-    const MeshCoP::Tlv *  end;
 
     commissioningDataTlv = GetCommissioningData();
-    VerifyOrExit(commissioningDataTlv != NULL);
+    VerifyOrExit(commissioningDataTlv != NULL, OT_NOOP);
 
-    cur = reinterpret_cast<const MeshCoP::Tlv *>(commissioningDataTlv->GetValue());
-    end = reinterpret_cast<const MeshCoP::Tlv *>(commissioningDataTlv->GetValue() + commissioningDataTlv->GetLength());
-
-    for (; cur < end; cur = cur->GetNext())
-    {
-        if (cur->GetType() == aType)
-        {
-            ExitNow(rval = cur);
-        }
-    }
+    rval = MeshCoP::Tlv::FindTlv(commissioningDataTlv->GetValue(), commissioningDataTlv->GetLength(), aType);
 
 exit:
     return rval;
@@ -511,10 +500,10 @@ bool LeaderBase::IsJoiningEnabled(void) const
     const MeshCoP::Tlv *steeringData;
     bool                rval = false;
 
-    VerifyOrExit(GetCommissioningDataSubTlv(MeshCoP::Tlv::kBorderAgentLocator) != NULL);
+    VerifyOrExit(GetCommissioningDataSubTlv(MeshCoP::Tlv::kBorderAgentLocator) != NULL, OT_NOOP);
 
     steeringData = GetCommissioningDataSubTlv(MeshCoP::Tlv::kSteeringData);
-    VerifyOrExit(steeringData != NULL);
+    VerifyOrExit(steeringData != NULL, OT_NOOP);
 
     for (int i = 0; i < steeringData->GetLength(); i++)
     {

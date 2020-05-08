@@ -86,7 +86,7 @@ exit:
 
 void NcpBase::HandleParentResponseInfo(otThreadParentResponseInfo *aInfo, void *aContext)
 {
-    VerifyOrExit(aInfo && aContext);
+    VerifyOrExit(aInfo && aContext, OT_NOOP);
 
     static_cast<NcpBase *>(aContext)->HandleParentResponseInfo(*aInfo);
 
@@ -96,7 +96,7 @@ exit:
 
 void NcpBase::HandleParentResponseInfo(const otThreadParentResponseInfo &aInfo)
 {
-    VerifyOrExit(!mChangedPropsSet.IsPropertyFiltered(SPINEL_PROP_PARENT_RESPONSE_INFO));
+    VerifyOrExit(!mChangedPropsSet.IsPropertyFiltered(SPINEL_PROP_PARENT_RESPONSE_INFO), OT_NOOP);
 
     SuccessOrExit(mEncoder.BeginFrame(SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0, SPINEL_CMD_PROP_VALUE_IS,
                                       SPINEL_PROP_PARENT_RESPONSE_INFO));
@@ -134,7 +134,7 @@ void NcpBase::HandleNeighborTableChanged(otNeighborTableEvent aEvent, const otNe
         // Fall through
     case OT_NEIGHBOR_TABLE_EVENT_CHILD_REMOVED:
         property = SPINEL_PROP_THREAD_CHILD_TABLE;
-        VerifyOrExit(!aEntry.mInfo.mChild.mIsStateRestoring);
+        VerifyOrExit(!aEntry.mInfo.mChild.mIsStateRestoring, OT_NOOP);
         break;
 
     case OT_NEIGHBOR_TABLE_EVENT_ROUTER_ADDED:
@@ -148,7 +148,7 @@ void NcpBase::HandleNeighborTableChanged(otNeighborTableEvent aEvent, const otNe
         ExitNow();
     }
 
-    VerifyOrExit(!mChangedPropsSet.IsPropertyFiltered(property));
+    VerifyOrExit(!mChangedPropsSet.IsPropertyFiltered(property), OT_NOOP);
 
     SuccessOrExit(error = mEncoder.BeginFrame(SPINEL_HEADER_FLAG | SPINEL_HEADER_IID_0, command, property));
 
@@ -179,7 +179,7 @@ exit:
         }
 
         mChangedPropsSet.AddLastStatus(SPINEL_STATUS_NOMEM);
-        mUpdateChangedPropsTask.Post();
+        IgnoreError(mUpdateChangedPropsTask.Post());
     }
 }
 
@@ -680,7 +680,7 @@ exit:
     if (error != OT_ERROR_NONE)
     {
         mChangedPropsSet.AddLastStatus(SPINEL_STATUS_NOMEM);
-        mUpdateChangedPropsTask.Post();
+        IgnoreError(mUpdateChangedPropsTask.Post());
     }
 }
 
@@ -723,7 +723,7 @@ exit:
     if (error != OT_ERROR_NONE)
     {
         mChangedPropsSet.AddLastStatus(SPINEL_STATUS_NOMEM);
-        mUpdateChangedPropsTask.Post();
+        IgnoreError(mUpdateChangedPropsTask.Post());
     }
 }
 

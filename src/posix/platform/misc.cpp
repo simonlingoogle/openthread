@@ -83,7 +83,7 @@ otPlatMcuPowerState otPlatGetMcuPowerState(otInstance *aInstance)
     return gPlatMcuPowerState;
 }
 
-int SocketWithCloseExec(int aDomain, int aType, int aProtocol)
+int SocketWithCloseExec(int aDomain, int aType, int aProtocol, SocketBlockOption aBlockOption)
 {
     int rval = 0;
     int fd   = -1;
@@ -92,60 +92,19 @@ int SocketWithCloseExec(int aDomain, int aType, int aProtocol)
     VerifyOrExit((fd = socket(aDomain, aType, aProtocol)) != -1, perror("socket(SOCK_CLOEXEC)"));
 
     VerifyOrExit((rval = fcntl(fd, F_GETFD, 0)) != -1, perror("fcntl(F_GETFD)"));
-    VerifyOrExit((rval = fcntl(fd, F_SETFD, rval | FD_CLOEXEC)) != -1, perror("fcntl(F_SETFD)"));
+    rval |= aBlockOption == kSocketNonBlock ? O_NONBLOCK | FD_CLOEXEC : FD_CLOEXEC;
+    VerifyOrExit((rval = fcntl(fd, F_SETFD, rval)) != -1, perror("fcntl(F_SETFD)"));
 #else
-    VerifyOrExit((fd = socket(aDomain, aType | SOCK_CLOEXEC, aProtocol)) != -1, perror("socket(SOCK_CLOEXEC)"));
+    aType |= aBlockOption == kSocketNonBlock ? SOCK_CLOEXEC | SOCK_NONBLOCK : SOCK_CLOEXEC;
+    VerifyOrExit((fd = socket(aDomain, aType, aProtocol)) != -1, perror("socket(SOCK_CLOEXEC)"));
 #endif
 
 exit:
-    if (rval == -1 && fd != -1)
+    if (rval == -1)
     {
         VerifyOrDie(close(fd) == 0, OT_EXIT_ERROR_ERRNO);
         fd = -1;
     }
 
     return fd;
-}
-
-const char *otExitCodeToString(uint8_t aExitCode)
-{
-    const char *retval = NULL;
-
-    switch (aExitCode)
-    {
-    case OT_EXIT_SUCCESS:
-        retval = "Success";
-        break;
-
-    case OT_EXIT_FAILURE:
-        retval = "Failure";
-        break;
-
-    case OT_EXIT_INVALID_ARGUMENTS:
-        retval = "InvalidArgument";
-        break;
-
-    case OT_EXIT_RADIO_SPINEL_INCOMPATIBLE:
-        retval = "RadioSpinelIncompatible";
-        break;
-
-    case OT_EXIT_RADIO_SPINEL_RESET:
-        retval = "RadioSpinelReset";
-        break;
-
-    case OT_EXIT_RADIO_SPINEL_NO_RESPONSE:
-        retval = "RadioSpinelNoResponse";
-        break;
-
-    case OT_EXIT_ERROR_ERRNO:
-        retval = strerror(errno);
-        break;
-
-    default:
-        assert(false);
-        retval = "UnknownExitCode";
-        break;
-    }
-
-    return retval;
 }

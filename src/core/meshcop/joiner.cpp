@@ -65,7 +65,7 @@ Joiner::Joiner(Instance &aInstance)
     , mJoinerEntrust(OT_URI_PATH_JOINER_ENTRUST, &Joiner::HandleJoinerEntrust, this)
 {
     memset(mJoinerRouters, 0, sizeof(mJoinerRouters));
-    Get<Coap::Coap>().AddResource(mJoinerEntrust);
+    IgnoreError(Get<Coap::Coap>().AddResource(mJoinerEntrust));
 }
 
 void Joiner::GetJoinerId(Mac::ExtAddress &aJoinerId) const
@@ -96,15 +96,15 @@ otError Joiner::Start(const char *     aPskd,
                       void *           aContext)
 {
     otError         error;
-    Mac::ExtAddress joinerId;
+    Mac::ExtAddress randomAddress;
 
     otLogInfoMeshCoP("Joiner starting");
 
     VerifyOrExit(mState == OT_JOINER_STATE_IDLE, error = OT_ERROR_BUSY);
 
-    // Use extended address based on factory-assigned IEEE EUI-64
-    GetJoinerId(joinerId);
-    Get<Mac::Mac>().SetExtAddress(joinerId);
+    // Use random-generated extended address.
+    randomAddress.GenerateRandom();
+    Get<Mac::Mac>().SetExtAddress(randomAddress);
     Get<Mle::MleRouter>().UpdateLinkLocalAddress();
 
     SuccessOrExit(error = Get<Coap::CoapSecure>().Start(kJoinerUdpPort));
@@ -158,7 +158,7 @@ void Joiner::Finish(otError aError)
     case OT_JOINER_STATE_ENTRUST:
     case OT_JOINER_STATE_JOINED:
         Get<Coap::CoapSecure>().Disconnect();
-        Get<Ip6::Filter>().RemoveUnsecurePort(kJoinerUdpPort);
+        IgnoreError(Get<Ip6::Filter>().RemoveUnsecurePort(kJoinerUdpPort));
         mTimer.Stop();
 
         // Fall through
@@ -222,7 +222,9 @@ void Joiner::HandleDiscoverResult(otActiveScanResult *aResult, void *aContext)
 
 void Joiner::HandleDiscoverResult(otActiveScanResult *aResult)
 {
-    VerifyOrExit(mState == OT_JOINER_STATE_DISCOVER);
+    Mac::ExtAddress joinerId;
+
+    VerifyOrExit(mState == OT_JOINER_STATE_DISCOVER, OT_NOOP);
 
     if (aResult != NULL)
     {
@@ -230,6 +232,11 @@ void Joiner::HandleDiscoverResult(otActiveScanResult *aResult)
     }
     else
     {
+        // Use extended address based on factory-assigned IEEE EUI-64
+        GetJoinerId(joinerId);
+        Get<Mac::Mac>().SetExtAddress(joinerId);
+        Get<Mle::MleRouter>().UpdateLinkLocalAddress();
+
         mJoinerRouterIndex = 0;
         TryNextJoinerRouter(OT_ERROR_NONE);
     }
@@ -272,7 +279,7 @@ void Joiner::SaveDiscoveredJoinerRouter(const otActiveScanResult &aResult)
         }
     }
 
-    VerifyOrExit(entry < end);
+    VerifyOrExit(entry < end, OT_NOOP);
 
     // Shift elements in array to make room for the new one.
     memmove(entry + 1, entry,
@@ -339,8 +346,7 @@ otError Joiner::Connect(JoinerRouter &aRouter)
     SuccessOrExit(error = Get<Mac::Mac>().SetPanChannel(aRouter.mChannel));
     SuccessOrExit(error = Get<Ip6::Filter>().AddUnsecurePort(kJoinerUdpPort));
 
-    sockaddr.GetAddress().mFields.m16[0] = HostSwap16(0xfe80);
-    sockaddr.GetAddress().SetIid(aRouter.mExtAddr);
+    sockaddr.GetAddress().SetToLinkLocalAddress(aRouter.mExtAddr);
     sockaddr.mPort = aRouter.mJoinerUdpPort;
 
     SuccessOrExit(error = Get<Coap::CoapSecure>().Connect(sockaddr, Joiner::HandleSecureCoapClientConnect, this));
@@ -364,7 +370,7 @@ void Joiner::HandleSecureCoapClientConnect(bool aConnected, void *aContext)
 
 void Joiner::HandleSecureCoapClientConnect(bool aConnected)
 {
-    VerifyOrExit(mState == OT_JOINER_STATE_CONNECT);
+    VerifyOrExit(mState == OT_JOINER_STATE_CONNECT, OT_NOOP);
 
     if (aConnected)
     {
@@ -399,7 +405,7 @@ otError Joiner::PrepareJoinerFinalizeMessage(const char *aProvisioningUrl,
     mFinalizeMessage->Init(OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_POST);
     SuccessOrExit(error = mFinalizeMessage->AppendUriPathOptions(OT_URI_PATH_JOINER_FINALIZE));
     SuccessOrExit(error = mFinalizeMessage->SetPayloadMarker());
-    mFinalizeMessage->SetOffset(mFinalizeMessage->GetLength());
+    IgnoreError(mFinalizeMessage->SetOffset(mFinalizeMessage->GetLength()));
 
     SuccessOrExit(error = Tlv::AppendUint8Tlv(*mFinalizeMessage, Tlv::kState, StateTlv::kAccept));
 
@@ -449,7 +455,7 @@ exit:
 
 void Joiner::FreeJoinerFinalizeMessage(void)
 {
-    VerifyOrExit(mState == OT_JOINER_STATE_IDLE && mFinalizeMessage != NULL);
+    VerifyOrExit(mState == OT_JOINER_STATE_IDLE && mFinalizeMessage != NULL, OT_NOOP);
 
     mFinalizeMessage->Free();
     mFinalizeMessage = NULL;
@@ -493,7 +499,8 @@ void Joiner::HandleJoinerFinalizeResponse(Coap::Message &         aMessage,
     uint8_t state;
 
     VerifyOrExit(mState == OT_JOINER_STATE_CONNECTED && aResult == OT_ERROR_NONE && aMessage.IsAck() &&
-                 aMessage.GetCode() == OT_COAP_CODE_CHANGED);
+                     aMessage.GetCode() == OT_COAP_CODE_CHANGED,
+                 OT_NOOP);
 
     SuccessOrExit(Tlv::ReadUint8Tlv(aMessage, Tlv::kState, state));
 
@@ -508,7 +515,7 @@ void Joiner::HandleJoinerFinalizeResponse(Coap::Message &         aMessage,
 
 exit:
     Get<Coap::CoapSecure>().Disconnect();
-    Get<Ip6::Filter>().RemoveUnsecurePort(kJoinerUdpPort);
+    IgnoreError(Get<Ip6::Filter>().RemoveUnsecurePort(kJoinerUdpPort));
 }
 
 void Joiner::HandleJoinerEntrust(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo)
@@ -540,7 +547,7 @@ void Joiner::HandleJoinerEntrust(Coap::Message &aMessage, const Ip6::MessageInfo
     dataset.mPanId                      = Get<Mac::Mac>().GetPanId();
     dataset.mComponents.mIsPanIdPresent = true;
 
-    Get<MeshCoP::ActiveDataset>().Save(dataset);
+    IgnoreError(Get<MeshCoP::ActiveDataset>().Save(dataset));
 
     otLogInfoMeshCoP("Joiner successful!");
 
@@ -598,7 +605,7 @@ void Joiner::HandleTimer(void)
     case OT_JOINER_STATE_DISCOVER:
     case OT_JOINER_STATE_CONNECT:
         OT_ASSERT(false);
-        break;
+        OT_UNREACHABLE_CODE(break);
 
     case OT_JOINER_STATE_CONNECTED:
     case OT_JOINER_STATE_ENTRUST:
@@ -619,7 +626,7 @@ void Joiner::HandleTimer(void)
     Finish(error);
 }
 
-// LOCV_EXCL_START
+// LCOV_EXCL_START
 
 const char *Joiner::JoinerStateToString(otJoinerState aState)
 {
@@ -655,7 +662,7 @@ void Joiner::LogCertMessage(const char *aText, const Coap::Message &aMessage) co
 {
     uint8_t buf[OPENTHREAD_CONFIG_MESSAGE_BUFFER_SIZE];
 
-    VerifyOrExit(aMessage.GetLength() <= sizeof(buf));
+    VerifyOrExit(aMessage.GetLength() <= sizeof(buf), OT_NOOP);
     aMessage.Read(aMessage.GetOffset(), aMessage.GetLength() - aMessage.GetOffset(), buf);
 
     otDumpCertMeshCoP(aText, buf, aMessage.GetLength() - aMessage.GetOffset());

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 #  Copyright (c) 2020, The OpenThread Authors.
 #  All rights reserved.
@@ -27,49 +26,25 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-import socket
-import struct
-import subprocess
-import sys
-import time
+set(CMAKE_SYSTEM_NAME              Generic)
+set(CMAKE_SYSTEM_PROCESSOR         ARM)
 
-from ipaddress import ip_address
+set(CMAKE_C_COMPILER               arm-none-eabi-gcc)
+set(CMAKE_CXX_COMPILER             arm-none-eabi-g++)
+set(CMAKE_ASM_COMPILER             arm-none-eabi-as)
+set(CMAKE_RANLIB                   arm-none-eabi-ranlib)
 
+set(COMMON_C_FLAGS                 "-mcpu=cortex-m4 -mthumb -fdata-sections -ffunction-sections")
 
-def get_maddrs():
-    lines = subprocess.run(
-        ['ot-ctl', 'ipmaddr'], stdout=subprocess.PIPE).stdout.decode().split()
-    return [ip_address(l) for l in lines if l.startswith('ff')]
+set(CMAKE_C_FLAGS                  "${COMMON_C_FLAGS} -std=gnu99")
+set(CMAKE_CXX_FLAGS                "${COMMON_C_FLAGS} -fno-exceptions -fno-rtti")
+set(CMAKE_ASM_FLAGS                "${COMMON_C_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS_INIT    "${COMMON_C_FLAGS} -specs=nano.specs -specs=nosys.specs")
 
+set(CMAKE_C_FLAGS_DEBUG            "-Og -g")
+set(CMAKE_CXX_FLAGS_DEBUG          "-Og -g")
+set(CMAKE_ASM_FLAGS_DEBUG          "-g")
 
-def main():
-    group = 'ff02::158'
-    if_index = int(sys.argv[1])
-
-    with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as s:
-        s.setsockopt(socket.IPPROTO_IPV6,
-                     socket.IPV6_MULTICAST_IF,
-                     if_index)
-        s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP,
-                     struct.pack('16si', socket.inet_pton(socket.AF_INET6, group),
-                                 if_index))
-        time.sleep(2)
-        maddrs = get_maddrs()
-        print(maddrs)
-        if not any(addr == ip_address(group) for addr in maddrs):
-            return -1
-
-        s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_LEAVE_GROUP,
-                     struct.pack('16si', socket.inet_pton(socket.AF_INET6, group),
-                                 if_index))
-
-        time.sleep(2)
-        maddrs = get_maddrs()
-        print(maddrs)
-        if any(addr == ip_address(group) for addr in maddrs):
-            return -1
-    return 0
-
-
-if __name__ == '__main__':
-    exit(main())
+set(CMAKE_C_FLAGS_RELEASE          "-Os")
+set(CMAKE_CXX_FLAGS_RELEASE        "-Os")
+set(CMAKE_ASM_FLAGS_RELEASE        "")

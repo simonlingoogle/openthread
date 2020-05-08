@@ -195,12 +195,48 @@ public:
      */
     void SetDomainPrefix(const NetworkData::OnMeshPrefixConfig &aConfig);
 
+    /**
+     * This method returns a reference to the All Network Backbone Routers Multicast Address.
+     *
+     * @returns A reference to the All Network Backbone Routers Multicast Address.
+     *
+     */
+    const Ip6::Address &GetAllNetworkBackboneRoutersAddress(void) const
+    {
+        return mAllNetworkBackboneRouters.GetAddress();
+    }
+
+    /**
+     * This method returns a reference to the All Domain Backbone Routers Multicast Address.
+     *
+     * @returns A reference to the All Domain Backbone Routers Multicast Address.
+     *
+     */
+    const Ip6::Address &GetAllDomainBackboneRoutersAddress(void) const
+    {
+        return mAllDomainBackboneRouters.GetAddress();
+    }
+
+    /**
+     * This method applies the Mesh Local Prefix.
+     *
+     */
+    void ApplyMeshLocalPrefix(void);
+
+    /**
+     * This method updates the subscription of All Domain Backbone Routers Multicast Address.
+     *
+     * @param[in]  aState  The Domain Prefix state or state change.
+     *
+     */
+    void UpdateAllDomainBackboneRouters(Leader::DomainPrefixState aState);
+
 private:
     void    SetState(BackboneRouterState aState);
     otError RemoveService(void);
     void    AddDomainPrefixToNetworkData(void);
     void    RemoveDomainPrefixFromNetworkData(void);
-#if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_NETDATA == 1)
+#if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_BBR == 1)
     void LogBackboneRouterService(const char *aAction, otError aError);
     void LogDomainPrefix(const char *aAction, otError aError);
 #else
@@ -220,6 +256,10 @@ private:
     bool mIsServiceAdded;
 
     NetworkData::OnMeshPrefixConfig mDomainPrefixConfig;
+
+    Ip6::NetifUnicastAddress   mBackboneRouterPrimaryAloc;
+    Ip6::NetifMulticastAddress mAllNetworkBackboneRouters;
+    Ip6::NetifMulticastAddress mAllDomainBackboneRouters;
 };
 
 } // namespace BackboneRouter

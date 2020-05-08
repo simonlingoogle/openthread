@@ -95,7 +95,7 @@ void CoapSecure::Stop(void)
 
     for (ot::Message *message = mTransmitQueue.GetHead(); message != NULL; message = message->GetNext())
     {
-        mTransmitQueue.Dequeue(*message);
+        IgnoreError(mTransmitQueue.Dequeue(*message));
         message->Free();
     }
 
@@ -179,7 +179,7 @@ otError CoapSecure::Send(ot::Message &aMessage, const Ip6::MessageInfo &aMessage
     otError error;
 
     SuccessOrExit(error = mTransmitQueue.Enqueue(aMessage));
-    mTransmitTask.Post();
+    IgnoreError(mTransmitTask.Post());
 
 exit:
     return error;
@@ -207,7 +207,8 @@ void CoapSecure::HandleDtlsReceive(uint8_t *aBuf, uint16_t aLength)
 {
     ot::Message *message = NULL;
 
-    VerifyOrExit((message = Get<MessagePool>().New(Message::kTypeIp6, Message::GetHelpDataReserved())) != NULL);
+    VerifyOrExit((message = Get<MessagePool>().New(Message::kTypeIp6, Message::GetHelpDataReserved())) != NULL,
+                 OT_NOOP);
     SuccessOrExit(message->Append(aBuf, aLength));
 
     CoapBase::Receive(*message, mDtls.GetPeerAddress());
@@ -230,12 +231,12 @@ void CoapSecure::HandleTransmit(void)
     otError      error   = OT_ERROR_NONE;
     ot::Message *message = mTransmitQueue.GetHead();
 
-    VerifyOrExit(message != NULL);
-    mTransmitQueue.Dequeue(*message);
+    VerifyOrExit(message != NULL, OT_NOOP);
+    IgnoreError(mTransmitQueue.Dequeue(*message));
 
     if (mTransmitQueue.GetHead() != NULL)
     {
-        mTransmitTask.Post();
+        IgnoreError(mTransmitTask.Post());
     }
 
     SuccessOrExit(error = mDtls.Send(*message, message->GetLength()));

@@ -73,7 +73,7 @@ otError Notifier::RegisterCallback(otStateChangedCallback aCallback, void *aCont
     otError           error          = OT_ERROR_NONE;
     ExternalCallback *unusedCallback = NULL;
 
-    VerifyOrExit(aCallback != NULL);
+    VerifyOrExit(aCallback != NULL, OT_NOOP);
 
     for (unsigned int i = 0; i < kMaxExternalHandlers; i++)
     {
@@ -103,7 +103,7 @@ exit:
 
 void Notifier::RemoveCallback(otStateChangedCallback aCallback, void *aContext)
 {
-    VerifyOrExit(aCallback != NULL);
+    VerifyOrExit(aCallback != NULL, OT_NOOP);
 
     for (unsigned int i = 0; i < kMaxExternalHandlers; i++)
     {
@@ -124,7 +124,7 @@ void Notifier::Signal(otChangedFlags aFlags)
 {
     mFlagsToSignal |= aFlags;
     mSignaledFlags |= aFlags;
-    mTask.Post();
+    IgnoreError(mTask.Post());
 }
 
 void Notifier::SignalIfFirst(otChangedFlags aFlags)
@@ -144,7 +144,7 @@ void Notifier::HandleStateChanged(void)
 {
     otChangedFlags flags = mFlagsToSignal;
 
-    VerifyOrExit(flags != 0);
+    VerifyOrExit(flags != 0, OT_NOOP);
 
     mFlagsToSignal = 0;
 
@@ -182,7 +182,7 @@ void Notifier::LogChangedFlags(otChangedFlags aFlags) const
 
     for (uint8_t bit = 0; bit < sizeof(otChangedFlags) * CHAR_BIT; bit++)
     {
-        VerifyOrExit(flags != 0);
+        VerifyOrExit(flags != 0, OT_NOOP);
 
         if (flags & (1 << bit))
         {
@@ -195,7 +195,7 @@ void Notifier::LogChangedFlags(otChangedFlags aFlags) const
                 addSpace = false;
             }
 
-            string.Append("%s%s", addSpace ? " " : "", FlagToString(1 << bit));
+            IgnoreError(string.Append("%s%s", addSpace ? " " : "", FlagToString(1 << bit)));
             addSpace = true;
 
             flags ^= (1 << bit);
