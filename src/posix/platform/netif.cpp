@@ -290,6 +290,8 @@ static uint8_t NetmaskToPrefixLength(const struct sockaddr_in6 *netmask)
 
 static void UpdateUnicast(otInstance *aInstance, const otIp6Address &aAddress, uint8_t aPrefixLength, bool aIsAdded)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     otError error = OT_ERROR_NONE;
 
     assert(sInstance == aInstance);
@@ -358,6 +360,8 @@ exit:
 
 static void UpdateMulticast(otInstance *aInstance, const otIp6Address &aAddress, bool aIsAdded)
 {
+    OT_UNUSED_VARIABLE(aInstance);
+
     struct ipv6_mreq mreq;
     otError          error = OT_ERROR_NONE;
 
@@ -455,6 +459,8 @@ static void processStateChange(otChangedFlags aFlags, void *aContext)
 
 static void processReceive(otMessage *aMessage, void *aContext)
 {
+    OT_UNUSED_VARIABLE(aContext);
+
     char     packet[kMaxIp6Size + 4];
     otError  error     = OT_ERROR_NONE;
     uint16_t length    = otMessageGetLength(aMessage);
@@ -957,7 +963,7 @@ static void processNetifEvent(otInstance *aInstance)
     VerifyOrExit(length > 0, OT_NOOP);
 
 #if defined(__linux__)
-    for (struct nlmsghdr *msg = reinterpret_cast<struct nlmsghdr *>(buffer); NLMSG_OK(msg, length);
+    for (struct nlmsghdr *msg = reinterpret_cast<struct nlmsghdr *>(buffer); NLMSG_OK(msg, static_cast<size_t>(length));
          msg                  = NLMSG_NEXT(msg, length))
     {
 #else
@@ -1357,7 +1363,7 @@ void platformNetifInit(otInstance *aInstance, const char *aInterfaceName)
     otIcmp6SetEchoMode(aInstance, OT_ICMP6_ECHO_HANDLER_DISABLED);
     otIp6SetReceiveCallback(aInstance, processReceive, aInstance);
     otIp6SetAddressCallback(aInstance, processAddressChange, aInstance);
-    otSetStateChangedCallback(aInstance, processStateChange, aInstance);
+    SuccessOrDie(otSetStateChangedCallback(aInstance, processStateChange, aInstance));
 #if OPENTHREAD_POSIX_MULTICAST_PROMISCUOUS_REQUIRED
     otIp6SetMulticastPromiscuousEnabled(aInstance, true);
 #endif
