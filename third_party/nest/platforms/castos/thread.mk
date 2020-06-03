@@ -4,6 +4,9 @@ OPENTHREAD_PROJECT_CFLAGS = -DOPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"openthread-c
 OPENTHREAD_PROJECT_INCLUDES = external/openthread/third_party/nest/platforms/castos
 OPENTHREAD_PROJECT_SRC_FILES = third_party/nest/extension/ot-legacy-pairing-ext.cpp
 
+OTBR_PROJECT_CFLAGS = -DOTBR_ENABLE_UNSECURE_JOIN=1
+
+USE_OT_RCP_BUS = spi
 USE_OTBR_DAEMON := 1
 
 PRODUCT_PACKAGES += \
