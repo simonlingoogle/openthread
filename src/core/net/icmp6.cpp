@@ -78,7 +78,7 @@ otError Icmp::SendEchoRequest(Message &aMessage, const MessageInfo &aMessageInfo
     icmpHeader.SetSequence(mEchoSequence++);
 
     SuccessOrExit(error = aMessage.Prepend(&icmpHeader, sizeof(icmpHeader)));
-    IgnoreError(aMessage.SetOffset(0));
+    aMessage.SetOffset(0);
     SuccessOrExit(error = Get<Ip6>().SendDatagram(aMessage, messageInfoLocal, kProtoIcmp6));
 
     otLogInfoIcmp("Sent echo request: (seq = %d)", icmpHeader.GetSequence());
@@ -92,11 +92,12 @@ otError Icmp::SendError(IcmpHeader::Type   aType,
                         const MessageInfo &aMessageInfo,
                         const Message &    aMessage)
 {
-    otError     error = OT_ERROR_NONE;
-    MessageInfo messageInfoLocal;
-    Message *   message = NULL;
-    IcmpHeader  icmp6Header;
-    Header      ip6Header;
+    otError           error = OT_ERROR_NONE;
+    MessageInfo       messageInfoLocal;
+    Message *         message = NULL;
+    IcmpHeader        icmp6Header;
+    Header            ip6Header;
+    Message::Settings settings(Message::kWithLinkSecurity, Message::kPriorityNet);
 
     VerifyOrExit(aMessage.GetLength() >= sizeof(ip6Header), error = OT_ERROR_INVALID_ARGS);
 
@@ -112,7 +113,7 @@ otError Icmp::SendError(IcmpHeader::Type   aType,
 
     messageInfoLocal = aMessageInfo;
 
-    VerifyOrExit((message = Get<Ip6>().NewMessage(0)) != NULL, error = OT_ERROR_NO_BUFS);
+    VerifyOrExit((message = Get<Ip6>().NewMessage(0, settings)) != NULL, error = OT_ERROR_NO_BUFS);
     SuccessOrExit(error = message->SetLength(sizeof(icmp6Header) + sizeof(ip6Header)));
 
     message->Write(sizeof(icmp6Header), sizeof(ip6Header), &ip6Header);
@@ -158,7 +159,7 @@ otError Icmp::HandleMessage(Message &aMessage, MessageInfo &aMessageInfo)
         SuccessOrExit(error = HandleEchoRequest(aMessage, aMessageInfo));
     }
 
-    IgnoreError(aMessage.MoveOffset(sizeof(icmp6Header)));
+    aMessage.MoveOffset(sizeof(icmp6Header));
 
     for (IcmpHandler *handler = mHandlers.GetHead(); handler; handler = handler->GetNext())
     {

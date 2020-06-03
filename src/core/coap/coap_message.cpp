@@ -47,7 +47,7 @@ void Message::Init(void)
 {
     GetHelpData().Clear();
     SetVersion(kVersion1);
-    IgnoreError(SetOffset(0));
+    SetOffset(0);
     GetHelpData().mHeaderLength = kMinHeaderLength;
 
     IgnoreError(SetLength(GetHelpData().mHeaderLength));
@@ -235,7 +235,7 @@ otError Message::SetPayloadMarker(void)
     GetHelpData().mHeaderLength = GetLength();
 
     // Set offset to the start of payload.
-    IgnoreError(SetOffset(GetHelpData().mHeaderLength));
+    SetOffset(GetHelpData().mHeaderLength);
 
 exit:
     return error;
@@ -246,7 +246,7 @@ otError Message::ParseHeader(void)
     otError        error = OT_ERROR_NONE;
     OptionIterator iterator;
 
-    OT_ASSERT(mBuffer.mHead.mInfo.mReserved >=
+    OT_ASSERT(mBuffer.mHead.mMetadata.mReserved >=
               sizeof(GetHelpData()) +
                   static_cast<size_t>((reinterpret_cast<uint8_t *>(&GetHelpData()) - mBuffer.mHead.mData)));
 
@@ -264,7 +264,7 @@ otError Message::ParseHeader(void)
 
     VerifyOrExit(iterator.mNextOptionOffset > 0, error = OT_ERROR_PARSE);
     GetHelpData().mHeaderLength = iterator.mNextOptionOffset - GetHelpData().mHeaderOffset;
-    IgnoreError(MoveOffset(GetHelpData().mHeaderLength));
+    MoveOffset(GetHelpData().mHeaderLength);
 
 exit:
     return error;

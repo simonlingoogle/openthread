@@ -42,6 +42,7 @@
 #include "common/logging.hpp"
 #include "common/string.hpp"
 #include "crypto/pbkdf2_cmac.h"
+#include "meshcop/joiner.hpp"
 #include "meshcop/joiner_router.hpp"
 #include "meshcop/meshcop.hpp"
 #include "meshcop/meshcop_tlvs.hpp"
@@ -285,7 +286,7 @@ otError Commissioner::AddJoiner(const Mac::ExtAddress *aEui64, const char *aPskd
 
     VerifyOrExit(mState == OT_COMMISSIONER_STATE_ACTIVE, error = OT_ERROR_INVALID_STATE);
 
-    VerifyOrExit(StringLength(aPskd, Dtls::kPskMaxLength + 1) <= Dtls::kPskMaxLength, error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(MeshCoP::Joiner::IsPskdValid(aPskd), error = OT_ERROR_INVALID_ARGS);
 
     IgnoreError(RemoveJoiner(aEui64, 0, kJoinerOpFlagNotNotifyLeader)); // remove immediately
 
@@ -738,10 +739,10 @@ void Commissioner::HandleLeaderPetitionResponse(Coap::Message *         aMessage
 
     otLogInfoMeshCoP("received Leader Petition response");
 
-    SuccessOrExit(Tlv::ReadUint8Tlv(*aMessage, Tlv::kState, state));
+    SuccessOrExit(Tlv::FindUint8Tlv(*aMessage, Tlv::kState, state));
     VerifyOrExit(state == StateTlv::kAccept, IgnoreError(Stop(/* aResign */ false)));
 
-    SuccessOrExit(Tlv::ReadUint16Tlv(*aMessage, Tlv::kCommissionerSessionId, mSessionId));
+    SuccessOrExit(Tlv::FindUint16Tlv(*aMessage, Tlv::kCommissionerSessionId, mSessionId));
 
     // reject this session by sending KeepAlive reject if commissioner is in disabled state
     // this could happen if commissioner is stopped by API during petitioning
@@ -841,7 +842,7 @@ void Commissioner::HandleLeaderKeepAliveResponse(Coap::Message *         aMessag
 
     otLogInfoMeshCoP("received Leader keep-alive response");
 
-    SuccessOrExit(Tlv::ReadUint8Tlv(*aMessage, Tlv::kState, state));
+    SuccessOrExit(Tlv::FindUint8Tlv(*aMessage, Tlv::kState, state));
     VerifyOrExit(state == StateTlv::kAccept, IgnoreError(Stop(/* aResign */ false)));
 
     mTimer.Start(Time::SecToMsec(kKeepAliveTimeout) / 2);
@@ -875,11 +876,11 @@ void Commissioner::HandleRelayReceive(Coap::Message &aMessage, const Ip6::Messag
 
     VerifyOrExit(aMessage.IsNonConfirmable() && aMessage.GetCode() == OT_COAP_CODE_POST, OT_NOOP);
 
-    SuccessOrExit(error = Tlv::ReadUint16Tlv(aMessage, Tlv::kJoinerUdpPort, joinerPort));
-    SuccessOrExit(error = Tlv::ReadTlv(aMessage, Tlv::kJoinerIid, joinerIid, sizeof(joinerIid)));
-    SuccessOrExit(error = Tlv::ReadUint16Tlv(aMessage, Tlv::kJoinerRouterLocator, joinerRloc));
+    SuccessOrExit(error = Tlv::FindUint16Tlv(aMessage, Tlv::kJoinerUdpPort, joinerPort));
+    SuccessOrExit(error = Tlv::FindTlv(aMessage, Tlv::kJoinerIid, joinerIid, sizeof(joinerIid)));
+    SuccessOrExit(error = Tlv::FindUint16Tlv(aMessage, Tlv::kJoinerRouterLocator, joinerRloc));
 
-    SuccessOrExit(error = Tlv::GetValueOffset(aMessage, Tlv::kJoinerDtlsEncapsulation, offset, length));
+    SuccessOrExit(error = Tlv::FindTlvValueOffset(aMessage, Tlv::kJoinerDtlsEncapsulation, offset, length));
     VerifyOrExit(length <= aMessage.GetLength() - offset, error = OT_ERROR_PARSE);
 
     if (!Get<Coap::CoapSecure>().IsConnectionActive())
@@ -927,7 +928,7 @@ void Commissioner::HandleRelayReceive(Coap::Message &aMessage, const Ip6::Messag
                      mJoinerIid[2], mJoinerIid[3], mJoinerIid[4], mJoinerIid[5], mJoinerIid[6], mJoinerIid[7],
                      mJoinerRloc);
 
-    IgnoreError(aMessage.SetOffset(offset));
+    aMessage.SetOffset(offset);
     SuccessOrExit(error = aMessage.SetLength(offset + length));
 
     joinerMessageInfo.SetPeerAddr(Get<Mle::MleRouter>().GetMeshLocal64());
@@ -975,7 +976,7 @@ void Commissioner::HandleJoinerFinalize(Coap::Message &aMessage, const Ip6::Mess
 
     otLogInfoMeshCoP("received joiner finalize");
 
-    if (Tlv::GetTlv(aMessage, Tlv::kProvisioningUrl, sizeof(provisioningUrl), provisioningUrl) == OT_ERROR_NONE)
+    if (Tlv::FindTlv(aMessage, Tlv::kProvisioningUrl, sizeof(provisioningUrl), provisioningUrl) == OT_ERROR_NONE)
     {
         uint8_t len = static_cast<uint8_t>(StringLength(mProvisioningUrl, sizeof(mProvisioningUrl)));
 
@@ -1011,7 +1012,7 @@ void Commissioner::SendJoinFinalizeResponse(const Coap::Message &aRequest, State
 
     SuccessOrExit(error = message->SetDefaultResponseHeader(aRequest));
     SuccessOrExit(error = message->SetPayloadMarker());
-    IgnoreError(message->SetOffset(message->GetLength()));
+    message->SetOffset(message->GetLength());
     message->SetSubType(Message::kSubTypeJoinerFinalizeResponse);
 
     SuccessOrExit(error = Tlv::AppendUint8Tlv(*message, Tlv::kState, static_cast<uint8_t>(aState)));
