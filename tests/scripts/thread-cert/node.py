@@ -128,6 +128,9 @@ class Node:
             else:
                 cmd += ' %d' % nodeid
 
+        if os.getenv("VALGRIND") == "1":
+            logfile = 'valgrind-%d.log' % nodeid
+            cmd = 'valgrind --tool=memcheck --track-origins=yes -s --leak-check=full --log-file=%s %s' % (logfile, cmd)
         print("%s" % cmd)
 
         self.pexpect = pexpect.popen_spawn.PopenSpawn(cmd, timeout=4)
