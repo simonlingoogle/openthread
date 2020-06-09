@@ -9,6 +9,7 @@ USE_OTBR_DAEMON := 1
 PRODUCT_PACKAGES += \
   ncp-ctl \
   ncp_spi_loader \
+  ot-ncp \
   ot-ncp-app.bin \
   otbr-agent \
   otbr-agent.conf \
@@ -24,7 +25,6 @@ PRODUCT_PACKAGES += \
 else
 PRODUCT_PACKAGES += \
   ot-cli \
-  ot-ncp \
   wpanctl \
   wpantund \
   wpantund-launch.sh \
