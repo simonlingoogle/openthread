@@ -40,7 +40,7 @@ jobs:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       if: "github.ref != 'refs/heads/master'"
 
-  thread-1-2:
+  thread-1-2-m64:
     name: thread-1-2-${{ matrix.compiler.c }}-${{ matrix.arch }}
     runs-on: ubuntu-18.04
     env:
@@ -56,7 +56,43 @@ jobs:
     strategy:
       matrix:
         compiler: [{c: "gcc", cxx: "g++"}, { c: "clang", cxx: "clang++"}]
-        arch: ["m32", "m64"]
+        arch: ["m64"]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Bootstrap
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get --no-install-recommends install -y g++-multilib ninja-build valgrind libc6-dbg
+          python3 -m pip install -r tests/scripts/thread-cert/requirements.txt
+      - name: Build
+        run: |
+          ./bootstrap
+          ./script/test build
+      - name: Run
+        run: |
+          ./script/test unit
+          ./script/test cert tests/scripts/thread-cert/v1_2_test_backbone_router_service.py
+      - name: Codecov
+        uses: codecov/codecov-action@v1
+
+  thread-1-2-m32:
+    name: thread-1-2-${{ matrix.compiler.c }}-${{ matrix.arch }}
+    runs-on: ubuntu-18.04
+    env:
+      CFLAGS: -${{ matrix.arch }}
+      CXXFLAGS: -${{ matrix.arch }}
+      LDFLAGS: -${{ matrix.arch }}
+      COVERAGE: 1
+      THREAD_VERSION: 1.2
+      VIRTUAL_TIME: 1
+      VALGRIND: 1
+      CC: ${{ matrix.compiler.c }}
+      CXX: ${{ matrix.compiler.cxx }}
+    strategy:
+      matrix:
+        compiler: [{c: "gcc", cxx: "g++"}, { c: "clang", cxx: "clang++"}]
+        arch: ["m32"]
     steps:
     - uses: actions/checkout@v2
     - name: Bootstrap
@@ -72,6 +108,6 @@ jobs:
     - name: Run
       run: |
         ./script/test unit
-        ./script/test cert_suite tests/scripts/thread-cert/v1_2_*
+        ./script/test cert tests/scripts/thread-cert/v1_2_test_backbone_router_service.py
     - name: Codecov
       uses: codecov/codecov-action@v1
