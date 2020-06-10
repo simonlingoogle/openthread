@@ -50,7 +50,7 @@ otError MeshForwarder::SendMessage(Message &aMessage)
     otError         error = OT_ERROR_NONE;
     Neighbor *      neighbor;
 
-    IgnoreError(aMessage.SetOffset(0));
+    aMessage.SetOffset(0);
     aMessage.SetDatagramTag(0);
     mSendQueue.Enqueue(aMessage);
 
@@ -181,7 +181,7 @@ void MeshForwarder::HandleResolved(const Ip6::Address &aEid, otError aError)
     }
 }
 
-otError MeshForwarder::EvictMessage(uint8_t aPriority)
+otError MeshForwarder::EvictMessage(Message::Priority aPriority)
 {
     otError        error    = OT_ERROR_NOT_FOUND;
     PriorityQueue *queues[] = {&mResolvingQueue, &mSendQueue};
@@ -192,7 +192,8 @@ otError MeshForwarder::EvictMessage(uint8_t aPriority)
     {
         for (uint8_t priority = 0; priority < aPriority; priority++)
         {
-            for (Message *message = queues[index]->GetHeadForPriority(priority); message; message = message->GetNext())
+            for (Message *message = queues[index]->GetHeadForPriority(static_cast<Message::Priority>(priority));
+                 message; message = message->GetNext())
             {
                 if (message->GetPriority() != priority)
                 {
@@ -205,7 +206,7 @@ otError MeshForwarder::EvictMessage(uint8_t aPriority)
                 }
 
                 evict     = message;
-                aPriority = priority;
+                aPriority = static_cast<Message::Priority>(priority);
                 break;
             }
         }
@@ -249,7 +250,7 @@ exit:
     return error;
 }
 
-void MeshForwarder::RemoveMessages(Child &aChild, uint8_t aSubType)
+void MeshForwarder::RemoveMessages(Child &aChild, Message::SubType aSubType)
 {
     Mle::MleRouter &mle = Get<Mle::MleRouter>();
     Message *       nextMessage;
@@ -350,9 +351,9 @@ void MeshForwarder::SendMesh(Message &aMessage, Mac::TxFrame &aFrame)
     uint16_t fcf;
 
     // initialize MAC header
-    fcf = Mac::Frame::kFcfFrameData | Mac::Frame::kFcfPanidCompression | Mac::Frame::kFcfFrameVersion2006 |
-          Mac::Frame::kFcfDstAddrShort | Mac::Frame::kFcfSrcAddrShort | Mac::Frame::kFcfAckRequest |
-          Mac::Frame::kFcfSecurityEnabled;
+    fcf = Mac::Frame::kFcfFrameData | Mac::Frame::kFcfPanidCompression | Mac::Frame::kFcfDstAddrShort |
+          Mac::Frame::kFcfSrcAddrShort | Mac::Frame::kFcfAckRequest | Mac::Frame::kFcfSecurityEnabled;
+    Get<Mac::Mac>().UpdateFrameControlField(aMessage.IsTimeSync(), fcf);
 
     aFrame.InitMacHeader(fcf, Mac::Frame::kKeyIdMode1 | Mac::Frame::kSecEncMic32);
     aFrame.SetDstPanId(Get<Mac::Mac>().GetPanId());
@@ -648,8 +649,8 @@ void MeshForwarder::HandleMesh(uint8_t *               aFrame,
     }
     else if (meshHeader.GetHopsLeft() > 0)
     {
-        uint8_t  priority = kDefaultMsgPriority;
-        uint16_t offset   = 0;
+        Message::Priority priority = Message::kPriorityNormal;
+        uint16_t          offset   = 0;
 
         Get<Mle::MleRouter>().ResolveRoutingLoops(aMacSource.GetShort(), meshDest.GetShort());
 
@@ -755,7 +756,7 @@ bool MeshForwarder::UpdateFragmentLifetime(void)
 void MeshForwarder::UpdateFragmentPriority(Lowpan::FragmentHeader &aFragmentHeader,
                                            uint16_t                aFragmentLength,
                                            uint16_t                aSrcRloc16,
-                                           uint8_t                 aPriority)
+                                           Message::Priority       aPriority)
 {
     FragmentPriorityEntry *entry;
 
@@ -828,7 +829,7 @@ exit:
 
 otError MeshForwarder::GetFragmentPriority(Lowpan::FragmentHeader &aFragmentHeader,
                                            uint16_t                aSrcRloc16,
-                                           uint8_t &               aPriority)
+                                           Message::Priority &     aPriority)
 {
     otError                error = OT_ERROR_NONE;
     FragmentPriorityEntry *entry;
@@ -845,7 +846,7 @@ void MeshForwarder::GetForwardFramePriority(const uint8_t *     aFrame,
                                             uint16_t            aFrameLength,
                                             const Mac::Address &aMeshSource,
                                             const Mac::Address &aMeshDest,
-                                            uint8_t &           aPriority)
+                                            Message::Priority & aPriority)
 {
     otError                error      = OT_ERROR_NONE;
     bool                   isFragment = false;

@@ -38,6 +38,7 @@
 
 #include <openthread/coap.h>
 
+#include "common/clearable.hpp"
 #include "common/code_utils.hpp"
 #include "common/encoding.hpp"
 #include "common/message.hpp"
@@ -628,10 +629,8 @@ private:
      * This structure represents a HelpData used by this CoAP message.
      *
      */
-    struct HelpData
+    struct HelpData : public Clearable<HelpData>
     {
-        void Clear(void) { memset(this, 0, sizeof(*this)); }
-
         Header   mHeader;
         uint16_t mOptionLast;
         uint16_t mHeaderOffset; ///< The byte offset for the CoAP Header
@@ -640,7 +639,7 @@ private:
 
     const HelpData &GetHelpData(void) const
     {
-        OT_STATIC_ASSERT(sizeof(mBuffer.mHead.mInfo) + sizeof(HelpData) + kHelpDataAlignment <= sizeof(mBuffer),
+        OT_STATIC_ASSERT(sizeof(mBuffer.mHead.mMetadata) + sizeof(HelpData) + kHelpDataAlignment <= sizeof(mBuffer),
                          "Insufficient buffer size for CoAP processing!");
 
         return *static_cast<const HelpData *>(OT_ALIGN(mBuffer.mHead.mData, kHelpDataAlignment));

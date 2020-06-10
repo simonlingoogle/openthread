@@ -36,9 +36,11 @@
 
 #include "openthread-core-config.h"
 
+#include "common/clearable.hpp"
 #include "common/linked_list.hpp"
 #include "common/locator.hpp"
 #include "common/message.hpp"
+#include "common/non_copyable.hpp"
 #include "common/tasklet.hpp"
 #include "mac/mac_types.hpp"
 #include "net/ip6_address.hpp"
@@ -63,17 +65,13 @@ class Ip6;
  * This class implements an IPv6 network interface unicast address.
  *
  */
-class NetifUnicastAddress : public otNetifAddress, public LinkedListEntry<NetifUnicastAddress>
+class NetifUnicastAddress : public otNetifAddress,
+                            public LinkedListEntry<NetifUnicastAddress>,
+                            public Clearable<NetifUnicastAddress>
 {
     friend class Netif;
 
 public:
-    /**
-     * This method clears the object (setting all fields to zero).
-     *
-     */
-    void Clear(void) { memset(this, 0, sizeof(*this)); }
-
     /**
      * This method returns the unicast address.
      *
@@ -112,17 +110,13 @@ private:
  * This class implements an IPv6 network interface multicast address.
  *
  */
-class NetifMulticastAddress : public otNetifMulticastAddress, public LinkedListEntry<NetifMulticastAddress>
+class NetifMulticastAddress : public otNetifMulticastAddress,
+                              public LinkedListEntry<NetifMulticastAddress>,
+                              public Clearable<NetifMulticastAddress>
 {
     friend class Netif;
 
 public:
-    /**
-     * This method clears the object (setting all fields to zero).
-     *
-     */
-    void Clear(void) { memset(this, 0, sizeof(*this)); }
-
     /**
      * This method returns the multicast address.
      *
@@ -169,7 +163,7 @@ private:
  * This class implements an IPv6 network interface.
  *
  */
-class Netif : public InstanceLocator, public LinkedListEntry<Netif>
+class Netif : public InstanceLocator, public LinkedListEntry<Netif>, private NonCopyable
 {
     friend class Ip6;
     friend class Address;

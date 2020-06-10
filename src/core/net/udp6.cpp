@@ -66,7 +66,7 @@ UdpSocket::UdpSocket(Udp &aUdp)
     mHandle = NULL;
 }
 
-Message *UdpSocket::NewMessage(uint16_t aReserved, const otMessageSettings *aSettings)
+Message *UdpSocket::NewMessage(uint16_t aReserved, const Message::Settings &aSettings)
 {
     return Get<Udp>().NewMessage(aReserved, aSettings);
 }
@@ -260,7 +260,7 @@ uint16_t Udp::GetEphemeralPort(void)
     return rval;
 }
 
-Message *Udp::NewMessage(uint16_t aReserved, const otMessageSettings *aSettings)
+Message *Udp::NewMessage(uint16_t aReserved, const Message::Settings &aSettings)
 {
     return Get<Ip6>().NewMessage(sizeof(UdpHeader) + aReserved, aSettings);
 }
@@ -288,7 +288,7 @@ otError Udp::SendDatagram(Message &aMessage, MessageInfo &aMessageInfo, uint8_t 
         udpHeader.SetChecksum(0);
 
         SuccessOrExit(error = aMessage.Prepend(&udpHeader, sizeof(udpHeader)));
-        IgnoreError(aMessage.SetOffset(0));
+        aMessage.SetOffset(0);
 
         error = Get<Ip6>().SendDatagram(aMessage, aMessageInfo, aIpProto);
     }
@@ -320,7 +320,7 @@ otError Udp::HandleMessage(Message &aMessage, MessageInfo &aMessageInfo)
 
     VerifyOrExit(aMessage.Read(aMessage.GetOffset(), sizeof(udpHeader), &udpHeader) == sizeof(udpHeader),
                  error = OT_ERROR_PARSE);
-    IgnoreError(aMessage.MoveOffset(sizeof(udpHeader)));
+    aMessage.MoveOffset(sizeof(udpHeader));
     aMessageInfo.mPeerPort = udpHeader.GetSourcePort();
     aMessageInfo.mSockPort = udpHeader.GetDestinationPort();
 

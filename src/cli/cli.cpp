@@ -63,6 +63,9 @@
 #include <openthread/icmp6.h>
 #include <openthread/logging.h>
 #include <openthread/platform/uart.h>
+#if OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
+#include <openthread/platform/misc.h>
+#endif
 
 #include "common/new.hpp"
 #include "net/ip6.hpp"
@@ -184,6 +187,9 @@ const struct Command Interpreter::sCommands[] = {
     {"netdataregister", &Interpreter::ProcessNetworkDataRegister},
 #endif
     {"netdatashow", &Interpreter::ProcessNetworkDataShow},
+#if OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
+    {"netif", &Interpreter::ProcessNetif},
+#endif
 #if OPENTHREAD_FTD || OPENTHREAD_CONFIG_TMF_NETWORK_DIAG_MTD_ENABLE
     {"networkdiagnostic", &Interpreter::ProcessNetworkDiagnostic},
 #endif // OPENTHREAD_FTD || OPENTHREAD_CONFIG_TMF_NETWORK_DIAG_MTD_ENABLE
@@ -1130,7 +1136,7 @@ void Interpreter::ProcessCounters(uint8_t aArgsLength, char *aArgs[])
             mServer->OutputFormat("    RxErrFcs: %d\r\n", macCounters->mRxErrFcs);
             mServer->OutputFormat("    RxErrOther: %d\r\n", macCounters->mRxErrOther);
         }
-        else if ((aArgsLength == 2) && (strcmp(aArgs[0], "reset") == 0))
+        else if ((aArgsLength == 2) && (strcmp(aArgs[1], "reset") == 0))
         {
             otLinkResetCounters(mInstance);
         }
@@ -1156,7 +1162,7 @@ void Interpreter::ProcessCounters(uint8_t aArgsLength, char *aArgs[])
                                   mleCounters->mBetterPartitionAttachAttempts);
             mServer->OutputFormat("Parent Changes: %d\r\n", mleCounters->mParentChanges);
         }
-        else if ((aArgsLength == 2) && (strcmp(aArgs[0], "reset") == 0))
+        else if ((aArgsLength == 2) && (strcmp(aArgs[1], "reset") == 0))
         {
             otThreadResetMleCounters(mInstance);
         }
@@ -1364,7 +1370,9 @@ void Interpreter::ProcessExtAddress(uint8_t aArgsLength, char *aArgs[])
     {
         otExtAddress extAddress;
 
-        VerifyOrExit(Hex2Bin(aArgs[0], extAddress.m8, sizeof(otExtAddress)) >= 0, error = OT_ERROR_INVALID_ARGS);
+        memset(&extAddress, 0, sizeof(extAddress));
+        VerifyOrExit(Hex2Bin(aArgs[0], extAddress.m8, sizeof(extAddress.m8)) == sizeof(extAddress.m8),
+                     error = OT_ERROR_INVALID_ARGS);
 
         error = otLinkSetExtendedAddress(mInstance, &extAddress);
     }
@@ -1439,7 +1447,8 @@ void Interpreter::ProcessExtPanId(uint8_t aArgsLength, char *aArgs[])
     {
         otExtendedPanId extPanId;
 
-        VerifyOrExit(Hex2Bin(aArgs[0], extPanId.m8, sizeof(extPanId)) >= 0, error = OT_ERROR_INVALID_ARGS);
+        VerifyOrExit(Hex2Bin(aArgs[0], extPanId.m8, sizeof(extPanId)) == sizeof(extPanId),
+                     error = OT_ERROR_INVALID_ARGS);
 
         error = otThreadSetExtendedPanId(mInstance, &extPanId);
     }
@@ -1981,6 +1990,25 @@ void Interpreter::ProcessNetworkDataShow(uint8_t aArgsLength, char *aArgs[])
 exit:
     AppendResult(error);
 }
+
+#if OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
+void Interpreter::ProcessNetif(uint8_t aArgsLength, char *aArgs[])
+{
+    OT_UNUSED_VARIABLE(aArgsLength);
+    OT_UNUSED_VARIABLE(aArgs);
+
+    otError      error    = OT_ERROR_NONE;
+    const char * netif    = NULL;
+    unsigned int netifidx = 0;
+
+    SuccessOrExit(error = otPlatGetNetif(mInstance, &netif, &netifidx));
+
+    mServer->OutputFormat("%s:%u\r\n", netif ? netif : "<NULL>", netifidx);
+
+exit:
+    AppendResult(error);
+}
+#endif
 
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 void Interpreter::ProcessService(uint8_t aArgsLength, char *aArgs[])
