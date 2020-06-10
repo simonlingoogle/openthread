@@ -71,8 +71,11 @@ jobs:
           ./script/test build
       - name: Run
         run: |
+          ulimit -c unlimited
           ./script/test unit
-          ./script/test cert tests/scripts/thread-cert/v1_2_test_backbone_router_service.py
+          ./script/test cert tests/scripts/thread-cert/v1_2_test_backbone_router_service.py || true
+          ps aux | grep ot-cli-ftd
+          ls -l
       - name: Codecov
         uses: codecov/codecov-action@v1
 
@@ -107,7 +110,10 @@ jobs:
         ./script/test build
     - name: Run
       run: |
+        ulimit -c unlimited
         ./script/test unit
-        ./script/test cert tests/scripts/thread-cert/v1_2_test_backbone_router_service.py
+        ./script/test cert tests/scripts/thread-cert/v1_2_test_backbone_router_service.py || true
+        ps aux | grep ot-cli-ftd
+        ls -l
     - name: Codecov
       uses: codecov/codecov-action@v1
