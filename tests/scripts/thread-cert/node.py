@@ -140,7 +140,7 @@ class Node:
         while timeout > 0:
             self.pexpect.send('\r\n')
             try:
-                self.pexpect.expect('> ', timeout=0.1)
+                self.pexpect.expect('> ', timeout=5)
                 break
             except pexpect.TIMEOUT:
                 timeout -= 0.1
