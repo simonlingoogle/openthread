@@ -35,6 +35,8 @@ import re
 import time
 import socket
 import logging
+import functools
+import traceback
 from Queue import Queue
 
 import serial
@@ -59,7 +61,24 @@ LINESEPX = re.compile(r'\r\n|\n')
 """regex: used to split lines"""
 
 
-class OpenThread(IThci):
+def API(api_func):
+    api_name = api_func.func_name
+
+    @functools.wraps(api_func)
+    def wrapped_api_func(self, *args, **kwargs):
+        try:
+            self.log("API %s <========", api_name)
+            ret = api_func(self, *args, **kwargs)
+            self.log("API %s ========> %r", api_name, ret)
+            return ret
+        except Exception as ex:
+            self.log("API %s failed: %s\n%s", api_name, str(ex),
+                     traceback.format_exc())
+
+    return wrapped_api_func
+
+
+class OpenThreadThci(IThci):
     LOWEST_POSSIBLE_PARTATION_ID = 0x1
     LINK_QUALITY_CHANGE_TIME = 100
 
@@ -70,7 +89,6 @@ class OpenThread(IThci):
 
     _update_router_status = False
 
-    # def __init__(self, SerialPort=COMPortName, EUI=MAC_Address):
     def __init__(self, **kwargs):
         """initialize the serial port and default network parameters
         Args:
@@ -101,14 +119,8 @@ class OpenThread(IThci):
         except Exception as e:
             ModuleHelper.WriteIntoDebugLogger('initialize() Error: ' + str(e))
 
-    def __del__(self):
-        """close the serial port connection"""
-        try:
-            self.closeConnection()
-            self.deviceConnected = False
-        except Exception as e:
-            ModuleHelper.WriteIntoDebugLogger('delete() Error: ' + str(e))
 
+class OpenThread(OpenThreadThci):
     def _expect(self, expected, times=50):
         """Find the `expected` line within `times` trials.
 
@@ -392,9 +404,9 @@ class OpenThread(IThci):
                             self.addBlockedMAC(addr)
 
             if self.deviceRole in [
-                    Thread_Device_Role.Leader,
-                    Thread_Device_Role.Router,
-                    Thread_Device_Role.REED,
+                Thread_Device_Role.Leader,
+                Thread_Device_Role.Router,
+                Thread_Device_Role.REED,
             ]:
                 self.__setRouterSelectionJitter(1)
 
@@ -1502,15 +1514,15 @@ class OpenThread(IThci):
                                               str(e))
 
     def configBorderRouter(
-        self,
-        P_Prefix,
-        P_stable=1,
-        P_default=1,
-        P_slaac_preferred=0,
-        P_Dhcp=0,
-        P_preference=0,
-        P_on_mesh=1,
-        P_nd_dns=0,
+            self,
+            P_Prefix,
+            P_stable=1,
+            P_default=1,
+            P_slaac_preferred=0,
+            P_Dhcp=0,
+            P_preference=0,
+            P_on_mesh=1,
+            P_nd_dns=0,
     ):
         """configure the border router with a given prefix entry parameters
 
@@ -2218,8 +2230,8 @@ class OpenThread(IThci):
                         PlatformDiagnosticPacket_Type.JOIN_ENT_req
                         if 'JOIN_ENT.ntf' in infoValue else
                         PlatformDiagnosticPacket_Type.
-                        JOIN_ENT_rsp if 'JOIN_ENT.rsp' in
-                        infoValue else PlatformDiagnosticPacket_Type.UNKNOWN)
+                            JOIN_ENT_rsp if 'JOIN_ENT.rsp' in
+                                            infoValue else PlatformDiagnosticPacket_Type.UNKNOWN)
                 elif 'len' in infoType:
                     bytesInEachLine = 16
                     EncryptedPacket.TLVsLength = int(infoValue)
@@ -2243,13 +2255,13 @@ class OpenThread(IThci):
         return ProcessedLogs
 
     def MGMT_ED_SCAN(
-        self,
-        sAddr,
-        xCommissionerSessionId,
-        listChannelMask,
-        xCount,
-        xPeriod,
-        xScanDuration,
+            self,
+            sAddr,
+            xCommissionerSessionId,
+            listChannelMask,
+            xCount,
+            xPeriod,
+            xScanDuration,
     ):
         """send MGMT_ED_SCAN message to a given destinaition.
 
@@ -2364,24 +2376,24 @@ class OpenThread(IThci):
                                               str(e))
 
     def MGMT_ACTIVE_SET(
-        self,
-        sAddr='',
-        xCommissioningSessionId=None,
-        listActiveTimestamp=None,
-        listChannelMask=None,
-        xExtendedPanId=None,
-        sNetworkName=None,
-        sPSKc=None,
-        listSecurityPolicy=None,
-        xChannel=None,
-        sMeshLocalPrefix=None,
-        xMasterKey=None,
-        xPanId=None,
-        xTmfPort=None,
-        xSteeringData=None,
-        xBorderRouterLocator=None,
-        BogusTLV=None,
-        xDelayTimer=None,
+            self,
+            sAddr='',
+            xCommissioningSessionId=None,
+            listActiveTimestamp=None,
+            listChannelMask=None,
+            xExtendedPanId=None,
+            sNetworkName=None,
+            sPSKc=None,
+            listSecurityPolicy=None,
+            xChannel=None,
+            sMeshLocalPrefix=None,
+            xMasterKey=None,
+            xPanId=None,
+            xTmfPort=None,
+            xSteeringData=None,
+            xBorderRouterLocator=None,
+            BogusTLV=None,
+            xDelayTimer=None,
     ):
         """send MGMT_ACTIVE_SET command
 
@@ -2551,17 +2563,17 @@ class OpenThread(IThci):
                                               str(e))
 
     def MGMT_PENDING_SET(
-        self,
-        sAddr='',
-        xCommissionerSessionId=None,
-        listPendingTimestamp=None,
-        listActiveTimestamp=None,
-        xDelayTimer=None,
-        xChannel=None,
-        xPanId=None,
-        xMasterKey=None,
-        sMeshLocalPrefix=None,
-        sNetworkName=None,
+            self,
+            sAddr='',
+            xCommissionerSessionId=None,
+            listPendingTimestamp=None,
+            listActiveTimestamp=None,
+            xDelayTimer=None,
+            xChannel=None,
+            xPanId=None,
+            xMasterKey=None,
+            sMeshLocalPrefix=None,
+            sNetworkName=None,
     ):
         """send MGMT_PENDING_SET command
 
@@ -2651,13 +2663,13 @@ class OpenThread(IThci):
                                               str(e))
 
     def MGMT_COMM_SET(
-        self,
-        Addr='ff02::1',
-        xCommissionerSessionID=None,
-        xSteeringData=None,
-        xBorderRouterLocator=None,
-        xChannelTlv=None,
-        ExceedMaxPayload=False,
+            self,
+            Addr='ff02::1',
+            xCommissionerSessionID=None,
+            xSteeringData=None,
+            xBorderRouterLocator=None,
+            xChannelTlv=None,
+            ExceedMaxPayload=False,
     ):
         """send MGMT_COMM_SET command
 
