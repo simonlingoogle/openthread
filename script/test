@@ -170,6 +170,7 @@ do_cert_suite()
 
     for test_case in "$@"; do
         rm -rf tmp || sudo rm -rf tmp
+        ps aux | grep "ot-"
         if "${test_case}" &>test.log; then
             echo -e "${COLOR_PASS}PASS${COLOR_NONE} ${test_case}"
             pass_count=$((pass_count + 1))
@@ -183,6 +184,7 @@ do_cert_suite()
                 cat test.log
             } >>fail.log
         fi
+        ps aux | grep "ot-"
     done
 
     echo "=================================="
