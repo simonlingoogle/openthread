@@ -57,7 +57,7 @@ install_packages_apt()
     fi
 
     # add clang-format for pretty
-    sudo apt-get --no-install-recommends install -y clang-format-6.0
+    sudo apt-get --no-install-recommends install -y clang-format-9
 
     # add yapf for pretty
     python3 -m pip install yapf==0.29.0 || echo 'Failed to install python code formatter yapf. Install it manually if you need.'
@@ -95,10 +95,10 @@ install_packages_brew()
     fi
 
     # add clang-format for pretty
-    CLANG_FORMAT_VERSION="clang-format version 6.0"
-    command -v clang-format-6.0 || (command -v clang-format && (clang-format --version | grep -q "${CLANG_FORMAT_VERSION}")) || {
-        brew install llvm@6
-        sudo ln -s "$(brew --prefix llvm@6)/bin/clang-format" /usr/local/bin/clang-format-6.0
+    CLANG_FORMAT_VERSION="clang-format version 9.0"
+    command -v clang-format-9 || (command -v clang-format && (clang-format --version | grep -q "${CLANG_FORMAT_VERSION}")) || {
+        brew install llvm@9
+        sudo ln -s "$(brew --prefix llvm@9)/bin/clang-format" /usr/local/bin/clang-format-9
     }
 
     # add yapf for pretty
