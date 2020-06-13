@@ -43,6 +43,8 @@ import binascii
 
 class Node:
 
+    PEXPECT_TIMEOUT = 10
+
     def __init__(self,
                  nodeid,
                  is_mtd=False,
@@ -130,17 +132,8 @@ class Node:
 
         print("%s" % cmd)
 
-        self.pexpect = pexpect.popen_spawn.PopenSpawn(cmd, timeout=4)
-
-        # Add delay to ensure that the process is ready to receive commands.
-        timeout = 0.4
-        while timeout > 0:
-            self.pexpect.send('\r\n')
-            try:
-                self.pexpect.expect('> ', timeout=0.1)
-                break
-            except pexpect.TIMEOUT:
-                timeout -= 0.1
+        self.pexpect = pexpect.popen_spawn.PopenSpawn(cmd, timeout=Node.PEXPECT_TIMEOUT)
+        self.__assure_promptive()
 
     def __init_ncp_sim(self, nodeid, mode):
         """ Initialize an NCP simulation node. """
@@ -211,12 +204,24 @@ class Node:
         cmd += ' %d' % nodeid
         print("%s" % cmd)
 
-        self.pexpect = pexpect.spawn(cmd, timeout=4)
+        self.pexpect = pexpect.spawn(cmd, timeout=Node.PEXPECT_TIMEOUT)
 
         # Add delay to ensure that the process is ready to receive commands.
-        time.sleep(0.2)
-        self._expect('spinel-cli >')
+        self.__assure_promptive()
         self.debug(int(os.getenv('DEBUG', '0')))
+
+    def __assure_promptive(self, timeout=10):
+        # Add delay to ensure that the process is ready to receive commands.
+        prompt = 'spinel-cli >' if self.node_type == 'ncp-sim' else '> '
+        while True:
+            self.pexpect.send('\r\n')
+            try:
+                self.pexpect.expect(prompt, timeout=1)
+                break
+            except pexpect.TIMEOUT:
+                timeout -= 1
+                if timeout <= 0:
+                    break
 
     def _expect(self, pattern, timeout=-1, *args, **kwargs):
         """ Process simulator events until expected the pattern. """
@@ -303,7 +308,19 @@ class Node:
                 not hasattr(self.pexpect, 'proc') and self.pexpect.isalive()):
             print("%d: exit" % self.nodeid)
             self.pexpect.send('exit\n')
-            self.pexpect.expect(pexpect.EOF)
+            t0 = time.time()
+            try:
+                self.pexpect.expect(pexpect.EOF)
+            except:
+                dt = time.time() - t0
+                print("expected EOF failed in %s" % dt)
+
+                self.pexpect.expect(pexpect.EOF, timeout=60)
+                dt = time.time() - t0
+                print("expected EOF in %s" % dt)
+
+                raise
+
             self.pexpect.wait()
             self._initialized = False
 
@@ -1019,7 +1036,7 @@ class Node:
 
     def reset(self):
         self.send_command('reset')
-        time.sleep(0.1)
+        self.__assure_promptive()
 
     def set_router_selection_jitter(self, jitter):
         cmd = 'routerselectionjitter %d' % jitter
