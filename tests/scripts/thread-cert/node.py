@@ -43,6 +43,8 @@ import binascii
 
 class Node:
 
+    PEXPECT_TIMEOUT = 10
+
     def __init__(self,
                  nodeid,
                  is_mtd=False,
@@ -130,7 +132,7 @@ class Node:
 
         print("%s" % cmd)
 
-        self.pexpect = pexpect.popen_spawn.PopenSpawn(cmd, timeout=4)
+        self.pexpect = pexpect.popen_spawn.PopenSpawn(cmd, timeout=Node.PEXPECT_TIMEOUT)
 
         # Add delay to ensure that the process is ready to receive commands.
         timeout = 0.4
@@ -211,7 +213,7 @@ class Node:
         cmd += ' %d' % nodeid
         print("%s" % cmd)
 
-        self.pexpect = pexpect.spawn(cmd, timeout=4)
+        self.pexpect = pexpect.spawn(cmd, timeout=Node.PEXPECT_TIMEOUT)
 
         # Add delay to ensure that the process is ready to receive commands.
         time.sleep(0.2)
