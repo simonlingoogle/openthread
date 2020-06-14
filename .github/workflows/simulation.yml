@@ -60,7 +60,8 @@ jobs:
         export ASAN_OPTIONS=symbolize=1
         export DISTCHECK_CONFIGURE_FLAGS= CPPFLAGS=-DOPENTHREAD_SIMULATION_VIRTUAL_TIME=1
         ./bootstrap
-        make -f examples/Makefile-simulation distcheck
+        make -f examples/Makefile-simulation
+        BuildJobs=1 make -f examples/Makefile-simulation distcheck
 
   cli-ftd-otns:
     runs-on: ubuntu-18.04
@@ -112,7 +113,7 @@ jobs:
         make -f examples/Makefile-simulation
     - name: Run
       run: |
-        VERBOSE=1 make -f examples/Makefile-simulation check
+        VERBOSE=1 BuildJobs=1 make -f examples/Makefile-simulation check
     - name: Codecov
       uses: codecov/codecov-action@v1
 
@@ -139,7 +140,7 @@ jobs:
         make -f examples/Makefile-simulation
     - name: Run
       run: |
-        VERBOSE=1 make -f examples/Makefile-simulation check
+        VERBOSE=1 BuildJobs=1 make -f examples/Makefile-simulation check
     - name: Codecov
       uses: codecov/codecov-action@v1
 
@@ -166,7 +167,7 @@ jobs:
         make -f examples/Makefile-simulation
     - name: Run
       run: |
-        VERBOSE=1 make -f examples/Makefile-simulation check
+        VERBOSE=1 BuildJobs=1 make -f examples/Makefile-simulation check
     - name: Codecov
       uses: codecov/codecov-action@v1
 
@@ -218,7 +219,7 @@ jobs:
         make -f examples/Makefile-simulation
     - name: Run
       run: |
-        VERBOSE=1 make -f examples/Makefile-simulation check
+        VERBOSE=1 BuildJobs=1 make -f examples/Makefile-simulation check
     - name: Codecov
       uses: codecov/codecov-action@v1
 
@@ -247,6 +248,6 @@ jobs:
         make -f examples/Makefile-simulation
     - name: Run
       run: |
-        VERBOSE=1 make -f examples/Makefile-simulation check
+        VERBOSE=1 BuildJobs=1 make -f examples/Makefile-simulation check
     - name: Codecov
       uses: codecov/codecov-action@v1
