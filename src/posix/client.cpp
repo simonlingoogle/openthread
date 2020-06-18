@@ -61,6 +61,64 @@
 
 static int sSessionFd = -1;
 
+class LinePrefix
+{
+public:
+    enum Action
+    {
+        LinePrefixActionOutput,
+        LinePrefixActionIgnore,
+    };
+
+    explicit LinePrefix(const char *aPrefix, Action aAction)
+        : mPrefix(aPrefix)
+        , mAction(aAction)
+        , mMatchIndex(0)
+    {
+        assert(mPrefix != NULL);
+        assert(strlen(mPrefix) > 0);
+    }
+
+    bool Feed(char c)
+    {
+        bool matched = false;
+
+        if (mMatchIndex >= 0 && ((mPrefix[mMatchIndex] == c) || (mPrefix[mMatchIndex] == '\n' && c == '\r')))
+        {
+            // next char matched
+            mMatchIndex++;
+
+            if (mPrefix[mMatchIndex] == '\0')
+            {
+                // match success
+                matched     = true;
+                mMatchIndex = -1;
+            }
+        }
+        else
+        {
+            // next char not matched
+            mMatchIndex = -1;
+        }
+
+        if (c == '\r' || c == '\n')
+        {
+            // new line begins
+            mMatchIndex = 0;
+        }
+
+        checkInvariant();
+        return matched;
+    }
+
+private:
+    bool checkInvariant() { assert(mMatchIndex == -1 || mMatchIndex < static_cast<int>(strlen(mPrefix))); }
+
+    const char *mPrefix;
+    Action      mAction;
+    int         mMatchIndex;
+};
+
 #if OPENTHREAD_USE_READLINE
 static void InputCallback(char *aLine)
 {
