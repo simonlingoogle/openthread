@@ -115,7 +115,7 @@
  * The maximum number of state-changed callback handlers (set using `otSetStateChangedCallback()`).
  *
  */
-#define OPENTHREAD_CONFIG_MAX_STATECHANGE_HANDLERS 2
+#define OPENTHREAD_CONFIG_MAX_STATECHANGE_HANDLERS 3
 
 /**
  * @def OPENTHREAD_CONFIG_MLE_STEERING_DATA_SET_OOB_ENABLE
@@ -275,6 +275,12 @@
  */
 #define OPENTHREAD_CONFIG_POSIX_SETTINGS_PATH "/var/lib/thread"
 
-#define OPENTHREAD_POSIX_RCP_UART_ENABLE 1
+/**
+ * @def OPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME
+ *
+ * Define socket basename used by POSIX app daemon.
+ *
+ */
+#define OPENTHREAD_POSIX_CONFIG_DAEMON_SOCKET_BASENAME "/var/lib/thread/openthread"
 
 #endif // NET_WIRELESS_OPENTHREAD_FILES_INCLUDE_OPENTHREAD_CORE_CHROMEOS_CONFIG_H_
