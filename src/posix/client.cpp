@@ -64,22 +64,23 @@ static int sSessionFd = -1;
 class LinePrefix
 {
 public:
-    enum Action
-    {
-        LinePrefixActionOutput,
-        LinePrefixActionIgnore,
-    };
-
-    explicit LinePrefix(const char *aPrefix, Action aAction)
+    explicit LinePrefix(const char *aPrefix)
         : mPrefix(aPrefix)
-        , mAction(aAction)
         , mMatchIndex(0)
     {
         assert(mPrefix != NULL);
         assert(strlen(mPrefix) > 0);
     }
 
-    bool Feed(char c)
+    int GetMatchIndex() {
+        return mMatchIndex;
+    }
+
+    void Reset() {
+        mMatchIndex = 0;
+    }
+
+    bool Find(char c)
     {
         bool matched = false;
 
@@ -115,7 +116,6 @@ private:
     bool checkInvariant() { assert(mMatchIndex == -1 || mMatchIndex < static_cast<int>(strlen(mPrefix))); }
 
     const char *mPrefix;
-    Action      mAction;
     int         mMatchIndex;
 };
 
@@ -253,9 +253,10 @@ int main(int argc, char *argv[])
     int  ret;
     bool isInteractive = true;
     bool isFinished    = false;
-    int  doneState     = 0;
-    int  errorState    = 0;
-    int  promptState   = 0;
+
+    LinePrefix promptPrefix("> ");
+    LinePrefix errorPrefix("Error ");
+    LinePrefix donePrefix("Done\n");
 
     sSessionFd = socket(AF_UNIX, SOCK_STREAM, 0);
     VerifyOrExit(sSessionFd != -1, perror("socket"); ret = OT_EXIT_FAILURE);
@@ -358,16 +359,18 @@ int main(int argc, char *argv[])
 
                 for (ssize_t i = 0; i < rval; i++)
                 {
-                    int prevPromptState = promptState;
+                    char c = buffer[i];
 
-                    if (FindPrompt(promptState, buffer[i]))
+                    int prevPromptMatchIndex = promptPrefix.GetMatchIndex;
+
+                    if (promptPrefix.Find(c))
                     {
-                        doneState  = 0;
-                        errorState = 0;
+                        donePrefix.Reset();
+                        errorPrefix.Reset();
                         lineStart  = i + 1;
                         continue;
                     }
-                    else if (prevPromptState == 1 && i == 0)
+                    else if (prevPromptMatchIndex == 1 && i == 0)
                     {
                         VerifyOrExit(DoWrite(STDOUT_FILENO, ">", 1), ret = OT_EXIT_FAILURE);
                     }
@@ -379,16 +382,15 @@ int main(int argc, char *argv[])
                         lineStart = i + 1;
                     }
 
-                    if (FindDone(doneState, buffer[i]) || FindError(errorState, buffer[i]))
+                    if (donePrefix.Find(c) || errorPrefix.Find(c))
                     {
                         isFinished = true;
                         ret        = OT_EXIT_SUCCESS;
                     }
                 }
 
-                if (lineStart < rval && promptState != 1)
+                if (lineStart < rval && promptPrefix.GetMatchIndex() != 1)
                 {
-                    assert(promptState != 0 && promptState != 2);
                     VerifyOrExit(DoWrite(STDOUT_FILENO, buffer + lineStart, static_cast<size_t>(rval - lineStart)),
                                  ret = OT_EXIT_FAILURE);
                 }
