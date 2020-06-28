@@ -9,6 +9,7 @@ def config =
     repositoryBranch: "terbium/master" ,
     platform : "linux" ,
     buildType : "PSV" ,
+    builder_id : "openthread_terbium-presubmit" ,
     targets :
     [
         [

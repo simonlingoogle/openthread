@@ -32,15 +32,12 @@ copy_and_sign()
 {
     local bin_dir=$1
     local images_dir=$2
+    local image=$3
 
-    for f in ${bin_dir}/*; do
-        filename=${f#"${bin_dir}/"}
-        cp -f ${bin_dir}/${filename} ${images_dir}/${filename}.elf
-
-        if [ "${filename}" != "bootloader" ]; then
-            sign_image ${images_dir}/${filename}.elf
-        fi
-    done
+    cp -f ${bin_dir}/${image} ${images_dir}/${image}.elf
+    if [ "${image}" != "bootloader" ]; then
+        sign_image ${images_dir}/${image}.elf
+    fi
 }
 
 translate_image()
@@ -51,19 +48,18 @@ translate_image()
 translate_images()
 {
     local images_dir=$1
+    local image=${images_dir}/$2
+    local image_elf=${image}.elf
 
-    for image_elf in ${images_dir}/*.elf; do
-        image=${image_elf%".elf"}
-        translate_image ${image_elf} ${image}.bin elf32-littlearm binary ''
-        translate_image ${image_elf} ${image}.s37 elf32-littlearm srec --srec-forceS3
-        translate_image ${image_elf} ${image}.hex elf32-littlearm ihex ''
-    done
+    translate_image ${image_elf} ${image}.bin elf32-littlearm binary ''
+    translate_image ${image_elf} ${image}.s37 elf32-littlearm srec --srec-forceS3
+    translate_image ${image_elf} ${image}.hex elf32-littlearm ihex ''
 }
 
 main()
 {
-    if [ ! $# -eq 4 ]; then
-        echo "Usage: copy-and-sign <TERBIUM_SRC_DIR> <OUTPUT_DIR> <SIGNATURE_SECTION> <OBJCOPY>"
+    if [ $# != 5 ]; then
+        echo "Usage: copy-and-sign <TERBIUM_SRC_DIR> <OUTPUT_DIR> <SIGNATURE_SECTION> <OBJCOPY> <IMAGE_NAME>"
     fi
 
     TERBIUM_SRC_DIR=$1
@@ -71,16 +67,17 @@ main()
     SIGNATURE_SECTION=$3
     OBJCOPY=$4
 
+    local image=$5
     local bin_dir=${OUTPUT_DIR}/bin
     local images_dir=${OUTPUT_DIR}/images
 
     mkdir -p ${images_dir}
 
     # Copy all the files from bin to images directory and add signature to `.signature` section
-    copy_and_sign ${bin_dir} ${images_dir}
+    copy_and_sign ${bin_dir} ${images_dir} ${image}
 
     # Translate images to other format
-    translate_images ${images_dir}
+    translate_images ${images_dir} ${image}
 }
 
 main "$@"

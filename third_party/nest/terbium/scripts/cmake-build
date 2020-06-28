@@ -11,6 +11,8 @@
 #   Google LLC.
 #
 
+set -euo pipefail
+
 BUILD_PRODUCTS=()
 readonly BUILD_VARIANTS=("eng" "user")
 
@@ -46,7 +48,7 @@ build()
     # This file defines the `CMAKE_TOOLCHAIN_FILE`
     . ./src/products/${product}/product_cmake_toolchain.sh
 
-    if [ -d ${build_dir} ]; then
+    if [[ -d ${build_dir} ]]; then
         rm -rf ${build_dir}
     fi
 
@@ -85,57 +87,51 @@ is_argument_valid()
 {
     local argument_array=$1
     local argument=$2
+    local found=0
 
     for value in ${argument_array[*]}; do
-        if [ "${value}" == "${argument}" ]; then
-            return 1
+        if [[ "${value}" == "${argument}" ]]; then
+            found=1
         fi
     done;
 
-    return 0
+    if [[ ${found} == 0 ]] ; then
+        exit 1
+    fi
 }
 
 main()
 {
-    local success=0
+    if [[ $# > 0 && "$1" == "--help" ]] ; then
+        print_usage "$@"
+        exit 1
+    fi
 
     get_supported_products
 
     case $# in
     0)
         build_all_products
-        success=1
         ;;
     1)
         local product=$1
 
         is_argument_valid "${BUILD_PRODUCTS[*]}" "${product}"
-        if [ $? == 1 ] ; then
-            success=1
-            build_product ${product}
-        fi
+        build_product ${product}
         ;;
     2)
         local product=$1
         local variant=$2
 
         is_argument_valid "${BUILD_PRODUCTS[*]}" "${product}"
-        if [ $? == 1 ] ; then
-            is_argument_valid "${BUILD_VARIANTS[*]}" "${variant}"
-            if [ $? == 1 ] ; then
-                success=1
-                build ${product} ${variant}
-            fi
-        fi
+        is_argument_valid "${BUILD_VARIANTS[*]}" "${variant}"
+        build ${product} ${variant}
         ;;
     *)
-        ;;
-    esac
-
-    if [ ${success} == 0 ]; then
         print_usage "$@"
         exit 1
-    fi
+        ;;
+    esac
 }
 
 main "$@"

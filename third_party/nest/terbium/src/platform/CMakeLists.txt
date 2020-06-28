@@ -47,4 +47,6 @@ target_compile_definitions(terbiumplatform
 target_link_libraries(terbiumplatform
     PUBLIC
     ${OT_PLATFORM_LIB}
+    PRIVATE
+    ot-config
 )

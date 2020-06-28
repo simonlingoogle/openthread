@@ -55,9 +55,9 @@ uint32_t tbHalFlashWrite(uint32_t aAddress, uint8_t *aData, uint32_t aSize);
  * This function erases the @p aSize bytes from address @p aAddress.
  *
  * @param[in]  aAddress  Flash address.
- * @param[in]  aSize     Number of bytes to earse.
+ * @param[in]  aSize     Number of bytes to erase.
  *
- * @retval OT_ERROR_NONE          Successfully earsed given flash area.
+ * @retval OT_ERROR_NONE          Successfully erased given flash area.
  * @retval OT_ERROR_INVALID_ARGS  The given flash area execeeds the real flash range or
  *                                the @p aAddress or @p aSize is not align with the flash page size.
  *

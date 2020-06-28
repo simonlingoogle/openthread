@@ -46,7 +46,7 @@
 #define NRF_FEM_CONTROL_LNA_GAIN_DB 0    ///< LNA gain. Ignored if the amplifier is not supporting this feature.
 
 // FEM pin PPI channel configuration.
-#define NRF_FEM_CONTROL_PDN_PPI_CHANNEL 14         ///< PPI channel for Power Down control.
+#define NRF_FEM_CONTROL_PDN_PPI_CHANNEL 5          ///< PPI channel for Power Down control.
 #define NRF_FEM_CONTROL_SET_PPI_CHANNEL 15         ///< PPI channel for pin setting.
 #define NRF_FEM_CONTROL_CLR_PPI_CHANNEL 16         ///< PPI channel for pin clearing.
 #define NRF_FEM_CONTROL_CPS_CHL_SET_PPI_CHANNEL 17 ///< PPI channel for setting CPS/CHL pin.

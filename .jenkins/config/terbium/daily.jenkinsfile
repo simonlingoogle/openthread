@@ -9,6 +9,7 @@ def config =
     repositoryBranch: "terbium/master" ,
     platform : "linux" ,
     buildType : "Daily" ,
+    builder_id : "openthread_terbium-daily" ,
     targets :
     [
         [

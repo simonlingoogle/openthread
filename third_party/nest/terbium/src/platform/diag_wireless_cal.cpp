@@ -619,6 +619,7 @@ static otError wirelessCalSetCalibration(const tbWirelessCalCalibration *aCalibr
             {
                 tbWirelessCalPowerSetting *calPowerSetting = &subbandSetting->mPowerSettings[i];
                 tbPowerSetting             powerSetting;
+                int32_t                    encodedPower;
                 int16_t                    calibratedPower;
 
                 calibratedPower = (int16_t)strtol(endptr, &endptr, 10);
@@ -650,8 +651,9 @@ static otError wirelessCalSetCalibration(const tbWirelessCalCalibration *aCalibr
                 }
 
                 calPowerSetting->mCalibratedPower = calibratedPower;
-                error = tbPowerSettingsEncode(&powerSetting, &calPowerSetting->mEncodedPower);
-                VerifyOrExit(error == OT_ERROR_NONE, OT_NOOP);
+
+                SuccessOrExit(error = tbPowerSettingsEncode(&powerSetting, &encodedPower));
+                calPowerSetting->mEncodedPower = encodedPower;
 
                 otLogDebgPlat(" %d: powerSettings: EncodedPower=%d, RadioPower=%d, FemMode=%d, FemPower=%d", i,
                               calPowerSetting->mEncodedPower, powerSetting.mRadioPower, powerSetting.mFemMode,

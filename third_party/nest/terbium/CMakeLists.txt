@@ -24,6 +24,8 @@ set(OT_CFLAGS
 
 add_library(ot-config INTERFACE)
 
+target_include_directories(ot-config INTERFACE ${OPENTHREAD_ROOT_DIR}/src/core)
+
 # Generate openthread-config-generic.h
 configure_file(${OPENTHREAD_ROOT_DIR}/etc/cmake/openthread-config-generic.h.in ${PROJECT_BINARY_DIR}/etc/cmake/openthread-config-generic.h)
 list(APPEND OT_PUBLIC_INCLUDES ${PROJECT_BINARY_DIR}/etc/cmake)
@@ -39,15 +41,17 @@ execute_process(
 )
 message(STATUS "Version: ${OT_VERSION}")
 
-target_compile_definitions(ot-config INTERFACE "PACKAGE_NAME=\"OPENTHREAD\"")
-target_compile_definitions(ot-config INTERFACE "PACKAGE_VERSION=\"${OT_VERSION}\"")
+target_compile_definitions(ot-config INTERFACE
+    "PACKAGE_NAME=\"OPENTHREAD\""
+    "PACKAGE_VERSION=\"${OT_VERSION}\""
+)
 
 # mbedtls
 set(OT_EXTERNAL_MBEDTLS "" CACHE STRING "Specify external mbedtls library")
 set(OT_MBEDTLS mbedtls)
 if(NOT OT_EXTERNAL_MBEDTLS)
-    list(APPEND OT_PRIVATE_INCLUDES ${OPENTHREAD_ROOT_DIR}/third_party/mbedtls)
-    list(APPEND OT_PRIVATE_INCLUDES ${OPENTHREAD_ROOT_DIR}/third_party/mbedtls/repo/include)
+    target_include_directories(ot-config INTERFACE ${OPENTHREAD_ROOT_DIR}/third_party/mbedtls)
+    target_include_directories(ot-config INTERFACE ${OPENTHREAD_ROOT_DIR}/third_party/mbedtls/repo/include)
 endif()
 
 # Terbium build product
@@ -88,10 +92,10 @@ add_subdirectory(src)
 target_compile_definitions(ot-config INTERFACE ${TERBIUM_CONFIG_DEFINES})
 target_compile_definitions(ot-config INTERFACE ${MBEDTLS_DEFINES})
 
-list(APPEND OT_PRIVATE_INCLUDES ${MBEDTLS_INCLUDES})
+target_include_directories(ot-config INTERFACE ${MBEDTLS_INCLUDES})
 
 # Add the include path for the openthread core config file
-list(APPEND OT_PRIVATE_INCLUDES ${TERBIUM_PRODUCT_DIR})
+target_include_directories(ot-config INTERFACE ${TERBIUM_PRODUCT_DIR})
 
 # Set this for outside openthread repo build as if it were the root source directory
 set(PROJECT_SOURCE_DIR ${OPENTHREAD_ROOT_DIR})

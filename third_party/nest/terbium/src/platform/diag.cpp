@@ -68,7 +68,7 @@ otError otPlatDiagProcess(otInstance *aInstance,
 {
     otError error = OT_ERROR_INVALID_COMMAND;
 
-    aOutput[0]    = '\0'; // In case the previous data is not earsed and diag command outputs nothing.
+    aOutput[0]    = '\0'; // In case the previous data is not erased and diag command outputs nothing.
     sOutput       = aOutput;
     sOutputMaxLen = aOutputMaxLen;
 

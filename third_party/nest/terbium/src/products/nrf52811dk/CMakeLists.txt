@@ -10,7 +10,31 @@
 #  Google LLC.
 #
 
-include(${PROJECT_SOURCE_DIR}/src/chips/nrf528xx/nrf52811/MemoryLayout.cmake)
+include(MemoryLayout.cmake)
+
+# Generate linker script
+string(REPLACE ";" " " TERBIUM_MEMORY_LAYOUT_DEFINITIONS_STR
+               "${TERBIUM_MEMORY_LAYOUT_DEFINITIONS}")
+
+execute_process(
+  COMMAND
+      bash "-c"
+      "${CMAKE_C_COMPILER} -E -C ${TERBIUM_MEMORY_LAYOUT_DEFINITIONS_STR} -P - <${CMAKE_CURRENT_SOURCE_DIR}/app.ld> ${PROJECT_BINARY_DIR}/src/products/nrf52811dk/app.ld"
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+execute_process(
+  COMMAND
+      bash "-c"
+      "${CMAKE_C_COMPILER} -E -C ${TERBIUM_MEMORY_LAYOUT_DEFINITIONS_STR} -P - <${CMAKE_CURRENT_SOURCE_DIR}/bootloader.ld> ${PROJECT_BINARY_DIR}/src/products/nrf52811dk/bootloader.ld"
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+set(TERBIUM_MEMORY_LAYOUT_DEFINITIONS
+    ${TERBIUM_MEMORY_LAYOUT_DEFINITIONS}
+    PARENT_SCOPE)
+
+set(TERBIUM_MEMORY_SIGNATURE_SECTION
+    ${TERBIUM_MEMORY_SIGNATURE_SECTION}
+    PARENT_SCOPE)
 
 set(OT_MBEDTLS_CONFIG_FILE \"mbedtls-config.h\" CACHE STRING "The mbedTLS config file")
 set(MBEDTLS_DEFINES
@@ -36,7 +60,6 @@ add_executable(ot-cli-mtd
 
 set(COMMON_INCLUDES
     ${OT_PUBLIC_INCLUDES}
-    ${OT_PRIVATE_INCLUDES}
     ${OPENTHREAD_ROOT_DIR}/examples/platforms
     ${OPENTHREAD_ROOT_DIR}/src/core
 )
@@ -54,13 +77,17 @@ target_link_libraries(ot-cli-mtd
     openthread-mtd
     ${OT_PLATFORM_LIB}
     mbedcrypto
+    ot-config
 )
 
 target_link_options(ot-cli-mtd PRIVATE -T${PROJECT_BINARY_DIR}/${AppLinkerScript})
 
 add_custom_command(TARGET ot-cli-mtd
+    TARGET ot-cli-mtd
     POST_BUILD
-    COMMAND /bin/bash ${PROJECT_SOURCE_DIR}/scripts/copy-and-sign ${PROJECT_SOURCE_DIR} ${OUTPUT_ROOT_DIR} ${TERBIUM_MEMORY_SIGNATURE_SECTION} ${CMAKE_OBJCOPY}
+    COMMAND
+        /bin/bash ${PROJECT_SOURCE_DIR}/scripts/copy-and-sign ${PROJECT_SOURCE_DIR} ${OUTPUT_ROOT_DIR}
+        ${TERBIUM_MEMORY_SIGNATURE_SECTION} ${CMAKE_OBJCOPY} ot-cli-mtd
     COMMENT Add signature for the images
 )
 
@@ -79,3 +106,12 @@ target_compile_definitions(bootloader
 )
 
 target_link_options(bootloader PRIVATE -T${PROJECT_BINARY_DIR}/${BootloaderLinkerScript})
+
+add_custom_command(TARGET bootloader
+    TARGET bootloader
+    POST_BUILD
+    COMMAND
+        /bin/bash ${PROJECT_SOURCE_DIR}/scripts/copy-and-sign ${PROJECT_SOURCE_DIR} ${OUTPUT_ROOT_DIR}
+        ${TERBIUM_MEMORY_SIGNATURE_SECTION} ${CMAKE_OBJCOPY} bootloader
+    COMMENT Add signature for the images
+)

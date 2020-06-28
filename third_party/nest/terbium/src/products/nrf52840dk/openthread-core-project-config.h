@@ -34,7 +34,7 @@
  * The platform-specific string to insert into the OpenThread version string.
  *
  */
-#define OPENTHREAD_CONFIG_PLATFORM_INFO "NRF52811DK-" TERBIUM_BUILD_VARIANT
+#define OPENTHREAD_CONFIG_PLATFORM_INFO "NRF52840DK-" TERBIUM_BUILD_VARIANT
 
 /**
  * @def OPENTHREAD_CONFIG_LOG_OUTPUT

@@ -8,31 +8,7 @@
 # part, without the express written permission of Google LLC.
 #
 
-include(MemoryLayout.cmake)
-
-# Generate linker script
-string(REPLACE ";" " " TERBIUM_MEMORY_LAYOUT_DEFINITIONS_STR
-               "${TERBIUM_MEMORY_LAYOUT_DEFINITIONS}")
-
-execute_process(
-  COMMAND
-    bash "-c"
-    "${CMAKE_C_COMPILER} -E ${TERBIUM_MEMORY_LAYOUT_DEFINITIONS_STR} -P - <${CMAKE_CURRENT_SOURCE_DIR}/app.ld> ${PROJECT_BINARY_DIR}/src/chips/nrf528xx/nrf52840/app.ld"
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-execute_process(
-  COMMAND
-    bash "-c"
-    "${CMAKE_C_COMPILER} -E ${TERBIUM_MEMORY_LAYOUT_DEFINITIONS_STR} -P - <${CMAKE_CURRENT_SOURCE_DIR}/bootloader.ld> ${PROJECT_BINARY_DIR}/src/chips/nrf528xx/nrf52840/bootloader.ld"
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-set(TERBIUM_MEMORY_LAYOUT_DEFINITIONS
-    ${TERBIUM_MEMORY_LAYOUT_DEFINITIONS}
-    PARENT_SCOPE)
-
-set(TERBIUM_MEMORY_SIGNATURE_SECTION
-    ${TERBIUM_MEMORY_SIGNATURE_SECTION}
-    PARENT_SCOPE)
+include(${PROJECT_SOURCE_DIR}/src/products/${TERBIUM_BUILD_PRODUCT}/MemoryLayout.cmake)
 
 set(TERBIUM_NRF528XX_DIR ${PROJECT_SOURCE_DIR}/src/chips/nrf528xx)
 set(NORDIC_SEMICONDUCTOR_DIR ${PROJECT_SOURCE_DIR}/../../NordicSemiconductor)
@@ -71,7 +47,6 @@ target_include_directories(
 list(
   APPEND
   TERBIUM_CHIP_COMMONCFLAGS
-  -DCONFIG_GPIO_AS_PINRESET
   -DNRF52840_XXAA
   -DENABLE_FEM=1
   -DUSE_APP_CONFIG=1
@@ -194,6 +169,8 @@ target_compile_definitions(
 target_compile_options(nordicsemi-nrf52840-sdk
                        PRIVATE ${TERBIUM_CHIP_COMMONCFLAGS})
 
+target_link_libraries(nordicsemi-nrf52840-sdk PRIVATE ot-config)
+
 add_library(nordicsemi-nrf52840-radio-driver ${RADIO_DRIVER_SOURCES}
                                              ${RADIO_DRIVER_SINGLE_PHY_SOURCES})
 
@@ -211,6 +188,8 @@ target_compile_definitions(
 
 target_compile_options(nordicsemi-nrf52840-radio-driver
                        PRIVATE ${TERBIUM_CHIP_COMMONCFLAGS})
+
+target_link_libraries(nordicsemi-nrf52840-radio-driver PRIVATE ot-config)
 
 add_library(openthread-nrf52840-transport
             ${TRANSPORT_SOURCES} $<TARGET_OBJECTS:openthread-platform-utils>)
@@ -304,7 +283,8 @@ target_compile_definitions(
 target_link_libraries(
   openthread-nrf52840
   PUBLIC terbiumplatform openthread-nrf52840-transport nordicsemi-nrf52840-sdk
-         nordicsemi-nrf52840-radio-driver peripherals)
+         nordicsemi-nrf52840-radio-driver peripherals
+  PRIVATE ot-config)
 
 target_include_directories(
   openthread-nrf52840
