@@ -38,7 +38,9 @@ ROUTER = 2
 
 
 class TestIPv6Fragmentation(thread_cert.TestCase):
-    topology = {
+    SUPPORT_NCP = False
+
+    TOPOLOGY = {
         LEADER: {
             'mode': 'rsdn',
             'panid': 0xcafe,

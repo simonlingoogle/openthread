@@ -75,7 +75,7 @@ public:
      */
     UdpReceiver(otUdpHandler aHandler, void *aContext)
     {
-        mNext    = NULL;
+        mNext    = nullptr;
         mHandler = aHandler;
         mContext = aContext;
     }
@@ -110,7 +110,7 @@ public:
      * @param[in]  aReserved  The number of header bytes to reserve after the UDP header.
      * @param[in]  aSettings  The message settings (default is used if not provided).
      *
-     * @returns A pointer to the message or NULL if no buffers are available.
+     * @returns A pointer to the message or nullptr if no buffers are available.
      *
      */
     Message *NewMessage(uint16_t aReserved, const Message::Settings &aSettings = Message::Settings::GetDefault());
@@ -272,7 +272,7 @@ public:
      * @param[in]  aReserved  The number of header bytes to reserve after the UDP header.
      * @param[in]  aSettings  The message settings.
      *
-     * @returns A pointer to the message or NULL if no buffers are available.
+     * @returns A pointer to the message or nullptr if no buffers are available.
      *
      */
     Message *NewMessage(uint16_t aReserved, const Message::Settings &aSettings = Message::Settings::GetDefault());
@@ -321,7 +321,13 @@ public:
     void UpdateChecksum(Message &aMessage, uint16_t aChecksum);
 
 #if OPENTHREAD_CONFIG_PLATFORM_UDP_ENABLE
-    otUdpSocket *GetUdpSockets(void) { return mSockets.GetHead(); }
+    /**
+     * This method returns the head of UDP Sockets list.
+     *
+     * @returns A pointer to the head of UDP Socket linked list.
+     *
+     */
+    UdpSocket *GetUdpSockets(void) { return mSockets.GetHead(); }
 #endif
 
 #if OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
@@ -337,7 +343,7 @@ public:
         mUdpForwarder        = aForwarder;
         mUdpForwarderContext = aContext;
     }
-#endif // OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
+#endif
 
 private:
     enum
