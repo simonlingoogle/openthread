@@ -13,11 +13,9 @@ OTBR_MDNS := mojo
 PRODUCT_PACKAGES += \
   ncp-ctl \
   ncp_spi_loader \
-  ot-ncp \
   ot-ncp-app.bin \
   otbr-agent \
   otbr-agent.conf \
-  spi-hdlc-adapter \
   thread-defines \
   $(NULL)
 
@@ -28,7 +26,9 @@ PRODUCT_PACKAGES += \
   $(NULL)
 else
 PRODUCT_PACKAGES += \
+  ot-ncp \
   ot-cli \
+  spi-hdlc-adapter \
   wpanctl \
   wpantund \
   wpantund-launch.sh \
