@@ -44,7 +44,7 @@ namespace Extension {
  * This class defines the vendor extension to add support for legacy pairing.
  *
  */
-class LegacyPairingExtension : public ExtensionBase
+class LegacyPairingExtension : public ExtensionBase, public Notifier::Receiver
 {
 public:
     explicit LegacyPairingExtension(Instance &aInstance);
@@ -121,7 +121,7 @@ private:
     void     SetPrefix(const uint8_t *aUlaPrefix);
     void     ComputeLegacyKey(void);
     otError  AddReceiver(void);
-    void     HandleStateChanged(otChangedFlags aFlags);
+    void     HandleStateChanged(Events aEvents);
     bool     HandleUdpReceive(const otMessage *aMessage, const otMessageInfo *aMessageInfo);
     void     HandleMleLinkRequest(const uint8_t *aBufPtr, uint16_t aLength, const otMessageInfo *aMessageInfo);
     void     HandleMleLinkAcceptAndRequest(uint8_t              aCommand,
@@ -152,7 +152,7 @@ private:
     // Callbacks
     static bool HandleUdpReceive(void *aContext, const otMessage *aMessage, const otMessageInfo *aMessageInfo);
     static void HandleTimer(Timer &aTimer);
-    static void HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags);
+    static void HandleStateChanged(Notifier::Receiver &aReceiver, Events aEvents);
 
     // Legacy handlers registered with NCP.
     static void StartLegacy(void) { sLegacyPairingExtension->Start(); }
@@ -160,15 +160,14 @@ private:
     static void JoinLegacyNode(const otExtAddress *aDstAddress) { sLegacyPairingExtension->Join(aDstAddress); }
     static void SetLegacyUlaPrefix(const uint8_t *aUlaPrefix) { sLegacyPairingExtension->SetPrefix(aUlaPrefix); }
 
-    uint8_t            mLegacyKey[OT_CRYPTO_HMAC_SHA_HASH_SIZE];
-    LegacyState        mState;
-    Ip6::UdpReceiver   mLegacyMleReceiver;
-    uint32_t           mMleFrameCounter;
-    uint8_t            mChallenge[TLV_CHALLENGE_LENGTH];
-    uint8_t            mLegacyUlaPrefix[TLV_ULA_PREFIX_LENGTH];
-    uint8_t            mJoinAttemptsCounter;
-    TimerMilli         mTimer;
-    Notifier::Callback mNotifierCallback;
+    uint8_t          mLegacyKey[OT_CRYPTO_HMAC_SHA_HASH_SIZE];
+    LegacyState      mState;
+    Ip6::UdpReceiver mLegacyMleReceiver;
+    uint32_t         mMleFrameCounter;
+    uint8_t          mChallenge[TLV_CHALLENGE_LENGTH];
+    uint8_t          mLegacyUlaPrefix[TLV_ULA_PREFIX_LENGTH];
+    uint8_t          mJoinAttemptsCounter;
+    TimerMilli       mTimer;
 
     static LegacyPairingExtension *  sLegacyPairingExtension;
     static const otNcpLegacyHandlers sLegacyHandlers;
@@ -217,10 +216,10 @@ const otNcpLegacyHandlers LegacyPairingExtension::sLegacyHandlers = {
 
 LegacyPairingExtension::LegacyPairingExtension(Instance &aInstance)
     : ExtensionBase(aInstance)
+    , Notifier::Receiver(aInstance, LegacyPairingExtension::HandleStateChanged)
     , mState(kStateDisabled)
     , mLegacyMleReceiver(&LegacyPairingExtension::HandleUdpReceive, this)
-    , mTimer(aInstance, &LegacyPairingExtension::HandleTimer, this)
-    , mNotifierCallback(aInstance, &LegacyPairingExtension::HandleStateChanged, this)
+    , mTimer(aInstance, LegacyPairingExtension::HandleTimer, this)
 {
     memset(mLegacyKey, 0, sizeof(mLegacyKey));
 
@@ -239,14 +238,14 @@ void LegacyPairingExtension::AfterNcpInit(Ncp::NcpBase &aNcpBase)
     IgnoreError(Init());
 }
 
-void LegacyPairingExtension::HandleStateChanged(Notifier::Callback &aCallback, otChangedFlags aFlags)
+void LegacyPairingExtension::HandleStateChanged(Notifier::Receiver &aReceiver, Events aEvents)
 {
-    static_cast<LegacyPairingExtension &>(aCallback.GetOwner<ExtensionBase>()).HandleStateChanged(aFlags);
+    static_cast<LegacyPairingExtension &>(aReceiver).HandleStateChanged(aEvents);
 }
 
-void LegacyPairingExtension::HandleStateChanged(otChangedFlags aFlags)
+void LegacyPairingExtension::HandleStateChanged(Events aEvents)
 {
-    if (aFlags & OT_CHANGED_MASTER_KEY)
+    if (aEvents.Contains(kEventMasterKeyChanged))
     {
         ComputeLegacyKey();
     }
