@@ -103,6 +103,7 @@ void MleRouter::HandlePartitionChange(void)
     Get<AddressResolver>().Clear();
     IgnoreError(Get<Coap::Coap>().AbortTransaction(&MleRouter::HandleAddressSolicitResponse, this));
     mRouterTable.Clear();
+    mRouterTable.CheckRouterConsistency();
 }
 
 bool MleRouter::IsRouterEligible(void) const
@@ -304,6 +305,7 @@ exit:
     {
         SetRouterId(kInvalidRouterId);
     }
+    mRouterTable.CheckRouterConsistency();
 }
 
 void MleRouter::SetStateRouter(uint16_t aRloc16)
@@ -389,6 +391,7 @@ bool MleRouter::HandleAdvertiseTimer(void)
     SendAdvertisement();
 
 exit:
+    mRouterTable.CheckRouterConsistency();
     return continueTrickle;
 }
 
@@ -574,6 +577,8 @@ void MleRouter::HandleLinkRequest(const Message &aMessage, const Ip6::MessageInf
     TimeRequestTlv timeRequest;
 #endif
 
+    mRouterTable.CheckRouterConsistency();
+
     LogMleMessage("Receive Link Request", aMessageInfo.GetPeerAddr());
 
     VerifyOrExit(IsRouterOrLeader(), error = OT_ERROR_INVALID_STATE);
@@ -672,6 +677,7 @@ void MleRouter::HandleLinkRequest(const Message &aMessage, const Ip6::MessageInf
     SuccessOrExit(error = SendLinkAccept(aMessageInfo, neighbor, requestedTlvs, challenge));
 
 exit:
+    mRouterTable.CheckRouterConsistency();
 
     if (error != OT_ERROR_NONE)
     {
@@ -964,8 +970,14 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
         if (Tlv::GetTlv(aMessage, Tlv::kRoute, sizeof(route), route) == OT_ERROR_NONE)
         {
             VerifyOrExit(route.IsValid(), error = OT_ERROR_PARSE);
+            mRouterTable.CheckRouterConsistency();
             SuccessOrExit(error = ProcessRouteTlv(route));
+            mRouterTable.CheckRouterConsistency();
             UpdateRoutes(route, routerId);
+            mRouterTable.CheckRouterConsistency();
+            router = mRouterTable.GetRouter(routerId);
+            OT_ASSERT(router != NULL);
+            OT_ASSERT(router == mRouterTable.GetRouter(routerId));
         }
 
         // update routing table
@@ -977,6 +989,9 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
         break;
     }
 
+    mRouterTable.CheckRouterConsistency();
+
+    OT_ASSERT(Rloc16FromRouterId(routerId) == sourceAddress);
     // finish link synchronization
     aMessageInfo.GetPeerAddr().ToExtAddress(macAddr);
     router->SetExtAddress(macAddr);
@@ -992,6 +1007,8 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
     router->ResetLinkFailures();
     router->SetState(Neighbor::kStateValid);
     router->SetKeySequence(aKeySequence);
+
+    mRouterTable.CheckRouterConsistency();
 
     Signal(OT_NEIGHBOR_TABLE_EVENT_ROUTER_ADDED, *router);
 
@@ -1019,6 +1036,7 @@ otError MleRouter::HandleLinkAccept(const Message &         aMessage,
     }
 
 exit:
+    mRouterTable.CheckRouterConsistency();
     return error;
 }
 
@@ -1080,13 +1098,16 @@ otError MleRouter::ProcessRouteTlv(const RouteTlv &aRoute)
 {
     otError error = OT_ERROR_NONE;
 
+    mRouterTable.CheckRouterConsistency();
     mRouterTable.UpdateRouterIdSet(aRoute.GetRouterIdSequence(), aRoute.GetRouterIdMask());
-
+    mRouterTable.CheckRouterConsistency();
     if (IsRouter() && !mRouterTable.IsAllocated(mRouterId))
     {
         IgnoreError(BecomeDetached());
         error = OT_ERROR_NO_ROUTE;
     }
+
+    mRouterTable.CheckRouterConsistency();
 
     return error;
 }
@@ -1173,6 +1194,8 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
     Router *        router;
     uint8_t         routerId;
     uint8_t         routerCount;
+
+    mRouterTable.CheckRouterConsistency();
 
     aMessageInfo.GetPeerAddr().ToExtAddress(macAddr);
 
@@ -1283,7 +1306,9 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
 
         if (processRouteTlv)
         {
+            mRouterTable.CheckRouterConsistency();
             SuccessOrExit(error = ProcessRouteTlv(route));
+            mRouterTable.CheckRouterConsistency();
             if (Get<RouterTable>().Contains(*aNeighbor))
             {
                 aNeighbor = NULL; // aNeighbor is no longer valid after `ProcessRouteTlv`
@@ -1426,11 +1451,13 @@ otError MleRouter::HandleAdvertisement(const Message &         aMessage,
     UpdateRoutes(route, routerId);
 
 exit:
+    mRouterTable.CheckRouterConsistency();
     if (aNeighbor && aNeighbor->GetRloc16() != sourceAddress)
     {
         // Remove stale neighbors
         RemoveNeighbor(*aNeighbor);
     }
+    mRouterTable.CheckRouterConsistency();
 
     return error;
 }
@@ -1601,6 +1628,8 @@ void MleRouter::HandleParentRequest(const Message &aMessage, const Ip6::MessageI
 #if OPENTHREAD_CONFIG_TIME_SYNC_ENABLE
     TimeRequestTlv timeRequest;
 #endif
+
+    mRouterTable.CheckRouterConsistency();
 
     LogMleMessage("Receive Parent Request", aMessageInfo.GetPeerAddr());
 
@@ -1932,6 +1961,7 @@ void MleRouter::HandleStateUpdateTimer(void)
 #endif
 
 exit:
+    mRouterTable.CheckRouterConsistency();
     return;
 }
 
@@ -2308,7 +2338,7 @@ void MleRouter::HandleChildIdRequest(const Message &         aMessage,
     }
 
 exit:
-
+    mRouterTable.CheckRouterConsistency();
     if (error != OT_ERROR_NONE)
     {
         otLogWarnMle("Failed to process Child ID Request: %s", otThreadErrorToString(error));
@@ -2484,6 +2514,7 @@ exit:
     {
         otLogWarnMle("Failed to process Child Update Request from child: %s", otThreadErrorToString(error));
     }
+    mRouterTable.CheckRouterConsistency();
 }
 
 void MleRouter::HandleChildUpdateResponse(const Message &         aMessage,
@@ -2630,6 +2661,7 @@ exit:
     {
         otLogWarnMle("Failed to process Child Update Response from child: %s", otThreadErrorToString(error));
     }
+    mRouterTable.CheckRouterConsistency();
 }
 
 void MleRouter::HandleDataRequest(const Message &         aMessage,
@@ -2689,6 +2721,7 @@ exit:
     {
         otLogWarnMle("Failed to process Data Request: %s", otThreadErrorToString(error));
     }
+    mRouterTable.CheckRouterConsistency();
 }
 
 void MleRouter::HandleNetworkDataUpdateRouter(void)
@@ -2707,6 +2740,7 @@ void MleRouter::HandleNetworkDataUpdateRouter(void)
     SynchronizeChildNetworkData();
 
 exit:
+    mRouterTable.CheckRouterConsistency();
     return;
 }
 
@@ -4110,7 +4144,7 @@ void MleRouter::HandleAddressSolicitResponse(Coap::Message *         aMessage,
     }
 
 exit:
-
+    mRouterTable.CheckRouterConsistency();
     // send announce after received address solicit reply if needed
     InformPreviousChannel();
 }
@@ -4207,7 +4241,7 @@ void MleRouter::HandleAddressSolicit(Coap::Message &aMessage, const Ip6::Message
     }
 
 exit:
-
+    mRouterTable.CheckRouterConsistency();
     if (error == OT_ERROR_NONE)
     {
         SendAddressSolicitResponse(aMessage, router, aMessageInfo);
@@ -4287,6 +4321,7 @@ void MleRouter::HandleAddressRelease(Coap::Message &aMessage, const Ip6::Message
     LogMleMessage("Send Address Release Reply", aMessageInfo.GetPeerAddr());
 
 exit:
+    mRouterTable.CheckRouterConsistency();
     return;
 }
 
@@ -4643,6 +4678,7 @@ bool MleRouter::HasOneNeighborWithComparableConnectivity(const RouteTlv &aRoute,
     }
 
 exit:
+    mRouterTable.CheckRouterConsistency();
     return rval;
 }
 
@@ -4655,6 +4691,7 @@ void MleRouter::SetChildStateToValid(Child &aChild)
     Signal(OT_NEIGHBOR_TABLE_EVENT_CHILD_ADDED, aChild);
 
 exit:
+    mRouterTable.CheckRouterConsistency();
     return;
 }
 
@@ -4669,6 +4706,7 @@ void MleRouter::RemoveChildren(void)
     {
         RemoveNeighbor(*iter.GetChild());
     }
+    mRouterTable.CheckRouterConsistency();
 }
 
 bool MleRouter::HasSmallNumberOfChildren(void)

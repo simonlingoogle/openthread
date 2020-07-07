@@ -93,11 +93,29 @@ exit:
     return aRouter;
 }
 
+void __attribute__((noinline)) RouterTable::CheckRouterConsistency()
+{
+    uint8_t routerId;
+
+    for (routerId = 0; routerId <= ot::Mle::kMaxRouterId; routerId++)
+    {
+        if (IsAllocated(routerId))
+        {
+            OT_ASSERT(GetRouter(routerId) != NULL);
+        }
+        else
+        {
+            OT_ASSERT(GetRouter(routerId) == NULL);
+        }
+    }
+}
+
 void RouterTable::Clear(void)
 {
     mAllocatedRouterIds.Clear();
     memset(mRouterIdReuseDelay, 0, sizeof(mRouterIdReuseDelay));
     UpdateAllocation();
+    CheckRouterConsistency();
 }
 
 void RouterTable::ClearNeighbors(void)
@@ -113,6 +131,7 @@ void RouterTable::ClearNeighbors(void)
 
         router.SetState(Neighbor::kStateInvalid);
     }
+    CheckRouterConsistency();
 }
 
 bool RouterTable::IsAllocated(uint8_t aRouterId) const
@@ -243,6 +262,7 @@ Router *RouterTable::Allocate(void)
     }
 
 exit:
+    CheckRouterConsistency();
     return rval;
 }
 
@@ -267,6 +287,7 @@ Router *RouterTable::Allocate(uint8_t aRouterId)
     otLogNoteMle("Allocate router id %d", aRouterId);
 
 exit:
+    CheckRouterConsistency();
     return rval;
 }
 
@@ -304,6 +325,7 @@ otError RouterTable::Release(uint8_t aRouterId)
     otLogNoteMle("Release router id %d", aRouterId);
 
 exit:
+    CheckRouterConsistency();
     return error;
 }
 
@@ -530,6 +552,7 @@ void RouterTable::UpdateRouterIdSet(uint8_t aRouterIdSequence, const Mle::Router
     Get<Mle::MleRouter>().ResetAdvertiseInterval();
 
 exit:
+    CheckRouterConsistency();
     return;
 }
 
@@ -554,6 +577,7 @@ void RouterTable::ProcessTimerTick(void)
             }
         }
     }
+    CheckRouterConsistency();
 }
 
 } // namespace ot

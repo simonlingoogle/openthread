@@ -114,6 +114,9 @@ public:
         Router *mRouter;
     };
 
+
+    void    CheckRouterConsistency();
+
     /**
      * Constructor.
      *
