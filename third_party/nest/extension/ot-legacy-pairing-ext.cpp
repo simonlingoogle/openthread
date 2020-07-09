@@ -160,14 +160,14 @@ private:
     static void JoinLegacyNode(const otExtAddress *aDstAddress) { sLegacyPairingExtension->Join(aDstAddress); }
     static void SetLegacyUlaPrefix(const uint8_t *aUlaPrefix) { sLegacyPairingExtension->SetPrefix(aUlaPrefix); }
 
-    uint8_t          mLegacyKey[OT_CRYPTO_HMAC_SHA_HASH_SIZE];
-    LegacyState      mState;
-    Ip6::UdpReceiver mLegacyMleReceiver;
-    uint32_t         mMleFrameCounter;
-    uint8_t          mChallenge[TLV_CHALLENGE_LENGTH];
-    uint8_t          mLegacyUlaPrefix[TLV_ULA_PREFIX_LENGTH];
-    uint8_t          mJoinAttemptsCounter;
-    TimerMilli       mTimer;
+    uint8_t            mLegacyKey[OT_CRYPTO_HMAC_SHA_HASH_SIZE];
+    LegacyState        mState;
+    Ip6::Udp::Receiver mLegacyMleReceiver;
+    uint32_t           mMleFrameCounter;
+    uint8_t            mChallenge[TLV_CHALLENGE_LENGTH];
+    uint8_t            mLegacyUlaPrefix[TLV_ULA_PREFIX_LENGTH];
+    uint8_t            mJoinAttemptsCounter;
+    TimerMilli         mTimer;
 
     static LegacyPairingExtension *  sLegacyPairingExtension;
     static const otNcpLegacyHandlers sLegacyHandlers;
