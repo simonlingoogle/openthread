@@ -114,7 +114,7 @@ private:
                                                      otError                 aResult);
 
     uint16_t CountNetifMulticastAddressesToRegister(void) const;
-    void   SetNetifMulticastAddressMlrState(MlrState aFromState, MlrState aToState);
+    void     SetNetifMulticastAddressMlrState(MlrState aFromState, MlrState aToState);
 
     void ScheduleSend(uint16_t aDelay);
     void ResetTimer(void);
