@@ -188,7 +188,7 @@ public:
 
         if (mHead != nullptr)
         {
-            mHead = mHead->GetNext();
+            mHead = static_cast<Type *>(mHead->GetNext());
         }
 
         return entry;
