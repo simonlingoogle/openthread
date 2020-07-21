@@ -92,8 +92,11 @@ private:
         kTimerInterval = 1000,
     };
 
-    static void HandleNotifierEvents(Notifier::Receiver &aReceiver, Events aEvents);
-    void        HandleNotifierEvents(Events aEvents);
+    static void HandleNotifierEvents(Notifier::Receiver &aReceiver, Events aEvents)
+    {
+        static_cast<MlrManager &>(aReceiver).HandleNotifierEvents(aEvents);
+    }
+    void HandleNotifierEvents(Events aEvents);
 
     void SendMulticastListenerRegistration(void);
 
@@ -110,7 +113,7 @@ private:
                                                      const Ip6::MessageInfo *aMessageInfo,
                                                      otError                 aResult);
 
-    size_t CountNetifMulticastAddressesToRegister();
+    uint16_t CountNetifMulticastAddressesToRegister(void) const;
     void   SetNetifMulticastAddressMlrState(MlrState aFromState, MlrState aToState);
 
     void ScheduleSend(uint16_t aDelay);

@@ -755,7 +755,7 @@ template <> inline MlrManager &Instance::Get(void)
 {
     return mThreadNetif.mMlrManager;
 }
-#endif // (OPENTHREAD_MTD || OPENTHREAD_FTD) && OPENTHREAD_CONFIG_MLR_ENABLE
+#endif
 
 #endif // (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
 
