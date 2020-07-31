@@ -149,7 +149,7 @@ enum
     kMaxRouterId                = OT_NETWORK_MAX_ROUTER_ID,                    ///< MAX_ROUTER_ID
     kInvalidRouterId            = kMaxRouterId + 1,                            ///< Value indicating incorrect Router Id
     kMaxRouters                 = OPENTHREAD_CONFIG_MLE_MAX_ROUTERS,           ///< MAX_ROUTERS
-    kMinDowngradeNeighbors      = 7,                                           ///< MIN_DOWNGRADE_NEIGHBORS
+    kMinDowngradeNeighbors      = 4,                                           ///< MIN_DOWNGRADE_NEIGHBORS
     kNetworkIdTimeout           = 120,                                         ///< NETWORK_ID_TIMEOUT (sec)
     kParentRouteToLeaderTimeout = 20,                                          ///< PARENT_ROUTE_TO_LEADER_TIMEOUT (sec)
     kRouterSelectionJitter      = 120,                                         ///< ROUTER_SELECTION_JITTER (sec)
