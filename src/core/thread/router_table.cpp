@@ -144,8 +144,8 @@ void RouterTable::VerifyAllocationCorrectness(const char *file, int lineno)
     }
     if (Get<Mle::MleRouter>().IsAttached())
     {
-        OT_ASSERT(GetLeader() != NULL);
-        OT_ASSERT(IsAllocated(Get<Mle::MleRouter>().GetLeaderId()));
+        OT_ASSERT(GetLeader() != NULL || mActiveRouterCount == 0);
+//        OT_ASSERT(IsAllocated(Get<Mle::MleRouter>().GetLeaderId()));
     }
 } // namespace ot
 
