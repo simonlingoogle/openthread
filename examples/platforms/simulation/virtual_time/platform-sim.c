@@ -45,6 +45,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <openthread/tasklet.h>
 #include <openthread/platform/alarm-milli.h>
@@ -52,109 +54,99 @@
 
 uint32_t gNodeId = 1;
 
-extern bool          gPlatformPseudoResetWasRequested;
+extern bool gPlatformPseudoResetWasRequested;
 static volatile bool gTerminate = false;
 
-int    gArgumentsCount = 0;
-char **gArguments      = NULL;
+int gArgumentsCount = 0;
+char **gArguments = NULL;
 
 uint64_t sNow = 0; // microseconds
-int      sSockFd;
+int sSockFd;
 uint16_t sPortOffset;
 
-static void handleSignal(int aSignal)
-{
+static void handleSignal(int aSignal) {
     OT_UNUSED_VARIABLE(aSignal);
 
     gTerminate = true;
 }
 
-void otSimSendEvent(const struct Event *aEvent)
-{
-    ssize_t            rval;
-    struct sockaddr_in sockaddr;
+void otSimSendEvent(const struct Event *aEvent) {
+    ssize_t rval;
+    struct sockaddr_un sockaddr;
 
     memset(&sockaddr, 0, sizeof(sockaddr));
-    sockaddr.sin_family = AF_INET;
-    inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr);
-    sockaddr.sin_port = htons(9000 + sPortOffset);
+    sockaddr.sun_family = AF_UNIX;
+    sprintf(sockaddr.sun_path, "%d", 9000 + sPortOffset);
 
-    rval = sendto(sSockFd, aEvent, offsetof(struct Event, mData) + aEvent->mDataLength, 0, (struct sockaddr *)&sockaddr,
+    rval = sendto(sSockFd, aEvent, offsetof(struct Event, mData) + aEvent->mDataLength, 0,
+                  (struct sockaddr *) &sockaddr,
                   sizeof(sockaddr));
 
-    if (rval < 0)
-    {
+    if (rval < 0) {
         perror("sendto");
         exit(EXIT_FAILURE);
     }
 }
 
-static void receiveEvent(otInstance *aInstance)
-{
+static void receiveEvent(otInstance *aInstance) {
     struct Event event;
-    ssize_t      rval = recvfrom(sSockFd, (char *)&event, sizeof(event), 0, NULL, NULL);
+    ssize_t rval = recvfrom(sSockFd, (char *) &event, sizeof(event), 0, NULL, NULL);
 
-    if (rval < 0 || (uint16_t)rval < offsetof(struct Event, mData))
-    {
+    if (rval < 0 || (uint16_t) rval < offsetof(struct Event, mData)) {
         perror("recvfrom");
         exit(EXIT_FAILURE);
     }
 
     platformAlarmAdvanceNow(event.mDelay);
 
-    switch (event.mEvent)
-    {
-    case OT_SIM_EVENT_ALARM_FIRED:
-        break;
+    switch (event.mEvent) {
+        case OT_SIM_EVENT_ALARM_FIRED:
+            break;
 
-    case OT_SIM_EVENT_RADIO_RECEIVED:
-        platformRadioReceive(aInstance, event.mData, event.mDataLength);
-        break;
+        case OT_SIM_EVENT_RADIO_RECEIVED:
+            platformRadioReceive(aInstance, event.mData, event.mDataLength);
+            break;
 
-    case OT_SIM_EVENT_UART_WRITE:
-        otPlatUartReceived(event.mData, event.mDataLength);
-        break;
+        case OT_SIM_EVENT_UART_WRITE:
+            otPlatUartReceived(event.mData, event.mDataLength);
+            break;
 
-    default:
-        assert(false);
+        default:
+            assert(false);
     }
 }
 
-static void platformSendSleepEvent(void)
-{
+static void platformSendSleepEvent(void) {
     struct Event event;
 
     assert(platformAlarmGetNext() > 0);
 
-    event.mDelay      = (uint64_t)platformAlarmGetNext();
-    event.mEvent      = OT_SIM_EVENT_ALARM_FIRED;
+    event.mDelay = (uint64_t) platformAlarmGetNext();
+    event.mEvent = OT_SIM_EVENT_ALARM_FIRED;
     event.mDataLength = 0;
 
     otSimSendEvent(&event);
 }
 
 #if OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
-void platformUartRestore(void)
-{
+
+void platformUartRestore(void) {
 }
 
-otError otPlatUartEnable(void)
-{
+otError otPlatUartEnable(void) {
     return OT_ERROR_NONE;
 }
 
-otError otPlatUartDisable(void)
-{
+otError otPlatUartDisable(void) {
     return OT_ERROR_NONE;
 }
 
-otError otPlatUartSend(const uint8_t *aData, uint16_t aLength)
-{
-    otError      error = OT_ERROR_NONE;
+otError otPlatUartSend(const uint8_t *aData, uint16_t aLength) {
+    otError error = OT_ERROR_NONE;
     struct Event event;
 
-    event.mDelay      = 0;
-    event.mEvent      = OT_SIM_EVENT_UART_WRITE;
+    event.mDelay = 0;
+    event.mEvent = OT_SIM_EVENT_UART_WRITE;
     event.mDataLength = aLength;
 
     memcpy(event.mData, aData, aLength);
@@ -166,29 +158,26 @@ otError otPlatUartSend(const uint8_t *aData, uint16_t aLength)
     return error;
 }
 
-otError otPlatUartFlush(void)
-{
+otError otPlatUartFlush(void) {
     return OT_ERROR_NOT_IMPLEMENTED;
 }
+
 #endif // OPENTHREAD_SIMULATION_VIRTUAL_TIME_UART
 
-static void socket_init(void)
-{
-    struct sockaddr_in sockaddr;
-    char *             offset;
+static void socket_init(void) {
+    struct sockaddr_un sockaddr;
+    char *offset;
     memset(&sockaddr, 0, sizeof(sockaddr));
-    sockaddr.sin_family = AF_INET;
+    sockaddr.sun_family = AF_UNIX;
 
     offset = getenv("PORT_OFFSET");
 
-    if (offset)
-    {
+    if (offset) {
         char *endptr;
 
-        sPortOffset = (uint16_t)strtol(offset, &endptr, 0);
+        sPortOffset = (uint16_t) strtol(offset, &endptr, 0);
 
-        if (*endptr != '\0')
-        {
+        if (*endptr != '\0') {
             fprintf(stderr, "Invalid PORT_OFFSET: %s\n", offset);
             exit(EXIT_FAILURE);
         }
@@ -196,36 +185,30 @@ static void socket_init(void)
         sPortOffset *= WELLKNOWN_NODE_ID;
     }
 
-    sockaddr.sin_port        = htons((uint16_t)(9000 + sPortOffset + gNodeId));
-    sockaddr.sin_addr.s_addr = INADDR_ANY;
+    sprintf(sockaddr.sun_path, "%d", 9000 + sPortOffset + gNodeId);
 
-    sSockFd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    sSockFd = socket(AF_UNIX, SOCK_DGRAM, 0);
 
-    if (sSockFd == -1)
-    {
+    if (sSockFd == -1) {
         perror("socket");
         exit(EXIT_FAILURE);
     }
 
-    if (bind(sSockFd, (struct sockaddr *)&sockaddr, sizeof(sockaddr)) == -1)
-    {
+    if (bind(sSockFd, (struct sockaddr *) &sockaddr, sizeof(sockaddr)) == -1) {
         perror("bind");
         exit(EXIT_FAILURE);
     }
 }
 
-void otSysInit(int argc, char *argv[])
-{
+void otSysInit(int argc, char *argv[]) {
     char *endptr;
 
-    if (gPlatformPseudoResetWasRequested)
-    {
+    if (gPlatformPseudoResetWasRequested) {
         gPlatformPseudoResetWasRequested = false;
         return;
     }
 
-    if (argc != 2)
-    {
+    if (argc != 2) {
         exit(EXIT_FAILURE);
     }
 
@@ -233,12 +216,11 @@ void otSysInit(int argc, char *argv[])
     setlogmask(setlogmask(0) & LOG_UPTO(LOG_NOTICE));
 
     gArgumentsCount = argc;
-    gArguments      = argv;
+    gArguments = argv;
 
-    gNodeId = (uint32_t)strtol(argv[1], &endptr, 0);
+    gNodeId = (uint32_t) strtol(argv[1], &endptr, 0);
 
-    if (*endptr != '\0' || gNodeId < 1 || gNodeId >= WELLKNOWN_NODE_ID)
-    {
+    if (*endptr != '\0' || gNodeId < 1 || gNodeId >= WELLKNOWN_NODE_ID) {
         fprintf(stderr, "Invalid NodeId: %s\n", argv[1]);
         exit(EXIT_FAILURE);
     }
@@ -253,26 +235,22 @@ void otSysInit(int argc, char *argv[])
     signal(SIGHUP, &handleSignal);
 }
 
-bool otSysPseudoResetWasRequested(void)
-{
+bool otSysPseudoResetWasRequested(void) {
     return gPlatformPseudoResetWasRequested;
 }
 
-void otSysDeinit(void)
-{
+void otSysDeinit(void) {
     close(sSockFd);
 }
 
-void otSysProcessDrivers(otInstance *aInstance)
-{
+void otSysProcessDrivers(otInstance *aInstance) {
     fd_set read_fds;
     fd_set write_fds;
     fd_set error_fds;
-    int    max_fd = -1;
-    int    rval;
+    int max_fd = -1;
+    int rval;
 
-    if (gTerminate)
-    {
+    if (gTerminate) {
         exit(0);
     }
 
@@ -287,20 +265,17 @@ void otSysProcessDrivers(otInstance *aInstance)
     platformUartUpdateFdSet(&read_fds, &write_fds, &error_fds, &max_fd);
 #endif
 
-    if (!otTaskletsArePending(aInstance) && platformAlarmGetNext() > 0 && !platformRadioIsTransmitPending())
-    {
+    if (!otTaskletsArePending(aInstance) && platformAlarmGetNext() > 0 && !platformRadioIsTransmitPending()) {
         platformSendSleepEvent();
 
         rval = select(max_fd + 1, &read_fds, &write_fds, &error_fds, NULL);
 
-        if ((rval < 0) && (errno != EINTR))
-        {
+        if ((rval < 0) && (errno != EINTR)) {
             perror("select");
             exit(EXIT_FAILURE);
         }
 
-        if (rval > 0 && FD_ISSET(sSockFd, &read_fds))
-        {
+        if (rval > 0 && FD_ISSET(sSockFd, &read_fds)) {
             receiveEvent(aInstance);
         }
     }

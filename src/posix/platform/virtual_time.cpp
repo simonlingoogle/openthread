@@ -83,7 +83,7 @@ void virtualTimeInit(uint16_t aNodeId)
     sockaddr.sin_port        = htons(kBasePort + sPortOffset + aNodeId);
     sockaddr.sin_addr.s_addr = INADDR_ANY;
 
-    sSockFd = SocketWithCloseExec(AF_INET, SOCK_DGRAM, IPPROTO_UDP, kSocketBlock);
+    sSockFd = SocketWithCloseExec(AF_UNIX, SOCK_DGRAM, IPPROTO_UDP, kSocketBlock);
 
     if (sSockFd == -1)
     {
