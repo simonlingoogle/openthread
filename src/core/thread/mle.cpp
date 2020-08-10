@@ -86,10 +86,11 @@ Mle::Mle(Instance &aInstance)
     , mDataRequestAttempts(0)
     , mDataRequestState(kDataRequestNone)
     , mAddressRegistrationMode(kAppendAllAddresses)
+    , mHasRestored(false)
     , mParentLinkMargin(0)
     , mParentIsSingleton(false)
     , mReceivedResponseFromParent(false)
-    , mSocket(aInstance.Get<Ip6::Udp>())
+    , mSocket(aInstance)
     , mTimeout(kMleEndDeviceTimeout)
 #if OPENTHREAD_CONFIG_MLE_INFORM_PREVIOUS_PARENT_ON_REATTACH
     , mPreviousParentRloc(Mac::kShortAddrInvalid)
@@ -139,16 +140,16 @@ Mle::Mle(Instance &aInstance)
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 
     // Service Alocs
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(mServiceAlocs); i++)
+    for (Ip6::NetifUnicastAddress &serviceAloc : mServiceAlocs)
     {
-        mServiceAlocs[i].Clear();
-        mServiceAlocs[i].mPrefixLength       = MeshLocalPrefix::kLength;
-        mServiceAlocs[i].mAddressOrigin      = OT_ADDRESS_ORIGIN_THREAD;
-        mServiceAlocs[i].mPreferred          = true;
-        mServiceAlocs[i].mValid              = true;
-        mServiceAlocs[i].mScopeOverride      = Ip6::Address::kRealmLocalScope;
-        mServiceAlocs[i].mScopeOverrideValid = true;
-        mServiceAlocs[i].GetAddress().GetIid().SetLocator(Mac::kShortAddrInvalid);
+        serviceAloc.Clear();
+        serviceAloc.mPrefixLength       = MeshLocalPrefix::kLength;
+        serviceAloc.mAddressOrigin      = OT_ADDRESS_ORIGIN_THREAD;
+        serviceAloc.mPreferred          = true;
+        serviceAloc.mValid              = true;
+        serviceAloc.mScopeOverride      = Ip6::Address::kRealmLocalScope;
+        serviceAloc.mScopeOverrideValid = true;
+        serviceAloc.GetAddress().GetIid().SetLocator(Mac::kShortAddrInvalid);
     }
 
 #endif
@@ -201,13 +202,11 @@ Mle::Mle(Instance &aInstance)
 
 otError Mle::Enable(void)
 {
-    otError       error = OT_ERROR_NONE;
-    Ip6::SockAddr sockaddr;
+    otError error = OT_ERROR_NONE;
 
     UpdateLinkLocalAddress();
-    sockaddr.mPort = kUdpPort;
     SuccessOrExit(error = mSocket.Open(&Mle::HandleUdpReceive, this));
-    SuccessOrExit(error = mSocket.Bind(sockaddr));
+    SuccessOrExit(error = mSocket.Bind(kUdpPort));
 
 #if OPENTHREAD_CONFIG_PARENT_SEARCH_ENABLE
     StartParentSearchTimer();
@@ -435,9 +434,12 @@ otError Mle::Restore(void)
     {
         Get<MleRouter>().SetRouterId(RouterIdFromRloc16(GetRloc16()));
         Get<MleRouter>().SetPreviousPartitionId(networkInfo.GetPreviousPartitionId());
-        Get<MleRouter>().RestoreChildren();
+        Get<ChildTable>().Restore();
     }
 #endif
+
+    // Sucessfully restored the network information from non-volatile settings after boot.
+    mHasRestored = true;
 
 exit:
     return error;
@@ -774,6 +776,10 @@ otError Mle::SetDeviceMode(DeviceMode aDeviceMode)
     VerifyOrExit(mDeviceMode != aDeviceMode, OT_NOOP);
     mDeviceMode = aDeviceMode;
 
+#if OPENTHREAD_CONFIG_OTNS_ENABLE
+    Get<Utils::Otns>().EmitDeviceMode(mDeviceMode);
+#endif
+
     otLogNoteMle("Mode 0x%02x -> 0x%02x [%s]", oldMode.Get(), mDeviceMode.Get(), mDeviceMode.ToString().AsCString());
 
     IgnoreError(Store());
@@ -878,18 +884,18 @@ void Mle::ApplyMeshLocalPrefix(void)
 #endif
 
 #if OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
-    Get<Dhcp6::Dhcp6Server>().ApplyMeshLocalPrefix();
+    Get<Dhcp6::Server>().ApplyMeshLocalPrefix();
 #endif
 
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
 
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(mServiceAlocs); i++)
+    for (Ip6::NetifUnicastAddress &serviceAloc : mServiceAlocs)
     {
-        if (mServiceAlocs[i].GetAddress().GetIid().GetLocator() != Mac::kShortAddrInvalid)
+        if (serviceAloc.GetAddress().GetIid().GetLocator() != Mac::kShortAddrInvalid)
         {
-            Get<ThreadNetif>().RemoveUnicastAddress(mServiceAlocs[i]);
-            mServiceAlocs[i].GetAddress().SetPrefix(GetMeshLocalPrefix());
-            Get<ThreadNetif>().AddUnicastAddress(mServiceAlocs[i]);
+            Get<ThreadNetif>().RemoveUnicastAddress(serviceAloc);
+            serviceAloc.GetAddress().SetPrefix(GetMeshLocalPrefix());
+            Get<ThreadNetif>().AddUnicastAddress(serviceAloc);
         }
     }
 
@@ -1227,14 +1233,7 @@ bool Mle::HasUnregisteredAddress(void)
         // For sleepy end-device, we register any external multicast
         // addresses.
 
-        for (const Ip6::NetifMulticastAddress *address = Get<ThreadNetif>().GetMulticastAddresses(); address != nullptr;
-             address                                   = address->GetNext())
-        {
-            if (Get<ThreadNetif>().IsMulticastAddressExternal(*address))
-            {
-                ExitNow(retval = true);
-            }
-        }
+        retval = Get<ThreadNetif>().HasAnyExternalMulticastAddress();
     }
 
 exit:
@@ -1333,25 +1332,19 @@ otError Mle::AppendAddressRegistration(Message &aMessage, AddressRegistrationMod
 #endif
     )
     {
-        for (const Ip6::NetifMulticastAddress *addr = Get<ThreadNetif>().GetMulticastAddresses(); addr != nullptr;
-             addr                                   = addr->GetNext())
+        for (const Ip6::NetifMulticastAddress &addr : Get<ThreadNetif>().IterateExternalMulticastAddresses())
         {
-            if (!Get<ThreadNetif>().IsMulticastAddressExternal(*addr))
-            {
-                continue;
-            }
-
 #if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
             // For Thread 1.2 MED, skip multicast address with scope not
             // larger than realm local when registering.
-            if (IsRxOnWhenIdle() && !addr->GetAddress().IsMulticastLargerThanRealmLocal())
+            if (IsRxOnWhenIdle() && !addr.GetAddress().IsMulticastLargerThanRealmLocal())
             {
                 continue;
             }
 #endif
 
             entry.SetUncompressed();
-            entry.SetIp6Address(addr->GetAddress());
+            entry.SetIp6Address(addr.GetAddress());
             SuccessOrExit(error = aMessage.Append(&entry, entry.GetLength()));
             length += entry.GetLength();
 
@@ -1514,15 +1507,15 @@ void Mle::HandleNotifierEvents(Events aEvents)
         Get<BackboneRouter::Leader>().Update();
 #endif
 #if OPENTHREAD_CONFIG_TMF_NETDATA_SERVICE_ENABLE
-        this->UpdateServiceAlocs();
+        UpdateServiceAlocs();
 #endif
 
 #if OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
-        IgnoreError(Get<Dhcp6::Dhcp6Server>().UpdateService());
+        IgnoreError(Get<Dhcp6::Server>().UpdateService());
 #endif // OPENTHREAD_CONFIG_DHCP6_SERVER_ENABLE
 
 #if OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
-        Get<Dhcp6::Dhcp6Client>().UpdateAddresses();
+        Get<Dhcp6::Client>().UpdateAddresses();
 #endif // OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
     }
 
@@ -2225,9 +2218,10 @@ exit:
 
 otError Mle::SendChildUpdateRequest(void)
 {
-    otError      error = OT_ERROR_NONE;
-    Ip6::Address destination;
-    Message *    message = nullptr;
+    otError                 error = OT_ERROR_NONE;
+    Ip6::Address            destination;
+    Message *               message = nullptr;
+    AddressRegistrationMode mode    = kAppendAllAddresses;
 
     if (!mParent.IsStateValidOrRestoring())
     {
@@ -2244,16 +2238,12 @@ otError Mle::SendChildUpdateRequest(void)
     SuccessOrExit(error = AppendHeader(*message, Header::kCommandChildUpdateRequest));
     SuccessOrExit(error = AppendMode(*message, mDeviceMode));
 
-    if (!IsFullThreadDevice())
-    {
-        SuccessOrExit(error = AppendAddressRegistration(*message));
-    }
-
     switch (mRole)
     {
     case kRoleDetached:
         mParentRequestChallenge.GenerateRandom();
         SuccessOrExit(error = AppendChallenge(*message, mParentRequestChallenge));
+        mode = kAppendMeshLocalOnly;
         break;
 
     case kRoleChild:
@@ -2267,6 +2257,11 @@ otError Mle::SendChildUpdateRequest(void)
     case kRoleLeader:
         OT_ASSERT(false);
         OT_UNREACHABLE_CODE(break);
+    }
+
+    if (!IsFullThreadDevice())
+    {
+        SuccessOrExit(error = AppendAddressRegistration(*message, mode));
     }
 
     destination.SetToLinkLocalAddress(mParent.GetExtAddress());
@@ -3849,7 +3844,7 @@ bool Mle::IsAnycastLocator(const Ip6::Address &aAddress) const
 
 bool Mle::IsMeshLocalAddress(const Ip6::Address &aAddress) const
 {
-    return (memcmp(&GetMeshLocalPrefix(), &aAddress, MeshLocalPrefix::kSize) == 0);
+    return (aAddress.GetPrefix() == GetMeshLocalPrefix());
 }
 
 otError Mle::CheckReachability(uint16_t aMeshDest, Ip6::Header &aIp6Header)

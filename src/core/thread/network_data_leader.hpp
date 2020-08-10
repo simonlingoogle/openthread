@@ -39,7 +39,7 @@
 #include <stdint.h>
 
 #if (OPENTHREAD_CONFIG_THREAD_VERSION >= OT_THREAD_VERSION_1_2)
-#include "backbone_router/leader.hpp"
+#include "backbone_router/bbr_leader.hpp"
 #endif
 
 #include "coap/coap.hpp"
@@ -137,10 +137,10 @@ public:
     /**
      * This method performs a route lookup using the Network Data.
      *
-     * @param[in]   aSource       A reference to the IPv6 source address.
-     * @param[in]   aDestination  A reference to the IPv6 destination address.
-     * @param[out]  aPrefixMatch  A pointer to the longest prefix match length in bits.
-     * @param[out]  aRloc16       A pointer to the RLOC16 for the selected route.
+     * @param[in]   aSource             A reference to the IPv6 source address.
+     * @param[in]   aDestination        A reference to the IPv6 destination address.
+     * @param[out]  aPrefixMatchLength  A pointer to output the longest prefix match length in bits.
+     * @param[out]  aRloc16             A pointer to the RLOC16 for the selected route.
      *
      * @retval OT_ERROR_NONE      Successfully found a route.
      * @retval OT_ERROR_NO_ROUTE  No valid route was found.
@@ -148,7 +148,7 @@ public:
      */
     otError RouteLookup(const Ip6::Address &aSource,
                         const Ip6::Address &aDestination,
-                        uint8_t *           aPrefixMatch,
+                        uint8_t *           aPrefixMatchLength,
                         uint16_t *          aRloc16) const;
 
     /**
@@ -300,7 +300,7 @@ private:
 
     otError ExternalRouteLookup(uint8_t             aDomainId,
                                 const Ip6::Address &aDestination,
-                                uint8_t *           aPrefixMatch,
+                                uint8_t *           aPrefixMatchLength,
                                 uint16_t *          aRloc16) const;
     otError DefaultRouteLookup(const PrefixTlv &aPrefix, uint16_t *aRloc16) const;
 };

@@ -144,8 +144,9 @@ SOURCES_COMMON                             = \
     api/thread_api.cpp                       \
     api/thread_ftd_api.cpp                   \
     api/udp_api.cpp                          \
-    backbone_router/leader.cpp               \
-    backbone_router/local.cpp                \
+    backbone_router/bbr_leader.cpp           \
+    backbone_router/bbr_local.cpp            \
+    backbone_router/bbr_manager.cpp          \
     coap/coap.cpp                            \
     coap/coap_message.cpp                    \
     coap/coap_secure.cpp                     \
@@ -227,6 +228,7 @@ SOURCES_COMMON                             = \
     thread/mle.cpp                           \
     thread/mle_router.cpp                    \
     thread/mle_types.cpp                     \
+    thread/mlr_manager.cpp                   \
     thread/network_data.cpp                  \
     thread/network_data_leader.cpp           \
     thread/network_data_leader_ftd.cpp       \
@@ -315,11 +317,13 @@ endif # OPENTHREAD_ENABLE_VENDOR_EXTENSION
 
 HEADERS_COMMON                             = \
     openthread-core-config.h                 \
-    backbone_router/leader.hpp               \
-    backbone_router/local.hpp                \
+    backbone_router/bbr_leader.hpp           \
+    backbone_router/bbr_local.hpp            \
+    backbone_router/bbr_manager.hpp          \
     coap/coap.hpp                            \
     coap/coap_message.hpp                    \
     coap/coap_secure.hpp                     \
+    common/bit_vector.hpp                    \
     common/clearable.hpp                     \
     common/code_utils.hpp                    \
     common/crc16.hpp                         \
@@ -439,6 +443,8 @@ HEADERS_COMMON                             = \
     thread/mle_router.hpp                    \
     thread/mle_tlvs.hpp                      \
     thread/mle_types.hpp                     \
+    thread/mlr_manager.hpp                   \
+    thread/mlr_types.hpp                     \
     thread/network_data.hpp                  \
     thread/network_data_leader.hpp           \
     thread/network_data_leader_ftd.hpp       \

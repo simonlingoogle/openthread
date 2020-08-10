@@ -44,15 +44,15 @@ readonly NODE_TYPE="${NODE_TYPE:-sim}"
 readonly OT_NATIVE_IP="${OT_NATIVE_IP:-0}"
 readonly THREAD_VERSION="${THREAD_VERSION:-1.1}"
 readonly VERBOSE="${VERBOSE:-0}"
-readonly VIRTUAL_TIME="${VIRTUAL_TIME:-1}"
 
 build_simulation()
 {
     local version="$1"
-    local options=("-DOT_THREAD_VERSION=${version}" "-DBUILD_TESTING=ON")
+    local options=("-DOT_THREAD_VERSION=${version}" "-DBUILD_TESTING=ON" "-DOT_REFERENCE_DEVICE=ON")
 
     if [[ ${version} == "1.2" ]]; then
         options+=("-DOT_DUA=ON")
+        options+=("-DOT_MLR=ON")
     fi
 
     if [[ ${VIRTUAL_TIME} == 1 ]]; then
@@ -90,6 +90,7 @@ build_posix()
 
     if [[ ${version} == "1.2" ]]; then
         options+=("-DOT_DUA=ON")
+        options+=("-DOT_MLR=ON")
     fi
 
     if [[ ${VIRTUAL_TIME} == 1 ]]; then
@@ -347,6 +348,18 @@ envsetup()
         fi
     fi
 
+    if [[ ! ${VIRTUAL_TIME+x} ]]; then
+        # All expect tests only works in real time mode.
+        VIRTUAL_TIME=1
+        for arg in "$@"; do
+            if [[ $arg == expect ]]; then
+                VIRTUAL_TIME=0
+                break
+            fi
+        done
+    fi
+
+    readonly VIRTUAL_TIME
     export NODE_TYPE VIRTUAL_TIME
 
     # CMake always works in verbose mode if VERBOSE exists in environments.
@@ -365,7 +378,7 @@ envsetup()
 
 main()
 {
-    envsetup
+    envsetup "$@"
 
     if [[ -z $1 ]]; then
         print_usage 1

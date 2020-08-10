@@ -115,13 +115,16 @@ void otBackboneRouterGetConfig(otInstance *aInstance, otBackboneRouterConfig *aC
  * @param[in]  aInstance             A pointer to an OpenThread instance.
  * @param[in]  aConfig               A pointer to the Backbone Router configuration to take effect.
  *
+ * @retval OT_ERROR_NONE          Successfully updated configuration.
+ * @retval OT_ERROR_INVALID_ARGS  The configuration in @p aConfig is invalid.
+ *
  * @sa otBackboneRouterSetEnabled
  * @sa otBackboneRouterGetState
  * @sa otBackboneRouterGetConfig
  * @sa otBackboneRouterRegister
  *
  */
-void otBackboneRouterSetConfig(otInstance *aInstance, const otBackboneRouterConfig *aConfig);
+otError otBackboneRouterSetConfig(otInstance *aInstance, const otBackboneRouterConfig *aConfig);
 
 /**
  * This function explicitly registers local Backbone Router configuration.
@@ -170,6 +173,25 @@ void otBackboneRouterSetRegistrationJitter(otInstance *aInstance, uint8_t aJitte
  *
  */
 otError otBackboneRouterGetDomainPrefix(otInstance *aInstance, otBorderRouterConfig *aConfig);
+
+/**
+ * This method configures response status for next DUA registration.
+ *
+ * Note: available only when `OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE` is enabled.
+ *       Only used for test and certification.
+ *
+ * TODO: (DUA) support coap error code and corresponding process for certification purpose.
+ *
+ * @param[in] aInstance A pointer to an OpenThread instance.
+ * @param[in] aMlIid    A pointer to the Mesh Local IID. If NULL, respond with @p aStatus for any
+ *                      coming DUA.req, otherwise only respond the one with matching @p aMlIid.
+ * @param[in] aStatus   The status to respond.
+ *
+ *
+ */
+void otBackboneRouterConfigNextDuaRegistrationResponse(otInstance *                    aInstance,
+                                                       const otIp6InterfaceIdentifier *aMlIid,
+                                                       uint8_t                         aStatus);
 
 /**
  * @}

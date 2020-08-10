@@ -51,7 +51,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Bootstrap
       run: |
-        sudo apt-get update
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
         sudo apt-get --no-install-recommends install -y llvm-runtime
         python3 -m pip install -r tests/scripts/thread-cert/requirements.txt
     - name: Run
@@ -78,7 +78,7 @@ jobs:
         go-version: '1.13'
     - name: Bootstrap
       run: |
-        sudo apt-get update
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
         sudo apt-get --no-install-recommends install -y g++-multilib
         ./bootstrap
     - name: Run OTNS Tests
@@ -103,7 +103,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Bootstrap
       run: |
-        sudo apt-get update
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
         sudo apt-get --no-install-recommends install -y g++-multilib
         python3 -m pip install -r tests/scripts/thread-cert/requirements.txt
     - name: Build
@@ -130,7 +130,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Bootstrap
       run: |
-        sudo apt-get update
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
         sudo apt-get --no-install-recommends install -y g++-multilib
         python3 -m pip install -r tests/scripts/thread-cert/requirements.txt
     - name: Build
@@ -157,7 +157,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Bootstrap
       run: |
-        sudo apt-get update
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
         sudo apt-get --no-install-recommends install -y g++-multilib
         python3 -m pip install -r tests/scripts/thread-cert/requirements.txt
     - name: Build
@@ -173,8 +173,8 @@ jobs:
   expects:
     runs-on: ubuntu-18.04
     env:
-      CFLAGS: -DCLI_COAP_SECURE_USE_COAP_DEFAULT_HANDLER=1
-      CXXFLAGS: -DCLI_COAP_SECURE_USE_COAP_DEFAULT_HANDLER=1
+      CFLAGS: -DCLI_COAP_SECURE_USE_COAP_DEFAULT_HANDLER=1 -DOPENTHREAD_CONFIG_MLE_MAX_CHILDREN=15
+      CXXFLAGS: -DCLI_COAP_SECURE_USE_COAP_DEFAULT_HANDLER=1 -DOPENTHREAD_CONFIG_MLE_MAX_CHILDREN=15
     steps:
     - uses: actions/checkout@v2
     - name: Bootstrap
@@ -209,7 +209,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Bootstrap
       run: |
-        sudo apt-get --no-install-recommends install -y ninja-build
+        sudo rm /etc/apt/sources.list.d/*
+        sudo apt-get install avahi-daemon avahi-utils -y
         git clone https://github.com/openthread/ot-commissioner.git /tmp/ot-commissioner --depth 1 --branch master
     - name: Build
       run: |
@@ -220,6 +221,8 @@ jobs:
               -DCMAKE_CXX_STANDARD_REQUIRED=ON  \
               -DCMAKE_BUILD_TYPE=Release        \
               -DCMAKE_INSTALL_PREFIX=/usr/local \
+              -DOT_COMM_COVERAGE=ON             \
+              -DOT_COMM_CCM=OFF                 \
               -S . -B build
         cmake --build build
         sudo cmake --install build
@@ -229,9 +232,6 @@ jobs:
         cd /tmp/ot-commissioner/tests/integration
         ./bootstrap.sh
         ./run_tests.sh
-    - name: Copy Codecov Files
-      run: |
-        cp -vr /tmp/test-ot-commissioner/ot-br-posix/build/* build/
     - name: Codecov
       uses: codecov/codecov-action@v1
 
@@ -272,7 +272,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Bootstrap
       run: |
-        sudo apt-get update
+        sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
         sudo apt-get --no-install-recommends install -y g++-multilib python3-setuptools
         python3 -m pip install -r tests/scripts/thread-cert/requirements.txt
         sudo python3 -m pip install git+https://github.com/openthread/pyspinel
@@ -300,7 +300,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Bootstrap
         run: |
-          sudo apt-get update
+          sudo rm /etc/apt/sources.list.d/* && sudo apt-get update
           sudo apt-get --no-install-recommends install -y python3-setuptools
           python3 -m pip install -r tests/scripts/thread-cert/requirements.txt
           sudo python3 -m pip install git+https://github.com/openthread/pyspinel

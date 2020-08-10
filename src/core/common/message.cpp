@@ -642,12 +642,12 @@ bool Message::GetChildMask(uint16_t aChildIndex) const
 
 void Message::ClearChildMask(uint16_t aChildIndex)
 {
-    GetMetadata().mChildMask.Clear(aChildIndex);
+    GetMetadata().mChildMask.Set(aChildIndex, false);
 }
 
 void Message::SetChildMask(uint16_t aChildIndex)
 {
-    GetMetadata().mChildMask.Set(aChildIndex);
+    GetMetadata().mChildMask.Set(aChildIndex, true);
 }
 
 bool Message::IsChildPending(void) const
@@ -840,9 +840,9 @@ void MessageQueue::GetInfo(uint16_t &aMessageCount, uint16_t &aBufferCount) cons
 
 PriorityQueue::PriorityQueue(void)
 {
-    for (int priority = 0; priority < Message::kNumPriorities; priority++)
+    for (Message *&tail : mTails)
     {
-        mTails[priority] = nullptr;
+        tail = nullptr;
     }
 }
 

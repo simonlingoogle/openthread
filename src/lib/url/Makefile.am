@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
 #
-#  Copyright (c) 2016, The OpenThread Authors.
+#  Copyright (c) 2020, The OpenThread Authors.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -27,53 +26,34 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-import unittest
+include $(abs_top_nlbuild_autotools_dir)/automake/pre.am
 
-import thread_cert
+noinst_LIBRARIES = libopenthread-url.a
 
-LEADER = 1
-ED = 2
+libopenthread_url_a_CPPFLAGS                = \
+    -I$(top_srcdir)/include                   \
+    -I$(top_srcdir)/src                       \
+    $(NULL)
 
+libopenthread_url_a_SOURCES                 = \
+    url.cpp                                   \
+    url.hpp                                   \
+    $(NULL)
 
-class Cert_5_8_1_KeySynchronization(thread_cert.TestCase):
-    TOPOLOGY = {
-        LEADER: {
-            'key_switch_guardtime': 0,
-            'mode': 'rsdn',
-            'panid': 0xface,
-            'whitelist': [ED]
-        },
-        ED: {
-            'is_mtd': True,
-            'key_switch_guardtime': 0,
-            'mode': 'rsn',
-            'panid': 0xface,
-            'whitelist': [LEADER]
-        },
-    }
+check_PROGRAMS = test-url
 
-    def test(self):
-        self.nodes[LEADER].start()
-        self.simulator.go(4)
-        self.assertEqual(self.nodes[LEADER].get_state(), 'leader')
+test_url_CPPFLAGS                                             = \
+    -I$(top_srcdir)/include                                     \
+    -I$(top_srcdir)/src                                         \
+    -DSELF_TEST                                                 \
+    $(NULL)
 
-        self.nodes[ED].start()
-        self.simulator.go(5)
-        self.assertEqual(self.nodes[ED].get_state(), 'child')
+test_url_SOURCES                    = \
+    url.cpp                           \
+    $(NULL)
 
-        addrs = self.nodes[LEADER].get_addrs()
-        for addr in addrs:
-            if 'ff:fe00' not in addr:
-                self.assertTrue(self.nodes[ED].ping(addr))
+TESTS                               = \
+    test-url                          \
+    $(NULL)
 
-        key_sequence_counter = self.nodes[ED].get_key_sequence_counter()
-        self.nodes[ED].set_key_sequence_counter(key_sequence_counter + 10)
-
-        addrs = self.nodes[LEADER].get_addrs()
-        for addr in addrs:
-            if 'ff:fe00' not in addr:
-                self.assertFalse(self.nodes[ED].ping(addr))
-
-
-if __name__ == '__main__':
-    unittest.main()
+include $(abs_top_nlbuild_autotools_dir)/automake/post.am

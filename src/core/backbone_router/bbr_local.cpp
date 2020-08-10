@@ -31,7 +31,7 @@
  *   This file implements local Backbone Router service.
  */
 
-#include "local.hpp"
+#include "bbr_local.hpp"
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
 
@@ -56,7 +56,7 @@ Local::Local(Instance &aInstance)
     , mRegistrationJitter(Mle::kBackboneRouterRegistrationJitter)
     , mIsServiceAdded(false)
 {
-    mDomainPrefixConfig.mPrefix.mLength = 0;
+    mDomainPrefixConfig.GetPrefix().SetLength(0);
 
     // Primary Backbone Router Aloc
     mBackboneRouterPrimaryAloc.Clear();
@@ -137,9 +137,18 @@ void Local::GetConfig(BackboneRouterConfig &aConfig) const
     aConfig.mMlrTimeout          = mMlrTimeout;
 }
 
-void Local::SetConfig(const BackboneRouterConfig &aConfig)
+otError Local::SetConfig(const BackboneRouterConfig &aConfig)
 {
-    bool update = false;
+    otError error  = OT_ERROR_NONE;
+    bool    update = false;
+
+    VerifyOrExit(aConfig.mMlrTimeout >= Mle::kMlrTimeoutMin, error = OT_ERROR_INVALID_ARGS);
+    // Validate configuration according to Thread 1.2.1 Specification 5.21.3.3:
+    // "The Reregistration Delay in seconds MUST be lower than (0.5 * MLR Timeout). It MUST be at least 1."
+    VerifyOrExit(aConfig.mReregistrationDelay >= 1, error = OT_ERROR_INVALID_ARGS);
+    static_assert(sizeof(aConfig.mReregistrationDelay) < sizeof(aConfig.mMlrTimeout),
+                  "the calculation below might overflow");
+    VerifyOrExit(aConfig.mReregistrationDelay * 2 < aConfig.mMlrTimeout, error = OT_ERROR_INVALID_ARGS);
 
     if (aConfig.mReregistrationDelay != mReregistrationDelay)
     {
@@ -169,7 +178,9 @@ void Local::SetConfig(const BackboneRouterConfig &aConfig)
         }
     }
 
-    LogBackboneRouterService("Set", OT_ERROR_NONE);
+exit:
+    LogBackboneRouterService("Set", error);
+    return error;
 }
 
 otError Local::AddService(bool aForce)
@@ -251,7 +262,7 @@ exit:
     return;
 }
 
-void Local::UpdateBackboneRouterPrimary(Leader::State aState, const BackboneRouterConfig &aConfig)
+void Local::HandleBackboneRouterPrimaryUpdate(Leader::State aState, const BackboneRouterConfig &aConfig)
 {
     OT_UNUSED_VARIABLE(aState);
 
@@ -301,7 +312,7 @@ otError Local::GetDomainPrefix(NetworkData::OnMeshPrefixConfig &aConfig)
 {
     otError error = OT_ERROR_NONE;
 
-    VerifyOrExit(mDomainPrefixConfig.mPrefix.mLength > 0, error = OT_ERROR_NOT_FOUND);
+    VerifyOrExit(mDomainPrefixConfig.GetPrefix().GetLength() > 0, error = OT_ERROR_NOT_FOUND);
 
     aConfig = mDomainPrefixConfig;
 
@@ -309,24 +320,19 @@ exit:
     return error;
 }
 
-otError Local::RemoveDomainPrefix(const otIp6Prefix &aPrefix)
+otError Local::RemoveDomainPrefix(const Ip6::Prefix &aPrefix)
 {
     otError error = OT_ERROR_NONE;
 
-    VerifyOrExit(aPrefix.mLength > 0, error = OT_ERROR_INVALID_ARGS);
-
-    VerifyOrExit(mDomainPrefixConfig.mPrefix.mLength == aPrefix.mLength, error = OT_ERROR_NOT_FOUND);
-
-    VerifyOrExit(Ip6::Address::PrefixMatch(mDomainPrefixConfig.mPrefix.mPrefix.mFields.m8, aPrefix.mPrefix.mFields.m8,
-                                           BitVectorBytes(aPrefix.mLength)) >= aPrefix.mLength,
-                 error = OT_ERROR_NOT_FOUND);
+    VerifyOrExit(aPrefix.GetLength() > 0, error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit(mDomainPrefixConfig.GetPrefix() == aPrefix, error = OT_ERROR_NOT_FOUND);
 
     if (IsEnabled())
     {
         RemoveDomainPrefixFromNetworkData();
     }
 
-    mDomainPrefixConfig.mPrefix.mLength = 0;
+    mDomainPrefixConfig.GetPrefix().SetLength(0);
 
 exit:
     return error;
@@ -396,8 +402,7 @@ void Local::RemoveDomainPrefixFromNetworkData(void)
 
     if (mDomainPrefixConfig.mPrefix.mLength > 0)
     {
-        error = Get<NetworkData::Local>().RemoveOnMeshPrefix(mDomainPrefixConfig.mPrefix.mPrefix.mFields.m8,
-                                                             mDomainPrefixConfig.mPrefix.mLength);
+        error = Get<NetworkData::Local>().RemoveOnMeshPrefix(mDomainPrefixConfig.GetPrefix());
     }
 
     LogDomainPrefix("Remove", error);
@@ -407,7 +412,7 @@ void Local::AddDomainPrefixToNetworkData(void)
 {
     otError error = OT_ERROR_NOT_FOUND; // only used for logging.
 
-    if (mDomainPrefixConfig.mPrefix.mLength > 0)
+    if (mDomainPrefixConfig.GetPrefix().GetLength() > 0)
     {
         error = Get<NetworkData::Local>().AddOnMeshPrefix(mDomainPrefixConfig);
     }
@@ -418,11 +423,8 @@ void Local::AddDomainPrefixToNetworkData(void)
 #if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_BBR == 1)
 void Local::LogDomainPrefix(const char *aAction, otError aError)
 {
-    otLogInfoBbr("%s Domain Prefix: %s/%d, %s", aAction,
-                 mDomainPrefixConfig.mPrefix.mLength > 0
-                     ? (*static_cast<Ip6::Address *>(&mDomainPrefixConfig.mPrefix.mPrefix)).ToString().AsCString()
-                     : "",
-                 mDomainPrefixConfig.mPrefix.mLength, otThreadErrorToString(aError));
+    otLogInfoBbr("%s Domain Prefix: %s, %s", aAction, mDomainPrefixConfig.GetPrefix().ToString().AsCString(),
+                 otThreadErrorToString(aError));
 }
 
 void Local::LogBackboneRouterService(const char *aAction, otError aError)

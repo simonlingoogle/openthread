@@ -399,6 +399,30 @@ otError Interpreter::ParseUnsignedLong(char *aString, unsigned long &aUnsignedLo
     return (*endptr == '\0') ? OT_ERROR_NONE : OT_ERROR_INVALID_ARGS;
 }
 
+otError Interpreter::ParseJoinerDiscerner(char *aString, otJoinerDiscerner &aDiscerner)
+{
+    otError       error     = OT_ERROR_NONE;
+    char *        separator = strstr(aString, "/");
+    unsigned long length;
+
+    VerifyOrExit(separator != nullptr, error = OT_ERROR_NOT_FOUND);
+
+    SuccessOrExit(error = ParseUnsignedLong(separator + 1, length));
+    VerifyOrExit(length > 0 && length <= 64, error = OT_ERROR_INVALID_ARGS);
+
+    {
+        char *             end;
+        unsigned long long value = strtoull(aString, &end, 0);
+        aDiscerner.mValue        = value;
+        VerifyOrExit(end == separator, error = OT_ERROR_INVALID_ARGS);
+    }
+
+    aDiscerner.mLength = static_cast<uint8_t>(length);
+
+exit:
+    return error;
+}
+
 otError Interpreter::ParsePingInterval(const char *aString, uint32_t &aInterval)
 {
     otError        error    = OT_ERROR_NONE;
@@ -450,9 +474,9 @@ void Interpreter::ProcessHelp(uint8_t aArgsLength, char *aArgs[])
     OT_UNUSED_VARIABLE(aArgsLength);
     OT_UNUSED_VARIABLE(aArgs);
 
-    for (unsigned int i = 0; i < OT_ARRAY_LENGTH(sCommands); i++)
+    for (const Command &command : sCommands)
     {
-        mServer->OutputFormat("%s\r\n", sCommands[i].mName);
+        mServer->OutputFormat("%s\r\n", command.mName);
     }
 
     for (uint8_t i = 0; i < mUserCommandsLength; i++)
@@ -490,9 +514,37 @@ void Interpreter::ProcessBackboneRouter(uint8_t aArgsLength, char *aArgs[])
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
     else
     {
-        error = ProcessBackboneRouterLocal(aArgsLength, aArgs);
+#if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+        if (strcmp(aArgs[0], "mgmt") == 0)
+        {
+            unsigned long value;
+
+            VerifyOrExit((aArgsLength == 3 || aArgsLength == 4), error = OT_ERROR_INVALID_ARGS);
+
+            if (strcmp(aArgs[1], "dua") == 0)
+            {
+                otIp6InterfaceIdentifier *mlIid = nullptr;
+                otIp6InterfaceIdentifier  iid;
+
+                SuccessOrExit(error = ParseUnsignedLong(aArgs[2], value));
+
+                if (aArgsLength == 4)
+                {
+                    VerifyOrExit(Hex2Bin(aArgs[3], iid.mFields.m8, sizeof(iid)) == sizeof(iid),
+                                 error = OT_ERROR_INVALID_ARGS);
+                    mlIid = &iid;
+                }
+
+                otBackboneRouterConfigNextDuaRegistrationResponse(mInstance, mlIid, static_cast<uint8_t>(value));
+                ExitNow();
+            }
+        }
+#endif // OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
+        SuccessOrExit(error = ProcessBackboneRouterLocal(aArgsLength, aArgs));
     }
-#endif
+
+exit:
+#endif // OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
 
     AppendResult(error);
 }
@@ -500,8 +552,7 @@ void Interpreter::ProcessBackboneRouter(uint8_t aArgsLength, char *aArgs[])
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
 otError Interpreter::ProcessBackboneRouterLocal(uint8_t aArgsLength, char *aArgs[])
 {
-    otError error = OT_ERROR_NONE;
-    ;
+    otError                error = OT_ERROR_NONE;
     otBackboneRouterConfig config;
     unsigned long          value;
 
@@ -582,7 +633,7 @@ otError Interpreter::ProcessBackboneRouterLocal(uint8_t aArgsLength, char *aArgs
                 }
             }
 
-            otBackboneRouterSetConfig(mInstance, &config);
+            SuccessOrExit(error = otBackboneRouterSetConfig(mInstance, &config));
         }
     }
     else
@@ -877,9 +928,9 @@ void Interpreter::ProcessChild(uint8_t aArgsLength, char *aArgs[])
                 mServer->OutputFormat("|%1d", childInfo.mFullNetworkData);
                 mServer->OutputFormat("| ");
 
-                for (size_t j = 0; j < sizeof(childInfo.mExtAddress); j++)
+                for (uint8_t b : childInfo.mExtAddress.m8)
                 {
-                    mServer->OutputFormat("%02x", childInfo.mExtAddress.m8[j]);
+                    mServer->OutputFormat("%02x", b);
                 }
 
                 mServer->OutputFormat(" |\r\n");
@@ -901,9 +952,9 @@ void Interpreter::ProcessChild(uint8_t aArgsLength, char *aArgs[])
     mServer->OutputFormat("Rloc: %04x\r\n", childInfo.mRloc16);
     mServer->OutputFormat("Ext Addr: ");
 
-    for (size_t j = 0; j < sizeof(childInfo.mExtAddress); j++)
+    for (uint8_t b : childInfo.mExtAddress.m8)
     {
-        mServer->OutputFormat("%02x", childInfo.mExtAddress.m8[j]);
+        mServer->OutputFormat("%02x", b);
     }
 
     mServer->OutputFormat("\r\n");
@@ -1838,9 +1889,9 @@ void Interpreter::ProcessPskc(uint8_t aArgsLength, char *aArgs[])
     {
         const otPskc *pskc = otThreadGetPskc(mInstance);
 
-        for (int i = 0; i < OT_PSKC_MAX_SIZE; i++)
+        for (uint8_t b : pskc->m8)
         {
-            mServer->OutputFormat("%02x", pskc->m8[i]);
+            mServer->OutputFormat("%02x", b);
         }
 
         mServer->OutputFormat("\r\n");
@@ -2001,9 +2052,9 @@ void Interpreter::ProcessNeighbor(uint8_t aArgsLength, char *aArgs[])
                 mServer->OutputFormat("|%1d", neighborInfo.mFullNetworkData);
                 mServer->OutputFormat("| ");
 
-                for (size_t j = 0; j < sizeof(neighborInfo.mExtAddress); j++)
+                for (uint8_t b : neighborInfo.mExtAddress.m8)
                 {
-                    mServer->OutputFormat("%02x", neighborInfo.mExtAddress.m8[j]);
+                    mServer->OutputFormat("%02x", b);
                 }
 
                 mServer->OutputFormat(" |\r\n");
@@ -2322,9 +2373,9 @@ void Interpreter::ProcessParent(uint8_t aArgsLength, char *aArgs[])
     SuccessOrExit(error = otThreadGetParentInfo(mInstance, &parentInfo));
     mServer->OutputFormat("Ext Addr: ");
 
-    for (size_t i = 0; i < sizeof(parentInfo.mExtAddress); i++)
+    for (uint8_t b : parentInfo.mExtAddress.m8)
     {
-        mServer->OutputFormat("%02x", parentInfo.mExtAddress.m8[i]);
+        mServer->OutputFormat("%02x", b);
     }
 
     mServer->OutputFormat("\r\n");
@@ -3164,9 +3215,9 @@ void Interpreter::ProcessRouter(uint8_t aArgsLength, char *aArgs[])
                 mServer->OutputFormat("| %3d ", routerInfo.mAge);
                 mServer->OutputFormat("| ");
 
-                for (size_t j = 0; j < sizeof(routerInfo.mExtAddress); j++)
+                for (uint8_t b : routerInfo.mExtAddress.m8)
                 {
-                    mServer->OutputFormat("%02x", routerInfo.mExtAddress.m8[j]);
+                    mServer->OutputFormat("%02x", b);
                 }
 
                 mServer->OutputFormat(" |\r\n");
@@ -3197,9 +3248,9 @@ void Interpreter::ProcessRouter(uint8_t aArgsLength, char *aArgs[])
         {
             mServer->OutputFormat("Ext Addr: ");
 
-            for (size_t j = 0; j < sizeof(routerInfo.mExtAddress); j++)
+            for (uint8_t b : routerInfo.mExtAddress.m8)
             {
-                mServer->OutputFormat("%02x", routerInfo.mExtAddress.m8[j]);
+                mServer->OutputFormat("%02x", b);
             }
 
             mServer->OutputFormat("\r\n");

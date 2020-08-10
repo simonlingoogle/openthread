@@ -33,6 +33,8 @@
 
 #include "cli_joiner.hpp"
 
+#include <inttypes.h>
+
 #include "cli/cli.hpp"
 #include "cli/cli_server.hpp"
 
@@ -42,20 +44,55 @@ namespace ot {
 namespace Cli {
 
 const struct Joiner::Command Joiner::sCommands[] = {
-    {"help", &Joiner::ProcessHelp},
-    {"id", &Joiner::ProcessId},
-    {"start", &Joiner::ProcessStart},
-    {"stop", &Joiner::ProcessStop},
+    {"discerner", &Joiner::ProcessDiscerner}, {"help", &Joiner::ProcessHelp}, {"id", &Joiner::ProcessId},
+    {"start", &Joiner::ProcessStart},         {"stop", &Joiner::ProcessStop},
 };
+
+otError Joiner::ProcessDiscerner(uint8_t aArgsLength, char *aArgs[])
+{
+    otError error = OT_ERROR_NONE;
+
+    if (aArgsLength == 2)
+    {
+        otJoinerDiscerner discerner;
+
+        memset(&discerner, 0, sizeof(discerner));
+        if (strcmp(aArgs[1], "clear") == 0)
+        {
+            SuccessOrExit(error = otJoinerSetDiscerner(mInterpreter.mInstance, nullptr));
+        }
+        else
+        {
+            VerifyOrExit(OT_ERROR_NONE == Interpreter::ParseJoinerDiscerner(aArgs[1], discerner),
+                         error = OT_ERROR_INVALID_ARGS);
+            SuccessOrExit(error = otJoinerSetDiscerner(mInterpreter.mInstance, &discerner));
+        }
+    }
+    else if (aArgsLength == 1)
+    {
+        const otJoinerDiscerner *discerner = otJoinerGetDiscerner(mInterpreter.mInstance);
+
+        VerifyOrExit(discerner != nullptr, error = OT_ERROR_NOT_FOUND);
+
+        mInterpreter.mServer->OutputFormat("0x%" PRIx64 "/%u\r\n", discerner->mValue, discerner->mLength);
+    }
+    else
+    {
+        error = OT_ERROR_INVALID_ARGS;
+    }
+
+exit:
+    return error;
+}
 
 otError Joiner::ProcessHelp(uint8_t aArgsLength, char *aArgs[])
 {
     OT_UNUSED_VARIABLE(aArgsLength);
     OT_UNUSED_VARIABLE(aArgs);
 
-    for (size_t i = 0; i < OT_ARRAY_LENGTH(sCommands); i++)
+    for (const Command &command : sCommands)
     {
-        mInterpreter.mServer->OutputFormat("%s\r\n", sCommands[i].mName);
+        mInterpreter.mServer->OutputFormat("%s\r\n", command.mName);
     }
 
     return OT_ERROR_NONE;
@@ -115,11 +152,11 @@ otError Joiner::Process(uint8_t aArgsLength, char *aArgs[])
     }
     else
     {
-        for (size_t i = 0; i < OT_ARRAY_LENGTH(sCommands); i++)
+        for (const Command &command : sCommands)
         {
-            if (strcmp(aArgs[0], sCommands[i].mName) == 0)
+            if (strcmp(aArgs[0], command.mName) == 0)
             {
-                error = (this->*sCommands[i].mCommand)(aArgsLength, aArgs);
+                error = (this->*command.mCommand)(aArgsLength, aArgs);
                 break;
             }
         }
