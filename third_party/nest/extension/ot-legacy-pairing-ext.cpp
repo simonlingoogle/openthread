@@ -12,6 +12,8 @@
  *
  */
 
+#include "ot-legacy-pairing-ext.h"
+
 #include "openthread-core-config.h"
 
 #include <openthread/crypto.h>
@@ -53,6 +55,13 @@ public:
 
     void AfterInstanceInit(void);
     void AfterNcpInit(Ncp::NcpBase &aNcpBase);
+
+    // Legacy handlers
+    static void InitLegacy(void) { IgnoreError(sLegacyPairingExtension->Init()); }
+    static void StartLegacy(void) { sLegacyPairingExtension->Start(); }
+    static void StopLegacy(void) { sLegacyPairingExtension->Stop(); }
+    static void JoinLegacyNode(const otExtAddress *aDstAddress) { sLegacyPairingExtension->Join(aDstAddress); }
+    static void SetLegacyUlaPrefix(const uint8_t *aUlaPrefix) { sLegacyPairingExtension->SetPrefix(aUlaPrefix); }
 
 private:
     enum
@@ -153,12 +162,6 @@ private:
     static bool HandleUdpReceive(void *aContext, const otMessage *aMessage, const otMessageInfo *aMessageInfo);
     static void HandleTimer(Timer &aTimer);
     static void HandleStateChanged(Notifier::Receiver &aReceiver, Events aEvents);
-
-    // Legacy handlers registered with NCP.
-    static void StartLegacy(void) { sLegacyPairingExtension->Start(); }
-    static void StopLegacy(void) { sLegacyPairingExtension->Stop(); }
-    static void JoinLegacyNode(const otExtAddress *aDstAddress) { sLegacyPairingExtension->Join(aDstAddress); }
-    static void SetLegacyUlaPrefix(const uint8_t *aUlaPrefix) { sLegacyPairingExtension->SetPrefix(aUlaPrefix); }
 
     uint8_t            mLegacyKey[OT_CRYPTO_HMAC_SHA_HASH_SIZE];
     LegacyState        mState;
@@ -873,8 +876,7 @@ uint8_t *LegacyPairingExtension::AppendTlvs(uint8_t *aBufPtr, uint8_t aCommand, 
     switch (aCommand)
     {
     case MLE_CMD_LINK_ACCEPT_REQUEST:
-    case MLE_CMD_LINK_ACCEPT:
-    {
+    case MLE_CMD_LINK_ACCEPT: {
         uint32_t frameCounter = GetFrameCounter();
 
         *aBufPtr++ = TLV_LL_FRAME_COUNTER_TYPE;
@@ -976,3 +978,23 @@ void LegacyPairingExtension::HandleTimer(void)
 
 } // namespace Extension
 } // namespace ot
+
+void otLegacyInit(void)
+{
+    ot::Extension::LegacyPairingExtension::InitLegacy();
+}
+
+void otLegacyStart(void)
+{
+    ot::Extension::LegacyPairingExtension::StartLegacy();
+}
+
+void otLegacyStop(void)
+{
+    ot::Extension::LegacyPairingExtension::StopLegacy();
+}
+
+void otSetLegacyUlaPrefix(const uint8_t *aUlaPrefix)
+{
+    ot::Extension::LegacyPairingExtension::SetLegacyUlaPrefix(aUlaPrefix);
+}
