@@ -357,11 +357,11 @@ static void UpdateUnicast(otInstance *aInstance, const otIp6Address &aAddress, u
 exit:
     if (error != OT_ERROR_NONE)
     {
-        otLogWarnPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
     else
     {
-        otLogInfoPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
 }
 
@@ -390,7 +390,7 @@ static void UpdateMulticast(otInstance *aInstance, const otIp6Address &aAddress,
         char addressString[INET6_ADDRSTRLEN + 1];
 
         inet_ntop(AF_INET6, mreq.ipv6mr_multiaddr.s6_addr, addressString, sizeof(addressString));
-        otLogWarnPlat("ignoring %s failure (EINVAL) for MC LINKLOCAL address (%s)",
+        otLogCritPlat("ignoring %s failure (EINVAL) for MC LINKLOCAL address (%s)",
                       aIsAdded ? "IPV6_JOIN_GROUP" : "IPV6_LEAVE_GROUP", addressString);
         err = 0;
     }
@@ -398,14 +398,15 @@ static void UpdateMulticast(otInstance *aInstance, const otIp6Address &aAddress,
 
     if (err != 0)
     {
-        otLogWarnPlat("%s failure (%d)", aIsAdded ? "IPV6_JOIN_GROUP" : "IPV6_LEAVE_GROUP", errno);
+        otLogCritPlat("%s failure (%d)", aIsAdded ? "IPV6_JOIN_GROUP" : "IPV6_LEAVE_GROUP", errno);
     }
 
     VerifyOrExit(err == 0, perror("setsockopt"); error = OT_ERROR_FAILED);
 
 exit:
+
     SuccessOrDie(error);
-    otLogInfoPlat("%s: %s", __func__, otThreadErrorToString(error));
+    otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
 }
 
 static void UpdateLink(otInstance *aInstance)
@@ -425,7 +426,7 @@ static void UpdateLink(otInstance *aInstance)
     ifState = ((ifr.ifr_flags & IFF_UP) == IFF_UP) ? true : false;
     otState = otIp6IsEnabled(aInstance);
 
-    otLogNotePlat("changing interface state to %s%s.", otState ? "UP" : "DOWN",
+    otLogCritPlat("changing interface state to %s%s.", otState ? "UP" : "DOWN",
                   (ifState == otState) ? " (already done, ignoring)" : "");
     if (ifState != otState)
     {
@@ -436,16 +437,17 @@ static void UpdateLink(otInstance *aInstance)
 exit:
     if (error == OT_ERROR_NONE)
     {
-        otLogInfoPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
     else
     {
-        otLogWarnPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
 }
 
 static void processAddressChange(const otIp6Address *aAddress, uint8_t aPrefixLength, bool aIsAdded, void *aContext)
 {
+    otLogCritPlat("processAddressChange %d", aAddress->mFields.m8[0]);
     if (aAddress->mFields.m8[0] == 0xff)
     {
         UpdateMulticast(static_cast<otInstance *>(aContext), *aAddress, aIsAdded);
@@ -485,7 +487,7 @@ static void processReceive(otMessage *aMessage, void *aContext)
     VerifyOrExit(otMessageRead(aMessage, 0, &packet[offset], maxLength) == length, error = OT_ERROR_NO_BUFS);
 
 #if OPENTHREAD_POSIX_LOG_TUN_PACKETS
-    otLogInfoPlat("Packet from NCP (%hu bytes)", static_cast<uint16_t>(length));
+    otLogCritPlat("Packet from NCP (%hu bytes)", static_cast<uint16_t>(length));
     otDumpInfo(OT_LOG_REGION_PLATFORM, "", &packet[offset], length);
 #endif
 
@@ -504,11 +506,11 @@ exit:
 
     if (error == OT_ERROR_NONE)
     {
-        otLogInfoPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
     else
     {
-        otLogWarnPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
 }
 
@@ -538,7 +540,7 @@ static void processTransmit(otInstance *aInstance)
 #endif
 
 #if OPENTHREAD_POSIX_LOG_TUN_PACKETS
-    otLogInfoPlat("Packet to NCP (%hu bytes)", static_cast<uint16_t>(rval));
+    otLogCritPlat("Packet to NCP (%hu bytes)", static_cast<uint16_t>(rval));
     otDumpInfo(OT_LOG_REGION_PLATFORM, "", &packet[offset], static_cast<size_t>(rval));
 #endif
 
@@ -555,11 +557,11 @@ exit:
 
     if (error == OT_ERROR_NONE)
     {
-        otLogInfoPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
     else
     {
-        otLogWarnPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
 }
 
@@ -579,14 +581,14 @@ static void logAddrEvent(bool isAdd, bool isUnicast, struct sockaddr_in6 &addr6,
     if ((error == OT_ERROR_NONE) || ((isAdd) && (error == OT_ERROR_ALREADY)) ||
         ((!isAdd) && (error == OT_ERROR_NOT_FOUND)))
     {
-        otLogNotePlat("%s [%s] %s%s", isAdd ? "ADD" : "DEL", isUnicast ? "U" : "M",
+        otLogCritPlat("%s [%s] %s%s", isAdd ? "ADD" : "DEL", isUnicast ? "U" : "M",
                       inet_ntop(AF_INET6, addr6.sin6_addr.s6_addr, addressString, sizeof(addressString)),
                       error == OT_ERROR_ALREADY ? " (already subscribed, ignored)"
                                                 : error == OT_ERROR_NOT_FOUND ? " (not found, ignored)" : "");
     }
     else
     {
-        otLogWarnPlat("%s [%s] %s failed (%s)", isAdd ? "ADD" : "DEL", isUnicast ? "U" : "M",
+        otLogCritPlat("%s [%s] %s failed (%s)", isAdd ? "ADD" : "DEL", isUnicast ? "U" : "M",
                       inet_ntop(AF_INET6, addr6.sin6_addr.s6_addr, addressString, sizeof(addressString)),
                       otThreadErrorToString(error));
     }
@@ -678,7 +680,7 @@ static void processNetifAddrEvent(otInstance *aInstance, struct nlmsghdr *aNetli
         }
 
         default:
-            otLogWarnPlat("unexpected address type (%d).", (int)rta->rta_type);
+            otLogCritPlat("unexpected address type (%d).", (int)rta->rta_type);
             break;
         }
     }
@@ -686,11 +688,11 @@ static void processNetifAddrEvent(otInstance *aInstance, struct nlmsghdr *aNetli
 exit:
     if (error == OT_ERROR_NONE)
     {
-        otLogInfoPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
     else
     {
-        otLogWarnPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
 }
 
@@ -705,11 +707,11 @@ static void processNetifLinkEvent(otInstance *aInstance, struct nlmsghdr *aNetli
 exit:
     if (error == OT_ERROR_NONE)
     {
-        otLogInfoPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
     else
     {
-        otLogWarnPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
 }
 #endif
@@ -865,14 +867,14 @@ static void processNetifAddrEvent(otInstance *aInstance, struct rt_msghdr *rtm)
                         err = ioctl(sIpFd, SIOCDIFADDR_IN6, &ifr6);
                         if (err != 0)
                         {
-                            otLogWarnPlat(
+                            otLogCritPlat(
                                 "error (%d) removing stack-addded link-local address %s", errno,
                                 inet_ntop(AF_INET6, addr6.sin6_addr.s6_addr, addressString, sizeof(addressString)));
                             error = OT_ERROR_FAILED;
                         }
                         else
                         {
-                            otLogNotePlat(
+                            otLogCritPlat(
                                 "        %s (removed stack-added link-local)",
                                 inet_ntop(AF_INET6, addr6.sin6_addr.s6_addr, addressString, sizeof(addressString)));
                             error = OT_ERROR_NONE;
@@ -947,11 +949,11 @@ static void processNetifInfoEvent(otInstance *aInstance, struct rt_msghdr *rtm)
 exit:
     if (error == OT_ERROR_NONE)
     {
-        otLogInfoPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
     else
     {
-        otLogWarnPlat("%s: %s", __func__, otThreadErrorToString(error));
+        otLogCritPlat("%s: %s", __func__, otThreadErrorToString(error));
     }
 }
 
@@ -1010,7 +1012,7 @@ static void processNetifEvent(otInstance *aInstance)
 
 #if defined(ROUTE_FILTER) || defined(RO_MSGFILTER) || defined(__linux__)
         default:
-            otLogWarnPlat("unhandled/unexpected netlink/route message (%d).", (int)msg->nlmsg_type);
+            otLogCritPlat("unhandled/unexpected netlink/route message (%d).", (int)msg->nlmsg_type);
             break;
 #else
             // this platform doesn't support filtering, so we expect messages of other types...we just ignore them
@@ -1131,13 +1133,13 @@ static void processMLDEvent(otInstance *aInstance)
                 err = otIp6SubscribeMulticastAddress(aInstance, &address);
                 if (err == OT_ERROR_ALREADY)
                 {
-                    otLogNotePlat(
+                    otLogCritPlat(
                         "Will not subscribe duplicate multicast address %s",
                         inet_ntop(AF_INET6, &record->mMulticastAddress, addressString, sizeof(addressString)));
                 }
                 else if (err != OT_ERROR_NONE)
                 {
-                    otLogWarnPlat("Failed to subscribe multicast address %s: %s", addressString,
+                    otLogCritPlat("Failed to subscribe multicast address %s: %s", addressString,
                                   otThreadErrorToString(err));
                 }
                 else
@@ -1150,7 +1152,7 @@ static void processMLDEvent(otInstance *aInstance)
                 err = otIp6UnsubscribeMulticastAddress(aInstance, &address);
                 if (err != OT_ERROR_NONE)
                 {
-                    otLogWarnPlat("Failed to unsubscribe multicast address %s: %s", addressString,
+                    otLogCritPlat("Failed to unsubscribe multicast address %s: %s", addressString,
                                   otThreadErrorToString(err));
                 }
                 else
@@ -1243,7 +1245,7 @@ static void platformConfigureTunDevice(otInstance *aInstance,
     err        = getsockopt(sTunFd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, deviceName, &devNameLen);
     VerifyOrDie(err == 0, OT_EXIT_ERROR_ERRNO);
 
-    otLogInfoPlat("Tunnel device name = '%s'", deviceName);
+    otLogCritPlat("Tunnel device name = '%s'", deviceName);
 }
 #endif
 

@@ -86,15 +86,19 @@ otError otIp6AddUnicastAddress(otInstance *aInstance, const otNetifAddress *aAdd
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    return instance.Get<ThreadNetif>().AddExternalUnicastAddress(
+    otError error =  instance.Get<ThreadNetif>().AddExternalUnicastAddress(
         *static_cast<const Ip6::NetifUnicastAddress *>(aAddress));
+    otLogCritApi("otIp6AddUnicastAddress: %s", otThreadErrorToString(error));
+    return error;
 }
 
 otError otIp6RemoveUnicastAddress(otInstance *aInstance, const otIp6Address *aAddress)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    return instance.Get<ThreadNetif>().RemoveExternalUnicastAddress(*static_cast<const Ip6::Address *>(aAddress));
+    otError error = instance.Get<ThreadNetif>().RemoveExternalUnicastAddress(*static_cast<const Ip6::Address *>(aAddress));
+    otLogCritApi("otIp6RemoveUnicastAddress: %s", otThreadErrorToString(error));
+    return error;
 }
 
 const otNetifMulticastAddress *otIp6GetMulticastAddresses(otInstance *aInstance)
@@ -108,14 +112,19 @@ otError otIp6SubscribeMulticastAddress(otInstance *aInstance, const otIp6Address
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    return instance.Get<ThreadNetif>().SubscribeExternalMulticast(*static_cast<const Ip6::Address *>(aAddress));
+    otError error =
+        instance.Get<ThreadNetif>().SubscribeExternalMulticast(*static_cast<const Ip6::Address *>(aAddress));
+    otLogCritApi("otIp6SubscribeMulticastAddress: %s", otThreadErrorToString(error));
+    return error;
 }
 
 otError otIp6UnsubscribeMulticastAddress(otInstance *aInstance, const otIp6Address *aAddress)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
-    return instance.Get<ThreadNetif>().UnsubscribeExternalMulticast(*static_cast<const Ip6::Address *>(aAddress));
+    otError error =  instance.Get<ThreadNetif>().UnsubscribeExternalMulticast(*static_cast<const Ip6::Address *>(aAddress));
+    otLogCritApi("otIp6UnsubscribeMulticastAddress: %s", otThreadErrorToString(error));
+    return error;
 }
 
 bool otIp6IsMulticastPromiscuousEnabled(otInstance *aInstance)
