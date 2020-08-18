@@ -72,6 +72,8 @@
 #define RCP_TIME_OFFSET_CHECK_INTERVAL (60 * US_PER_S)
 #endif
 
+#include <new>
+
 using ot::Spinel::Decoder;
 
 namespace ot {

@@ -525,6 +525,11 @@ public:
      */
     typedef String<kIp6AddressStringSize> InfoString;
 
+    bool operator<(const Address &aOther) const
+    {
+        return memcmp(mFields.m8, aOther.mFields.m8, sizeof(mFields.m8)) < 0;
+    }
+
     /**
      * This method indicates whether or not the IPv6 address is the Unspecified Address.
      *

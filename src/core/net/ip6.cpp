@@ -1267,7 +1267,7 @@ otError Ip6::HandleDatagram(Message &aMessage, Netif *aNetif, const void *aLinkM
 
     if (forward)
     {
-        if (!ShouldForwardToThread(messageInfo))
+        if (!ShouldForwardToThread(messageInfo, aFromNcpHost))
         {
             // try passing to host
             SuccessOrExit(error = ProcessReceiveCallback(aMessage, messageInfo, nextHeader, aFromNcpHost));
@@ -1327,7 +1327,7 @@ exit:
     return error;
 }
 
-bool Ip6::ShouldForwardToThread(const MessageInfo &aMessageInfo) const
+bool Ip6::ShouldForwardToThread(const MessageInfo &aMessageInfo, bool aFromNcpHost) const
 {
     bool rval = false;
 
@@ -1344,7 +1344,18 @@ bool Ip6::ShouldForwardToThread(const MessageInfo &aMessageInfo) const
     else if (IsOnLink(aMessageInfo.GetSockAddr()))
     {
         // on-link global address
-        ExitNow(rval = true);
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+        if (!aFromNcpHost && Get<BackboneRouter::Leader>().IsDomainUnicast(aMessageInfo.GetSockAddr()) &&
+            Get<BackboneRouter::Local>().IsPrimary() &&
+            !Get<BackboneRouter::Manager>().IsDomainUnicastRegistered(aMessageInfo.GetSockAddr()))
+        {
+            ExitNow(rval = false);
+        }
+        else
+#endif
+        {
+            ExitNow(rval = true);
+        }
     }
     else if (Get<ThreadNetif>().RouteLookup(aMessageInfo.GetPeerAddr(), aMessageInfo.GetSockAddr(), nullptr) ==
              OT_ERROR_NONE)
@@ -1358,6 +1369,10 @@ bool Ip6::ShouldForwardToThread(const MessageInfo &aMessageInfo) const
     }
 
 exit:
+
+    otLogCritBbr("ShouldForwardToThread(%s, aFromNcpHost=%s) = %s", aMessageInfo.GetSockAddr().ToString().AsCString(),
+                 aFromNcpHost ? "Y" : "N", rval ? "Y" : "N");
+
     return rval;
 }
 

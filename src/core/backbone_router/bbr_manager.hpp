@@ -37,6 +37,7 @@
 #include "openthread-core-config.h"
 
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+#include <map>
 #include <openthread/backbone_router.h>
 #include <openthread/backbone_router_ftd.h>
 
@@ -81,6 +82,8 @@ public:
     void ConfigNextDuaRegistrationResponse(const Ip6::InterfaceIdentifier *aMlIid, uint8_t aStatus);
 #endif
 
+    bool IsDomainUnicastRegistered(const Ip6::Address &aAddress);
+
 private:
     static void HandleMulticastListenerRegistration(void *               aContext,
                                                     otMessage *          aMessage,
@@ -108,6 +111,8 @@ private:
 
     Coap::Resource mMulticastListenerRegistration;
     Coap::Resource mDuaRegistration;
+
+    std::map<Ip6::Address, uint32_t> mNdProxyTable;
 
 #if OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
     Ip6::InterfaceIdentifier   mDuaResponseTargetMlIid;

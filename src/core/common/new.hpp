@@ -40,9 +40,4 @@
 
 #include <openthread/platform/toolchain.h>
 
-inline void *operator new(size_t, void *p) throw()
-{
-    return p;
-}
-
 #endif // NEW_HPP_

@@ -155,6 +155,8 @@ void Manager::HandleDuaRegistration(const Coap::Message &aMessage, const Ip6::Me
         // TODO: (DUA) hasLastTransactionTime = true;
     }
 
+    mNdProxyTable[target] = 1;
+
     // TODO: (DUA) Add ND-PROXY table management
     // TODO: (DUA) Add DAD process
     // TODO: (DUA) Extended Address Query
@@ -213,7 +215,17 @@ void Manager::ConfigNextDuaRegistrationResponse(const Ip6::InterfaceIdentifier *
 
     mDuaResponseStatus = static_cast<ThreadStatusTlv::DuaStatus>(aStatus);
 }
+
 #endif
+
+bool Manager::IsDomainUnicastRegistered(const Ip6::Address &aAddress)
+{
+    bool ret = mNdProxyTable.find(aAddress) != mNdProxyTable.end();
+
+    otLogCritBbr("IsDomainUnicastRegistered(%s) = %s", aAddress.ToString().AsCString(), ret ? "Y" : "N");
+
+    return ret;
+}
 
 } // namespace BackboneRouter
 
