@@ -32,6 +32,7 @@
 #include <iostream>
 #include <map>
 
+#include <unordered_map>
 #include <openthread/config.h>
 
 #include "test_util.h"
@@ -39,27 +40,43 @@
 #include "common/instance.hpp"
 #include "thread/child_table.hpp"
 
+namespace std {
+
+template <> struct hash<ot::Ip6::Address>
+{
+    std::size_t operator()(const ot::Ip6::Address &k) const
+    {
+        size_t ret = 0x4234234;
+
+        for (uint32_t b : k.mFields.m32)
+        {
+            ret ^= b;
+        }
+        return ret;
+    }
+};
+
+} // namespace std
+
 namespace ot {
 
 static ot::Instance *sInstance;
 
-class NdProxyTable
+constexpr int N = 1000;
+
+// class NdProxyTable
+//{
+// public:
+//    virtual void Add(const Ip6::Address &)  = 0;
+//    virtual bool Find(const Ip6::Address &) = 0;
+//};
+
+class NdProxyTableArray : public Clearable<NdProxyTableArray>
 {
 public:
-    virtual void Add(const Ip6::Address &)  = 0;
-    virtual bool Find(const Ip6::Address &) = 0;
-};
+    NdProxyTableArray() { Clear(); }
 
-class NdProxyTableArray : public NdProxyTable, public Clearable<NdProxyTableArray>
-{
-public:
-    NdProxyTableArray()
-        : NdProxyTable()
-    {
-        Clear();
-    }
-
-    virtual void Add(const Ip6::Address &aAddress)
+    void Add(const Ip6::Address &aAddress)
     {
         NdProxyEntry *invalid = nullptr;
 
@@ -90,7 +107,7 @@ public:
         return;
     }
 
-    virtual bool Find(const Ip6::Address &aAddress)
+    bool Find(const Ip6::Address &aAddress)
     {
         bool ret = false;
 
@@ -112,32 +129,43 @@ private:
         bool         mValid;
     } NdProxyEntry;
 
-    NdProxyEntry mAddresses[250];
+    NdProxyEntry mAddresses[N];
 };
 
-class NdProxyTableHashmap : public NdProxyTable
+class NdProxyTableHashmap
 {
 public:
-    NdProxyTableHashmap()
-        : NdProxyTable()
-    {
-    }
+    NdProxyTableHashmap() {}
 
-    virtual void Add(const Ip6::Address &aAddress) { mAddresses[aAddress] = true; }
-    virtual bool Find(const Ip6::Address &aAddress) { return mAddresses.find(aAddress) != mAddresses.end(); }
+    void Add(const Ip6::Address &aAddress) { mAddresses[aAddress] = true; }
+    bool Find(const Ip6::Address &aAddress) { return mAddresses.find(aAddress) != mAddresses.end(); }
 
 private:
-    std::map<Ip6::Address, bool> mAddresses;
+    std::unordered_map<Ip6::Address, bool> mAddresses;
 };
 
-void TestNdProxyTable(NdProxyTable &table)
+template <typename T> void TestNdProxyTable(T &table)
 {
     Ip6::Address lastAddress;
 
-    for (int i = 0; i < 250; i++)
+    for (int i = 0; i < N; i++)
     {
-        uint8_t      bytes[] = {0x20, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, static_cast<uint8_t>(i),
-                           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        uint8_t      bytes[] = {0x20,
+                           0x01,
+                           0x00,
+                           0x00,
+                           0x00,
+                           0x00,
+                           0x00,
+                           0x00,
+                           static_cast<uint8_t>(i),
+                           static_cast<uint8_t>(i >> 8),
+                           static_cast<uint8_t>(i >> 16),
+                           static_cast<uint8_t>(i >> 24),
+                           0x00,
+                           0x00,
+                           0x00,
+                           0x00};
         Ip6::Address address;
 
         memcpy(address.mFields.m8, bytes, 16);
@@ -148,23 +176,24 @@ void TestNdProxyTable(NdProxyTable &table)
 
     auto t0 = std::chrono::system_clock::now();
 
-    for (int i = 0; i < 10000; i++)
+    for (int i = 0; i < 1000; i++)
     {
         table.Find(lastAddress);
     }
 
     auto t1 = std::chrono::system_clock::now();
-    std::cout << (t1 - t0).count() << std::endl;
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count() << std::endl;
 }
 
 } // namespace ot
 
 int main(void)
 {
-    ot::NdProxyTableArray array;
+    ot::NdProxyTableArray   array;
     ot::NdProxyTableHashmap hashmap;
-    ot::TestNdProxyTable(hashmap);
-    ot::TestNdProxyTable(array);
+
+    ot::TestNdProxyTable<ot::NdProxyTableArray>(array);
+    ot::TestNdProxyTable<ot::NdProxyTableHashmap>(hashmap);
     printf("\nAll tests passed.\n");
     return 0;
 }
