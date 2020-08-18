@@ -116,6 +116,30 @@ target_link_libraries(test-child-table
 
 add_test(NAME test-child-table COMMAND test-child-table)
 
+
+add_executable(test-ndproxy-table
+        ${COMMON_SOURCES}
+        test_ndproxy_table.cpp
+        )
+
+target_include_directories(test-ndproxy-table
+        PRIVATE
+        ${COMMON_INCLUDES}
+        )
+
+target_compile_options(test-ndproxy-table
+        PRIVATE
+        ${COMMON_COMPILE_OPTIONS}
+        )
+
+target_link_libraries(test-ndproxy-table
+        PRIVATE
+        ${COMMON_LIBS}
+        )
+
+add_test(NAME test-ndproxy-table COMMAND test-ndproxy-table)
+
+
 add_executable(test-flash
     ${COMMON_SOURCES}
     test_flash.cpp

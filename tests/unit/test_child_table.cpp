@@ -235,7 +235,7 @@ void VerifyChildTableContent(ChildTable &aTable, uint16_t aChildListLength, cons
     printf(" -- PASS\n");
 }
 
-void TestChildTable(void)
+void TestNdProxyTable(void)
 {
     const TestChild testChildList[] = {
         {
@@ -396,7 +396,7 @@ void TestChildTable(void)
 
 int main(void)
 {
-    ot::TestChildTable();
+    ot::TestNdProxyTable();
     printf("\nAll tests passed.\n");
     return 0;
 }
