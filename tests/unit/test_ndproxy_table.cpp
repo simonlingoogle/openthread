@@ -62,14 +62,7 @@ namespace ot {
 
 static ot::Instance *sInstance;
 
-constexpr int N = 1000;
-
-// class NdProxyTable
-//{
-// public:
-//    virtual void Add(const Ip6::Address &)  = 0;
-//    virtual bool Find(const Ip6::Address &) = 0;
-//};
+constexpr int N = 250;
 
 class NdProxyTableArray : public Clearable<NdProxyTableArray>
 {
@@ -169,6 +162,7 @@ template <typename T> void TestNdProxyTable(T &table)
         Ip6::Address address;
 
         memcpy(address.mFields.m8, bytes, 16);
+//        address.mFields.m8[0] = i;
 
         table.Add(address);
         lastAddress = address;
