@@ -46,8 +46,10 @@ namespace Extension {
  * This class defines the vendor extension to add support for legacy pairing.
  *
  */
-class LegacyPairingExtension : public ExtensionBase, public Notifier::Receiver
+class LegacyPairingExtension : public ExtensionBase
 {
+    friend class ExtensionBase;
+
 public:
     explicit LegacyPairingExtension(Instance &aInstance);
 
@@ -130,7 +132,6 @@ private:
     void     SetPrefix(const uint8_t *aUlaPrefix);
     void     ComputeLegacyKey(void);
     otError  AddReceiver(void);
-    void     HandleStateChanged(Events aEvents);
     bool     HandleUdpReceive(const otMessage *aMessage, const otMessageInfo *aMessageInfo);
     void     HandleMleLinkRequest(const uint8_t *aBufPtr, uint16_t aLength, const otMessageInfo *aMessageInfo);
     void     HandleMleLinkAcceptAndRequest(uint8_t              aCommand,
@@ -161,7 +162,6 @@ private:
     // Callbacks
     static bool HandleUdpReceive(void *aContext, const otMessage *aMessage, const otMessageInfo *aMessageInfo);
     static void HandleTimer(Timer &aTimer);
-    static void HandleStateChanged(Notifier::Receiver &aReceiver, Events aEvents);
 
     uint8_t            mLegacyKey[OT_CRYPTO_HMAC_SHA_HASH_SIZE];
     LegacyState        mState;
@@ -204,6 +204,14 @@ void ExtensionBase::SignalNcpInit(Ncp::NcpBase &aNcpBase)
     static_cast<LegacyPairingExtension *>(this)->AfterNcpInit(aNcpBase);
 }
 
+void ExtensionBase::HandleNotifierEvents(Events aEvents)
+{
+    if (aEvents.Contains(kEventMasterKeyChanged))
+    {
+        static_cast<LegacyPairingExtension *>(this)->ComputeLegacyKey();
+    }
+}
+
 // ----------------------------------------------------------------------------
 // LegacyPairingExtension class
 // ----------------------------------------------------------------------------
@@ -219,7 +227,6 @@ const otNcpLegacyHandlers LegacyPairingExtension::sLegacyHandlers = {
 
 LegacyPairingExtension::LegacyPairingExtension(Instance &aInstance)
     : ExtensionBase(aInstance)
-    , Notifier::Receiver(aInstance, LegacyPairingExtension::HandleStateChanged)
     , mState(kStateDisabled)
     , mLegacyMleReceiver(&LegacyPairingExtension::HandleUdpReceive, this)
     , mTimer(aInstance, LegacyPairingExtension::HandleTimer, this)
@@ -239,19 +246,6 @@ void LegacyPairingExtension::AfterNcpInit(Ncp::NcpBase &aNcpBase)
 {
     OT_UNUSED_VARIABLE(aNcpBase);
     IgnoreError(Init());
-}
-
-void LegacyPairingExtension::HandleStateChanged(Notifier::Receiver &aReceiver, Events aEvents)
-{
-    static_cast<LegacyPairingExtension &>(aReceiver).HandleStateChanged(aEvents);
-}
-
-void LegacyPairingExtension::HandleStateChanged(Events aEvents)
-{
-    if (aEvents.Contains(kEventMasterKeyChanged))
-    {
-        ComputeLegacyKey();
-    }
 }
 
 void LegacyPairingExtension::ComputeLegacyKey(void)
@@ -876,7 +870,8 @@ uint8_t *LegacyPairingExtension::AppendTlvs(uint8_t *aBufPtr, uint8_t aCommand, 
     switch (aCommand)
     {
     case MLE_CMD_LINK_ACCEPT_REQUEST:
-    case MLE_CMD_LINK_ACCEPT: {
+    case MLE_CMD_LINK_ACCEPT:
+    {
         uint32_t frameCounter = GetFrameCounter();
 
         *aBufPtr++ = TLV_LL_FRAME_COUNTER_TYPE;
