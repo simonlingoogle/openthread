@@ -49,9 +49,7 @@ namespace Utils {
 
 ChildSupervisor::ChildSupervisor(Instance &aInstance)
     : InstanceLocator(aInstance)
-    , Notifier::Receiver(aInstance, ChildSupervisor::HandleNotifierEvents)
     , mSupervisionInterval(kDefaultSupervisionInterval)
-    , mTimer(aInstance, ChildSupervisor::HandleTimer, this)
 {
 }
 
@@ -111,15 +109,8 @@ void ChildSupervisor::UpdateOnSend(Child &aChild)
     aChild.ResetSecondsSinceLastSupervision();
 }
 
-void ChildSupervisor::HandleTimer(Timer &aTimer)
+void ChildSupervisor::HandleTimeTick(void)
 {
-    aTimer.GetOwner<ChildSupervisor>().HandleTimer();
-}
-
-void ChildSupervisor::HandleTimer(void)
-{
-    VerifyOrExit(mSupervisionInterval != 0, OT_NOOP);
-
     for (Child &child : Get<ChildTable>().Iterate(Child::kInStateValid))
     {
         child.IncrementSecondsSinceLastSupervision();
@@ -129,11 +120,6 @@ void ChildSupervisor::HandleTimer(void)
             SendMessage(child);
         }
     }
-
-    mTimer.Start(kOneSecond);
-
-exit:
-    return;
 }
 
 void ChildSupervisor::CheckState(void)
@@ -147,22 +133,17 @@ void ChildSupervisor::CheckState(void)
     shouldRun = ((mSupervisionInterval != 0) && !Get<Mle::MleRouter>().IsDisabled() &&
                  Get<ChildTable>().HasChildren(Child::kInStateValid));
 
-    if (shouldRun && !mTimer.IsRunning())
+    if (shouldRun && !Get<TimeTicker>().IsReceiverRegistered(TimeTicker::kChildSupervisor))
     {
-        mTimer.Start(kOneSecond);
+        Get<TimeTicker>().RegisterReceiver(TimeTicker::kChildSupervisor);
         otLogInfoUtil("Starting Child Supervision");
     }
 
-    if (!shouldRun && mTimer.IsRunning())
+    if (!shouldRun && Get<TimeTicker>().IsReceiverRegistered(TimeTicker::kChildSupervisor))
     {
-        mTimer.Stop();
+        Get<TimeTicker>().UnregisterReceiver(TimeTicker::kChildSupervisor);
         otLogInfoUtil("Stopping Child Supervision");
     }
-}
-
-void ChildSupervisor::HandleNotifierEvents(Notifier::Receiver &aReceiver, Events aEvents)
-{
-    static_cast<ChildSupervisor &>(aReceiver).HandleNotifierEvents(aEvents);
 }
 
 void ChildSupervisor::HandleNotifierEvents(Events aEvents)
@@ -207,7 +188,7 @@ void SupervisionListener::UpdateOnReceive(const Mac::Address &aSourceAddress, bo
     // If listener is enabled and device is a child and it received a secure frame from its parent, restart the timer.
 
     VerifyOrExit(mTimer.IsRunning() && aIsSecure && Get<Mle::MleRouter>().IsChild() &&
-                     (Get<Mle::MleRouter>().GetNeighbor(aSourceAddress) == &Get<Mle::MleRouter>().GetParent()),
+                     (Get<NeighborTable>().FindNeighbor(aSourceAddress) == &Get<Mle::MleRouter>().GetParent()),
                  OT_NOOP);
 
     RestartTimer();

@@ -87,11 +87,6 @@ void Otns::EmitStatus(const char *aFmt, ...)
     otPlatOtnsStatus(statusStr);
 }
 
-void Otns::HandleNotifierEvents(Notifier::Receiver &aReceiver, Events aEvents)
-{
-    static_cast<Otns &>(aReceiver).HandleNotifierEvents(aEvents);
-}
-
 void Otns::HandleNotifierEvents(Events aEvents)
 {
     if (aEvents.Contains(kEventThreadRoleChanged))
@@ -112,7 +107,7 @@ void Otns::HandleNotifierEvents(Events aEvents)
 #endif
 }
 
-void Otns::EmitNeighborChange(otNeighborTableEvent aEvent, Neighbor &aNeighbor)
+void Otns::EmitNeighborChange(NeighborTable::Event aEvent, const Neighbor &aNeighbor)
 {
     switch (aEvent)
     {

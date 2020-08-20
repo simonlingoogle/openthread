@@ -53,6 +53,8 @@
 
 namespace ot {
 
+class ThreadLinkInfo;
+
 /**
  * @addtogroup core-message
  *
@@ -359,6 +361,7 @@ public:
      * This method returns the number of bytes in the message.
      *
      * @returns The number of bytes in the message.
+     *
      */
     uint16_t GetLength(void) const { return GetMetadata().mLength; }
 
@@ -799,6 +802,14 @@ public:
     const RssAverager &GetRssAverager(void) const { return GetMetadata().mRssAverager; }
 
     /**
+     * This method sets the message's link info properties (PAN ID, link security, RSS) from a given `ThreadLinkInfo`.
+     *
+     * @param[in] aLinkInfo   The `ThreadLinkInfo` instance from which to set message's related properties.
+     *
+     */
+    void SetLinkInfo(const ThreadLinkInfo &aLinkInfo);
+
+    /**
      * This static method updates a checksum.
      *
      * @param[in]  aChecksum  The checksum value to update.
@@ -1000,6 +1011,35 @@ private:
      *
      */
     otError ResizeMessage(uint16_t aLength);
+
+private:
+    struct Chunk
+    {
+        const uint8_t *GetData(void) const { return mData; }
+        uint16_t       GetLength(void) const { return mLength; }
+
+        const uint8_t *mData;   // Pointer to start of chunk data buffer.
+        uint16_t       mLength; // Length of chunk data (in bytes).
+        const Buffer * mBuffer; // Buffer containing the chunk
+    };
+
+    struct WritableChunk : public Chunk
+    {
+        uint8_t *GetData(void) const { return const_cast<uint8_t *>(mData); }
+    };
+
+    void GetFirstChunk(uint16_t aOffset, uint16_t &aLength, Chunk &chunk) const;
+    void GetNextChunk(uint16_t &aLength, Chunk &aChunk) const;
+
+    void GetFirstChunk(uint16_t aOffset, uint16_t &aLength, WritableChunk &aChunk)
+    {
+        const_cast<const Message *>(this)->GetFirstChunk(aOffset, aLength, static_cast<Chunk &>(aChunk));
+    }
+
+    void GetNextChunk(uint16_t &aLength, WritableChunk &aChunk)
+    {
+        const_cast<const Message *>(this)->GetNextChunk(aLength, static_cast<Chunk &>(aChunk));
+    }
 };
 
 /**

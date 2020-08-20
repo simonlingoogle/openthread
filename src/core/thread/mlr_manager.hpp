@@ -42,6 +42,7 @@
 #include "coap/coap_message.hpp"
 #include "common/locator.hpp"
 #include "common/notifier.hpp"
+#include "common/time_ticker.hpp"
 #include "common/timer.hpp"
 #include "net/netif.hpp"
 #include "thread/thread_tlvs.hpp"
@@ -67,8 +68,11 @@ namespace ot {
  * This class implements MLR management.
  *
  */
-class MlrManager : public InstanceLocator, public Notifier::Receiver
+class MlrManager : public InstanceLocator
 {
+    friend class ot::Notifier;
+    friend class ot::TimeTicker;
+
 public:
     /**
      * This constructor initializes the object.
@@ -104,15 +108,6 @@ public:
 #endif
 
 private:
-    enum
-    {
-        kTimerInterval = 1000,
-    };
-
-    static void HandleNotifierEvents(Notifier::Receiver &aReceiver, Events aEvents)
-    {
-        static_cast<MlrManager &>(aReceiver).HandleNotifierEvents(aEvents);
-    }
     void HandleNotifierEvents(Events aEvents);
 
     void SendMulticastListenerRegistration(void);
@@ -160,19 +155,16 @@ private:
                                    const Ip6::Address &aAddress);
 
     void ScheduleSend(uint16_t aDelay);
-    void ResetTimer(void);
+    void UpdateTimeTickerRegistration(void);
     void UpdateReregistrationDelay(bool aRereg);
     void Reregister(void);
-
-    static void HandleTimer(Timer &aTimer) { aTimer.GetOwner<MlrManager>().HandleTimer(); }
-    void        HandleTimer(void);
+    void HandleTimeTick(void);
 
     void LogMulticastAddresses(void);
 
-    TimerMilli mTimer;
-    uint32_t   mReregistrationDelay;
-    uint16_t   mSendDelay;
-    bool       mMlrPending : 1;
+    uint32_t mReregistrationDelay;
+    uint16_t mSendDelay;
+    bool     mMlrPending : 1;
 };
 
 } // namespace ot

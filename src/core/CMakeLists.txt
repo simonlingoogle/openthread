@@ -117,6 +117,7 @@ set(COMMON_SOURCES
     common/settings.cpp
     common/string.cpp
     common/tasklet.cpp
+    common/time_ticker.cpp
     common/timer.cpp
     common/tlvs.cpp
     common/trickle_timer.cpp
@@ -173,6 +174,7 @@ set(COMMON_SOURCES
     thread/announce_begin_server.cpp
     thread/announce_sender.cpp
     thread/child_table.cpp
+    thread/csl_tx_scheduler.cpp
     thread/discover_scanner.cpp
     thread/dua_manager.cpp
     thread/energy_scan_server.cpp
@@ -187,6 +189,7 @@ set(COMMON_SOURCES
     thread/mle_router.cpp
     thread/mle_types.cpp
     thread/mlr_manager.cpp
+    thread/neighbor_table.cpp
     thread/network_data.cpp
     thread/network_data_leader.cpp
     thread/network_data_leader_ftd.cpp
