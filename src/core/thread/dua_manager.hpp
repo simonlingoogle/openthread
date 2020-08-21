@@ -45,6 +45,7 @@
 #include "common/notifier.hpp"
 #include "common/tasklet.hpp"
 #include "common/time.hpp"
+#include "common/time_ticker.hpp"
 #include "common/timer.hpp"
 #include "net/netif.hpp"
 #include "thread/thread_tlvs.hpp"
@@ -70,8 +71,11 @@ namespace ot {
  * This class implements managing DUA.
  *
  */
-class DuaManager : public InstanceLocator, public Notifier::Receiver
+class DuaManager : public InstanceLocator
 {
+    friend class ot::Notifier;
+    friend class ot::TimeTicker;
+
 public:
     /**
      * This constructor initializes the object.
@@ -158,8 +162,7 @@ public:
 private:
     enum
     {
-        kNewRouterRegistrationDelay = 5,    ///< Delay (in seconds) for waiting link establishment for a new Router.
-        kStateUpdatePeriod          = 1000, ///< 1000ms period  (i.e. 1s)
+        kNewRouterRegistrationDelay = 5, ///< Delay (in seconds) for waiting link establishment for a new Router.
     };
 
 #if OPENTHREAD_CONFIG_DUA_ENABLE
@@ -175,20 +178,13 @@ private:
     void SendAddressNotification(Ip6::Address &aAddress, ThreadStatusTlv::DuaStatus aStatus, const Child &aChild);
 #endif
 
-    static void HandleNotifierEvents(Notifier::Receiver &aReceiver, Events aEvents)
-    {
-        static_cast<DuaManager &>(aReceiver).HandleNotifierEvents(aEvents);
-    }
-
     void HandleNotifierEvents(Events aEvents);
 
-    static void HandleTimer(Timer &aTimer) { aTimer.GetOwner<DuaManager>().HandleTimer(); }
-
-    void HandleTimer(void);
+    void HandleTimeTick(void);
 
     static void HandleRegistrationTask(Tasklet &aTasklet) { aTasklet.GetOwner<DuaManager>().PerformNextRegistration(); }
 
-    void ScheduleTimer(void);
+    void UpdateTimeTickerRegistration(void);
 
     static void HandleDuaResponse(void *               aContext,
                                   otMessage *          aMessage,
@@ -214,7 +210,6 @@ private:
     void UpdateReregistrationDelay(void);
     void UpdateCheckDelay(uint8_t aDelay);
 
-    TimerMilli     mTimer;
     Tasklet        mRegistrationTask;
     Coap::Resource mDuaNotification;
 

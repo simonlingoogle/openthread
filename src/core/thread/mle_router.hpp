@@ -40,6 +40,7 @@
 
 #include "coap/coap.hpp"
 #include "coap/coap_message.hpp"
+#include "common/time_ticker.hpp"
 #include "common/timer.hpp"
 #include "common/trickle_timer.hpp"
 #include "mac/mac_types.hpp"
@@ -75,6 +76,7 @@ class MleRouter : public Mle
 {
     friend class Mle;
     friend class ot::Instance;
+    friend class ot::TimeTicker;
 
 public:
     /**
@@ -345,57 +347,6 @@ public:
     void RemoveRouterLink(Router &aRouter);
 
     /**
-     * This method returns a pointer to a Neighbor object.
-     *
-     * @param[in]  aAddress  The address of the Neighbor.
-     *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
-     *
-     */
-    Neighbor *GetNeighbor(uint16_t aAddress);
-
-    /**
-     * This method returns a pointer to a Neighbor object.
-     *
-     * @param[in]  aAddress  The address of the Neighbor.
-     *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
-     *
-     */
-    Neighbor *GetNeighbor(const Mac::ExtAddress &aAddress);
-
-    /**
-     * This method returns a pointer to a Neighbor object.
-     *
-     * @param[in]  aAddress  The address of the Neighbor.
-     *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
-     *
-     */
-    Neighbor *GetNeighbor(const Mac::Address &aAddress);
-
-    /**
-     * This method returns a pointer to a Neighbor object.
-     *
-     * @param[in]  aAddress  The address of the Neighbor.
-     *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
-     *
-     */
-    Neighbor *GetNeighbor(const Ip6::Address &aAddress);
-
-    /**
-     * This method returns a pointer to a Neighbor object if a one-way link is maintained
-     * as in the instance of an FTD child with neighbor routers.
-     *
-     * @param[in]  aAddress  The address of the Neighbor.
-     *
-     * @returns A pointer to the Neighbor corresponding to @p aAddress, nullptr otherwise.
-     *
-     */
-    Neighbor *GetRxOnlyNeighborRouter(const Mac::Address &aAddress);
-
-    /**
      * This method indicates whether or not the RLOC16 is an MTD child of this device.
      *
      * @param[in]  aRloc16  The RLOC16.
@@ -405,20 +356,6 @@ public:
      *
      */
     bool IsMinimalChild(uint16_t aRloc16);
-
-    /**
-     * This method gets the next neighbor information. It is used to iterate through the entries of
-     * the neighbor table.
-     *
-     * @param[inout]  aIterator  A reference to the iterator context. To get the first neighbor entry
-                                 it should be set to OT_NEIGHBOR_INFO_ITERATOR_INIT.
-     * @param[out]    aNeighInfo The neighbor information.
-     *
-     * @retval OT_ERROR_NONE          Successfully found the next neighbor entry in table.
-     * @retval OT_ERROR_NOT_FOUND     No subsequent neighbor entry exists in the table.
-     *
-     */
-    otError GetNextNeighborInfo(otNeighborInfoIterator &aIterator, Neighbor::Info &aNeighInfo);
 
     /**
      * This method indicates whether or not the given Thread partition attributes are preferred.
@@ -484,7 +421,7 @@ public:
      * @param[out]  aTlv  A reference to the tlv to be filled.
      *
      */
-    void FillRouteTlv(RouteTlv &aTlv);
+    void FillRouteTlv(RouteTlv &aTlv, Neighbor *aNeighbor = nullptr);
 
     /**
      * This method generates an MLE Child Update Request message to be sent to the parent.
@@ -542,27 +479,17 @@ public:
     otError GetMaxChildTimeout(uint32_t &aTimeout) const;
 
     /**
-     * This method register the "neighbor table changed" callback function.
+     * This function sets the callback that is called when processing an MLE Discovery Request message.
      *
-     * The provided callback (if non-nullptr) will be invoked when a child/router entry is being added/remove to/from
-     * the neighbor table. Subsequent calls to this method will overwrite the previous callback.
-     *
-     * @param[in] aCallback    A pointer to callback handler function.
+     * @param[in]  aCallback A pointer to a function that is called to deliver MLE Discovery Request data.
+     * @param[in]  aContext  A pointer to application-specific context.
      *
      */
-    void RegisterNeighborTableChangedCallback(otNeighborTableCallback aCallback)
+    void SetDiscoveryRequestCallback(otThreadDiscoveryRequestCallback aCallback, void *aContext)
     {
-        mNeighborTableChangedCallback = aCallback;
+        mDiscoveryRequestCallback        = aCallback;
+        mDiscoveryRequestCallbackContext = aContext;
     }
-
-    /**
-     * This method signals a "neighbor table changed" events (invoking the registered callback function).
-     *
-     * @param[in] aEvent     The event to emit (child/router added/removed).
-     * @param[in] aNeighbor  The neighbor that is being added/removed.
-     *
-     */
-    void Signal(otNeighborTableEvent aEvent, Neighbor &aNeighbor);
 
     /**
      * This method resets the MLE Advertisement Trickle timer interval.
@@ -634,7 +561,7 @@ private:
 
     otError AppendConnectivity(Message &aMessage);
     otError AppendChildAddresses(Message &aMessage, Child &aChild);
-    otError AppendRoute(Message &aMessage);
+    otError AppendRoute(Message &aMessage, Neighbor *aNeighbor = nullptr);
     otError AppendActiveDataset(Message &aMessage);
     otError AppendPendingDataset(Message &aMessage);
     void    HandleDetachStart(void);
@@ -722,19 +649,15 @@ private:
 
     static bool HandleAdvertiseTimer(TrickleTimer &aTimer);
     bool        HandleAdvertiseTimer(void);
-    static void HandleStateUpdateTimer(Timer &aTimer);
-    void        HandleStateUpdateTimer(void);
+    void        HandleTimeTick(void);
 
     TrickleTimer mAdvertiseTimer;
-    TimerMilli   mStateUpdateTimer;
 
     Coap::Resource mAddressSolicit;
     Coap::Resource mAddressRelease;
 
     ChildTable  mChildTable;
     RouterTable mRouterTable;
-
-    otNeighborTableCallback mNeighborTableChangedCallback;
 
     uint8_t   mChallengeTimeout;
     Challenge mChallenge;
@@ -771,6 +694,9 @@ private:
 #if OPENTHREAD_CONFIG_MLE_STEERING_DATA_SET_OOB_ENABLE
     MeshCoP::SteeringData mSteeringData;
 #endif
+
+    otThreadDiscoveryRequestCallback mDiscoveryRequestCallback;
+    void *                           mDiscoveryRequestCallbackContext;
 };
 
 #endif // OPENTHREAD_FTD
@@ -796,11 +722,6 @@ public:
 
     otError RemoveNeighbor(Neighbor &) { return BecomeDetached(); }
     void    RemoveRouterLink(Router &) { IgnoreError(BecomeDetached()); }
-
-    Neighbor *GetNeighbor(const Mac::ExtAddress &aAddress) { return Mle::GetNeighbor(aAddress); }
-    Neighbor *GetNeighbor(const Mac::Address &aAddress) { return Mle::GetNeighbor(aAddress); }
-
-    otError GetNextNeighborInfo(otNeighborInfoIterator &, otNeighborInfo &) { return OT_ERROR_NOT_IMPLEMENTED; }
 
     static bool IsRouterIdValid(uint8_t aRouterId) { return aRouterId <= kMaxRouterId; }
 

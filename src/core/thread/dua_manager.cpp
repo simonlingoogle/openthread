@@ -51,8 +51,6 @@ namespace ot {
 
 DuaManager::DuaManager(Instance &aInstance)
     : InstanceLocator(aInstance)
-    , Notifier::Receiver(aInstance, DuaManager::HandleNotifierEvents)
-    , mTimer(aInstance, DuaManager::HandleTimer, this)
     , mRegistrationTask(aInstance, DuaManager::HandleRegistrationTask, this)
     , mDuaNotification(OT_URI_PATH_DUA_REGISTRATION_NOTIFY, &DuaManager::HandleDuaNotification, this)
     , mIsDuaPending(false)
@@ -69,13 +67,7 @@ DuaManager::DuaManager(Instance &aInstance)
     mDelay.mValue = 0;
 
 #if OPENTHREAD_CONFIG_DUA_ENABLE
-    mDomainUnicastAddress.Clear();
-    mDomainUnicastAddress.mAddressOrigin      = OT_ADDRESS_ORIGIN_THREAD;
-    mDomainUnicastAddress.mPreferred          = false;
-    mDomainUnicastAddress.mValid              = true;
-    mDomainUnicastAddress.mScopeOverride      = Ip6::Address::kGlobalScope;
-    mDomainUnicastAddress.mScopeOverrideValid = true;
-
+    mDomainUnicastAddress.InitAsThreadOriginGlobalScope();
     mFixedDuaInterfaceIdentifier.Clear();
 #endif
 
@@ -263,7 +255,7 @@ void DuaManager::UpdateRegistrationDelay(uint8_t aDelay)
         mDelay.mFields.mRegistrationDelay = aDelay;
 
         otLogDebgDua("update regdelay %d", mDelay.mFields.mRegistrationDelay);
-        ScheduleTimer();
+        UpdateTimeTickerRegistration();
     }
 }
 #endif
@@ -280,7 +272,7 @@ void DuaManager::UpdateReregistrationDelay(void)
     if (mDelay.mFields.mReregistrationDelay == 0 || mDelay.mFields.mReregistrationDelay > delay)
     {
         mDelay.mFields.mReregistrationDelay = delay;
-        ScheduleTimer();
+        UpdateTimeTickerRegistration();
         otLogDebgDua("update reregdelay %d", mDelay.mFields.mReregistrationDelay);
     }
 
@@ -295,7 +287,7 @@ void DuaManager::UpdateCheckDelay(uint8_t aDelay)
         mDelay.mFields.mCheckDelay = aDelay;
 
         otLogDebgDua("update checkdelay %d", mDelay.mFields.mCheckDelay);
-        ScheduleTimer();
+        UpdateTimeTickerRegistration();
     }
 }
 
@@ -340,7 +332,7 @@ void DuaManager::HandleBackboneRouterPrimaryUpdate(BackboneRouter::Leader::State
     }
 }
 
-void DuaManager::HandleTimer(void)
+void DuaManager::HandleTimeTick(void)
 {
     bool attempt = false;
 
@@ -384,18 +376,18 @@ void DuaManager::HandleTimer(void)
         mRegistrationTask.Post();
     }
 
-    ScheduleTimer();
+    UpdateTimeTickerRegistration();
 }
 
-void DuaManager::ScheduleTimer(void)
+void DuaManager::UpdateTimeTickerRegistration(void)
 {
     if (mDelay.mValue == 0)
     {
-        mTimer.Stop();
+        Get<TimeTicker>().UnregisterReceiver(TimeTicker::kDuaManager);
     }
-    else if (!mTimer.IsRunning())
+    else
     {
-        mTimer.Start(kStateUpdatePeriod);
+        Get<TimeTicker>().RegisterReceiver(TimeTicker::kDuaManager);
     }
 }
 
@@ -616,7 +608,7 @@ otError DuaManager::ProcessDuaResponse(Coap::Message &aMessage)
     {
         Child *child = Get<ChildTable>().GetChildAtIndex(mChildIndexDuaRegistering);
 
-        VerifyOrExit(child != NULL, error = OT_ERROR_NOT_FOUND);
+        VerifyOrExit(child != nullptr, error = OT_ERROR_NOT_FOUND);
         VerifyOrExit(child->HasIp6Address(target), error = OT_ERROR_NOT_FOUND);
 
         mRegisterCurrentChildIndex = false;
@@ -648,7 +640,7 @@ otError DuaManager::ProcessDuaResponse(Coap::Message &aMessage)
 #endif // OPENTHREAD_CONFIG_TMF_PROXY_DUA_ENABLE
 
 exit:
-    ScheduleTimer();
+    UpdateTimeTickerRegistration();
     return error;
 }
 
@@ -685,7 +677,7 @@ exit:
         otLogWarnDua("Sent ADDR_NTF for child %04x DUA %s Error %s", aChild.GetRloc16(),
                      aAddress.ToString().AsCString(), otThreadErrorToString(error));
 
-        if (message != NULL)
+        if (message != nullptr)
         {
             message->Free();
         }

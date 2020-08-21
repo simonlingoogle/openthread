@@ -49,7 +49,6 @@ namespace Utils {
 
 Slaac::Slaac(Instance &aInstance)
     : InstanceLocator(aInstance)
-    , Notifier::Receiver(aInstance, Slaac::HandleNotifierEvents)
     , mEnabled(true)
     , mFilter(nullptr)
 {
@@ -97,11 +96,6 @@ exit:
 bool Slaac::ShouldFilter(const Ip6::Prefix &aPrefix) const
 {
     return (mFilter != nullptr) && mFilter(&GetInstance(), &aPrefix);
-}
-
-void Slaac::HandleNotifierEvents(Notifier::Receiver &aReceiver, Events aEvents)
-{
-    static_cast<Slaac &>(aReceiver).HandleNotifierEvents(aEvents);
 }
 
 void Slaac::HandleNotifierEvents(Events aEvents)
@@ -235,13 +229,8 @@ void Slaac::Update(UpdateMode aMode)
                         continue;
                     }
 
-                    slaacAddr.Clear();
+                    slaacAddr.InitAsSlaacOrigin(config.mOnMesh ? prefix.mLength : 128, config.mPreferred);
                     slaacAddr.GetAddress().SetPrefix(prefix);
-
-                    slaacAddr.mPrefixLength  = config.mOnMesh ? prefix.mLength : 128;
-                    slaacAddr.mAddressOrigin = OT_ADDRESS_ORIGIN_SLAAC;
-                    slaacAddr.mPreferred     = config.mPreferred;
-                    slaacAddr.mValid         = true;
 
                     IgnoreError(GenerateIid(slaacAddr));
 

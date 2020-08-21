@@ -30,11 +30,14 @@ LOCAL_PATH := $(call my-dir)
 
 OPENTHREAD_DEFAULT_VERSION := $(shell cat $(LOCAL_PATH)/.default-version)
 OPENTHREAD_SOURCE_VERSION := $(shell git -C $(LOCAL_PATH) describe --always --match "[0-9].*" 2> /dev/null)
-OPENTHREAD_PROJECT_CFLAGS ?= -DOPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"openthread-core-posix-config.h\"
+
+OPENTHREAD_PROJECT_CFLAGS                                                 ?= \
+    -DOPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"openthread-core-posix-config.h\" \
+    -DOPENTHREAD_CONFIG_FILE=\<openthread-config-android.h\>                 \
+    $(NULL)
 
 OPENTHREAD_PUBLIC_CFLAGS                                         := \
     -DOPENTHREAD_CONFIG_COMMISSIONER_ENABLE=1                       \
-    -DOPENTHREAD_CONFIG_FILE=\<openthread-config-android.h\>        \
     -DOPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE=1                  \
     -DOPENTHREAD_CONFIG_MAC_FILTER_ENABLE=1                         \
     -DOPENTHREAD_POSIX_CONFIG_RCP_PTY_ENABLE=1                      \
@@ -139,7 +142,6 @@ LOCAL_EXPORT_C_INCLUDE_DIRS     := \
 LOCAL_CPPFLAGS                                                              := \
     -std=c++11                                                                 \
     -pedantic-errors                                                           \
-    -Wno-non-virtual-dtor                                                      \
     $(NULL)
 
 LOCAL_SRC_FILES                                          := \
@@ -189,6 +191,7 @@ LOCAL_SRC_FILES                                          := \
     src/core/common/settings.cpp                            \
     src/core/common/string.cpp                              \
     src/core/common/tasklet.cpp                             \
+    src/core/common/time_ticker.cpp                         \
     src/core/common/timer.cpp                               \
     src/core/common/tlvs.cpp                                \
     src/core/common/trickle_timer.cpp                       \
@@ -242,6 +245,7 @@ LOCAL_SRC_FILES                                          := \
     src/core/thread/announce_begin_server.cpp               \
     src/core/thread/announce_sender.cpp                     \
     src/core/thread/child_table.cpp                         \
+    src/core/thread/csl_tx_scheduler.cpp                    \
     src/core/thread/discover_scanner.cpp                    \
     src/core/thread/dua_manager.cpp                         \
     src/core/thread/energy_scan_server.cpp                  \
@@ -256,6 +260,7 @@ LOCAL_SRC_FILES                                          := \
     src/core/thread/mle_router.cpp                          \
     src/core/thread/mle_types.cpp                           \
     src/core/thread/mlr_manager.cpp                         \
+    src/core/thread/neighbor_table.cpp                      \
     src/core/thread/network_data.cpp                        \
     src/core/thread/network_data_leader.cpp                 \
     src/core/thread/network_data_leader_ftd.cpp             \
@@ -350,7 +355,6 @@ LOCAL_CFLAGS                                                                := \
 LOCAL_CPPFLAGS                                                              := \
     -std=c++11                                                                 \
     -pedantic-errors                                                           \
-    -Wno-non-virtual-dtor                                                      \
     $(NULL)
 
 LOCAL_SRC_FILES                            := \
@@ -361,7 +365,6 @@ LOCAL_SRC_FILES                            := \
     src/cli/cli_console.cpp                   \
     src/cli/cli_dataset.cpp                   \
     src/cli/cli_joiner.cpp                    \
-    src/cli/cli_server.cpp                    \
     src/cli/cli_uart.cpp                      \
     src/cli/cli_udp.cpp                       \
     $(NULL)
@@ -395,7 +398,6 @@ LOCAL_CFLAGS                                                                := \
 LOCAL_CPPFLAGS                                                              := \
     -std=c++11                                                                 \
     -pedantic-errors                                                           \
-    -Wno-non-virtual-dtor                                                      \
     $(NULL)
 
 LOCAL_LDLIBS                               := \
@@ -435,7 +437,6 @@ LOCAL_CFLAGS                                                                := \
 LOCAL_CPPFLAGS                                                              := \
     -std=c++11                                                                 \
     -pedantic-errors                                                           \
-    -Wno-non-virtual-dtor                                                      \
     $(NULL)
 
 LOCAL_SRC_FILES                            := \
@@ -477,7 +478,6 @@ LOCAL_CFLAGS                                                                := \
 LOCAL_CPPFLAGS                                                              := \
     -std=c++11                                                                 \
     -pedantic-errors                                                           \
-    -Wno-non-virtual-dtor                                                      \
     $(NULL)
 
 LOCAL_SRC_FILES                            := \
@@ -501,11 +501,12 @@ LOCAL_MODULE_TAGS := eng
 LOCAL_CPPFLAGS                                                              := \
     -std=c++11                                                                 \
     -pedantic-errors                                                           \
-    -Wno-non-virtual-dtor                                                      \
     $(NULL)
 
-LOCAL_CFLAGS                                               := \
-    -DOPENTHREAD_CONFIG_FILE=\<openthread-config-android.h\>  \
+LOCAL_CFLAGS                                                                := \
+    $(OPENTHREAD_PUBLIC_CFLAGS)                                                \
+    $(OPENTHREAD_PRIVATE_CFLAGS)                                               \
+    $(OPENTHREAD_PROJECT_CFLAGS)                                               \
     $(NULL)
 
 LOCAL_C_INCLUDES                                         := \
