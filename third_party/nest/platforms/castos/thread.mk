@@ -1,6 +1,10 @@
 # Copyright 2019 Google LLC. All Rights Reserved.
 
-OPENTHREAD_PROJECT_CFLAGS = -DOPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"openthread-core-castos-config.h\"
+OPENTHREAD_PROJECT_CFLAGS = \
+  -DOPENTHREAD_PROJECT_CORE_CONFIG_FILE=\"openthread-core-castos-config.h\" \
+  -DOPENTHREAD_CONFIG_FILE=\"openthread-castos-config.h\" \
+  $(NULL)
+
 OPENTHREAD_PROJECT_INCLUDES = external/openthread/third_party/nest/platforms/castos
 OPENTHREAD_PROJECT_SRC_FILES = third_party/nest/extension/ot-legacy-pairing-ext.cpp
 

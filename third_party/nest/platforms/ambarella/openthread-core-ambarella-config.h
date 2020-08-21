@@ -169,22 +169,6 @@
 #define OPENTHREAD_CONFIG_DIAG_CMD_LINE_BUFFER_SIZE 1300
 
 /**
- * @def OPENTHREAD_CONFIG_CLI_TX_BUFFER_SIZE
- *
- *  The size of CLI message buffer in bytes
- *
- */
-#define OPENTHREAD_CONFIG_CLI_UART_TX_BUFFER_SIZE 3500
-
-/**
- * @def OPENTHREAD_CONFIG_CLI_UART_RX_BUFFER_SIZE
- *
- * The size of CLI UART RX buffer in bytes.
- *
- */
-#define OPENTHREAD_CONFIG_CLI_UART_RX_BUFFER_SIZE 3500
-
-/**
  * @def OPENTHREAD_CONFIG_LOG_LEVEL
  *
  * The log level (used at compile time). If `OPENTHREAD_CONFIG_LOG_LEVEL_DYNAMIC_ENABLE`
@@ -265,14 +249,6 @@
 #define OPENTHREAD_CONFIG_LOG_COAP 1
 #define OPENTHREAD_CONFIG_LOG_CORE 1
 #define OPENTHREAD_CONFIG_LOG_UTIL 1
-
-/**
- * @def OPENTHREAD_CONFIG_UART_CLI_RAW
- *
- * Define 1 to disable echo inputs
- *
- */
-#define OPENTHREAD_CONFIG_UART_CLI_RAW 1
 
 /**
  * @def OPENTHREAD_CONFIG_POSIX_SETTINGS_PATH
