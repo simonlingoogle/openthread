@@ -49,7 +49,7 @@ namespace ot {
 
 ThreadNetif::ThreadNetif(Instance &aInstance)
     : Netif(aInstance)
-    , mTmfAgent(aInstance)
+    , mTmfAgent(aInstance, OT_NETIF_THREAD)
 #if OPENTHREAD_CONFIG_DHCP6_CLIENT_ENABLE
     , mDhcp6Client(aInstance)
 #endif
@@ -110,6 +110,7 @@ ThreadNetif::ThreadNetif(Instance &aInstance)
 #if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
     , mBackboneRouterLocal(aInstance)
     , mBackboneRouterManager(aInstance)
+    , mBackboneTmfAgent(aInstance, OT_NETIF_BACKBONE)
 #endif
 #if OPENTHREAD_CONFIG_MLR_ENABLE || OPENTHREAD_CONFIG_TMF_PROXY_MLR_ENABLE
     , mMlrManager(aInstance)

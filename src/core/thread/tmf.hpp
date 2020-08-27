@@ -57,8 +57,9 @@ public:
      * @param[in] aInstance      A reference to the OpenThread instance.
      *
      */
-    explicit TmfAgent(Instance &aInstance)
+    explicit TmfAgent(Instance &aInstance, otNetifIdentifier aNetifIdentifier)
         : Coap::Coap(aInstance)
+        , mNetifIdentifier(aNetifIdentifier)
     {
         SetInterceptor(&Filter, this);
     }
@@ -84,6 +85,8 @@ public:
 private:
     otError        Start(uint16_t aPort);
     static otError Filter(const ot::Coap::Message &aMessage, const Ip6::MessageInfo &aMessageInfo, void *aContext);
+
+    otNetifIdentifier mNetifIdentifier;
 };
 
 } // namespace Tmf

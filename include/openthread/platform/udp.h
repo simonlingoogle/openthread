@@ -43,6 +43,7 @@ typedef enum otNetifIdentifier
 {
     OT_NETIF_UNSPECIFIED = 0, ///< Unspecified network interface.
     OT_NETIF_THREAD,          ///< The Thread interface.
+    OT_NETIF_BACKBONE,        ///< The Backbone interface.
 } otNetifIdentifier;
 
 /**

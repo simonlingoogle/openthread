@@ -291,6 +291,16 @@ public:
     Coap::CoapSecure &GetApplicationCoapSecure(void) { return mApplicationCoapSecure; }
 #endif
 
+#if OPENTHREAD_FTD && OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+    /**
+     * This method returns a reference to the Backbone TMF agent.
+     *
+     * @returns A reference to the Backbone TMF agent.
+     *
+     */
+    Tmf::TmfAgent &GetBackboneTmfAgent(void) { return mThreadNetif.mBackboneTmfAgent; }
+#endif
+
 #endif // OPENTHREAD_MTD || OPENTHREAD_FTD
 
     /**

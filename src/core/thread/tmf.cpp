@@ -44,7 +44,7 @@ otError TmfAgent::Start(void)
 
     SuccessOrExit(error = Coap::Start(kUdpPort));
 #if OPENTHREAD_CONFIG_PLATFORM_UDP_ENABLE
-    error = mSocket.BindToNetif(OT_NETIF_THREAD);
+    error = mSocket.BindToNetif(mNetifIdentifier);
     VerifyOrExit(OT_ERROR_NONE == error, IgnoreError(mSocket.Close()));
 #endif
 

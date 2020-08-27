@@ -66,6 +66,8 @@ Manager::Manager(Instance &aInstance)
 
 void Manager::HandleNotifierEvents(Events aEvents)
 {
+    otError error;
+
     if (aEvents.Contains(kEventThreadBackboneRouterStateChanged))
     {
         if (Get<BackboneRouter::Local>().GetState() == OT_BACKBONE_ROUTER_STATE_DISABLED)
@@ -82,6 +84,33 @@ void Manager::HandleNotifierEvents(Events aEvents)
             if (!mTimer.IsRunning())
             {
                 mTimer.Start(kTimerInterval);
+            }
+        }
+
+        if (Get<BackboneRouter::Local>().GetState() == OT_BACKBONE_ROUTER_STATE_PRIMARY)
+        {
+            error = GetInstance().GetBackboneTmfAgent().Start();
+
+            if (error != OT_ERROR_NONE)
+            {
+                otLogCritBbr("Start Backbone TMF agent: %s", otThreadErrorToString(error));
+            }
+            else
+            {
+                otLogInfoBbr("Start Backbone TMF agent: %s", otThreadErrorToString(error));
+            }
+        }
+        else
+        {
+            error = GetInstance().GetBackboneTmfAgent().Stop();
+
+            if (error != OT_ERROR_NONE)
+            {
+                otLogWarnBbr("Stop Backbone TMF agent: %s", otThreadErrorToString(error));
+            }
+            else
+            {
+                otLogInfoBbr("Stop Backbone TMF agent: %s", otThreadErrorToString(error));
             }
         }
     }
