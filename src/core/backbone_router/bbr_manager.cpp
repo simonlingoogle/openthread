@@ -130,8 +130,9 @@ void Manager::HandleMulticastListenerRegistration(const Coap::Message &aMessage,
     ThreadStatusTlv::MlrStatus status    = ThreadStatusTlv::kMlrSuccess;
     uint16_t                   addressesOffset, addressesLength;
     Ip6::Address               address;
-    Ip6::Address               failedAddresses[kIPv6AddressesNumMax];
-    uint8_t                    failedAddressNum = 0;
+    Ip6::Address               addresses[kIPv6AddressesNumMax];
+    uint8_t                    failedAddressNum  = 0;
+    uint8_t                    successAddressNum = 0;
     TimeMilli                  expireTime;
     BackboneRouterConfig       config;
 
@@ -190,15 +191,25 @@ void Manager::HandleMulticastListenerRegistration(const Coap::Message &aMessage,
 
         if (failed)
         {
-            failedAddresses[failedAddressNum++] = address;
+            addresses[failedAddressNum++] = address;
+        }
+        else
+        {
+            addresses[kIPv6AddressesNumMax - (++successAddressNum)] = address;
         }
     }
 
 exit:
     if (error == OT_ERROR_NONE)
     {
-        SendMulticastListenerRegistrationResponse(aMessage, aMessageInfo, status, failedAddresses, failedAddressNum);
+        SendMulticastListenerRegistrationResponse(aMessage, aMessageInfo, status, addresses, failedAddressNum);
         // TODO: (MLR) send BMLR.req
+    }
+
+    if (successAddressNum > 0)
+    {
+        SendBackboneMulticastListenerRegistration(&addresses[kIPv6AddressesNumMax - successAddressNum],
+                                                  successAddressNum, config.mMlrTimeout);
     }
 }
 
@@ -241,6 +252,50 @@ exit:
     }
 
     otLogInfoBbr("Sent MLR.rsp (status=%d): %s", aStatus, otThreadErrorToString(error));
+}
+
+void Manager::SendBackboneMulticastListenerRegistration(const Ip6::Address *aAddresses,
+                                                        uint8_t             aAddressNum,
+                                                        uint32_t            aTimeout)
+{
+    otError          error   = OT_ERROR_NONE;
+    Coap::Message *  message = nullptr;
+    Ip6::MessageInfo messageInfo;
+    IPv6AddressesTlv addressesTlv;
+    Tmf::TmfAgent &  backboneTmf = GetInstance().GetBackboneTmfAgent();
+
+    OT_ASSERT(aAddressNum >= kIPv6AddressesNumMin && aAddressNum <= kIPv6AddressesNumMax);
+
+    VerifyOrExit((message = backboneTmf.NewMessage()) != nullptr, error = OT_ERROR_NO_BUFS);
+
+    message->Init(OT_COAP_TYPE_NON_CONFIRMABLE, OT_COAP_CODE_POST);
+    SuccessOrExit(message->SetToken(Coap::Message::kDefaultTokenLength));
+    SuccessOrExit(message->AppendUriPathOptions(OT_URI_PATH_BACKBONE_MLR));
+    SuccessOrExit(message->SetPayloadMarker());
+
+    addressesTlv.Init();
+    addressesTlv.SetLength(sizeof(Ip6::Address) * aAddressNum);
+    SuccessOrExit(error = message->Append(&addressesTlv, sizeof(addressesTlv)));
+    SuccessOrExit(error = message->Append(aAddresses, sizeof(Ip6::Address) * aAddressNum));
+
+    SuccessOrExit(ThreadTlv::AppendUint32Tlv(*message, ThreadTlv::kTimeout, aTimeout));
+
+    messageInfo.SetPeerAddr(Get<BackboneRouter::Local>().GetAllNetworkBackboneRoutersAddress());
+    messageInfo.SetPeerPort(Tmf::kUdpPort); // TODO: Provide API for configuring Backbone COAP port.
+
+    messageInfo.SetSockAddr(Get<Mle::MleRouter>().GetMeshLocal16());
+    messageInfo.SetHopLimit(Mle::kDefaultBackboneHoplimit);
+    messageInfo.SetIsHostInterface(true);
+
+    SuccessOrExit(error = backboneTmf.SendMessage(*message, messageInfo, nullptr, nullptr));
+
+exit:
+    if (error != OT_ERROR_NONE && message != nullptr)
+    {
+        message->Free();
+    }
+
+    otLogInfoBbr("Sent BMLR.ntf: %s", otThreadErrorToString(error));
 }
 
 void Manager::HandleDuaRegistration(const Coap::Message &aMessage, const Ip6::MessageInfo &aMessageInfo)

@@ -79,6 +79,7 @@ public:
         kNDOption            = 8,  ///< ND Option TLV
         kNDData              = 9,  ///< ND Data TLV
         kThreadNetworkData   = 10, ///< Thread Network Data TLV
+        kTimeout             = 11, ///< Timeout TLV
         kIPv6Addresses       = 14, ///< IPv6 Addresses TLV
     };
 

@@ -268,6 +268,7 @@ enum
     KResponseTimeoutDelay             = 30,                ///< In seconds.
     kDuaDadPeriod                     = 100,               ///< In seconds. Time period after which the address
                                                            ///< becomes "Preferred" if no duplicate address error.
+    kDefaultBackboneHoplimit = 1, ///< default hoplimit for Thread Backbone Link Protocol messages
 };
 
 static_assert(kMlrTimeoutDefault >= kMlrTimeoutMin && kMlrTimeoutDefault <= kMlrTimeoutMax,
