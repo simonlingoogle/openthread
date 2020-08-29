@@ -276,9 +276,6 @@ otError otPlatUdpBind(otUdpSocket *aUdpSocket)
         VerifyOrExit(0 == setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &on, sizeof(on)), error = OT_ERROR_FAILED);
     }
 
-    VerifyOrExit(0 == setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF, &gNetifIndex, sizeof(gNetifIndex)),
-                 error = OT_ERROR_FAILED);
-
 exit:
     if (error == OT_ERROR_FAILED)
     {
