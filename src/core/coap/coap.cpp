@@ -1018,11 +1018,17 @@ Coap::Coap(Instance &aInstance)
 {
 }
 
-otError Coap::Start(uint16_t aPort)
+otError Coap::Start(uint16_t aPort, otNetifIdentifier aNetifIdentifier)
 {
     otError error;
 
     SuccessOrExit(error = mSocket.Open(&Coap::HandleUdpReceive, this));
+
+#if OPENTHREAD_CONFIG_PLATFORM_UDP_ENABLE
+    error = mSocket.BindToNetif(aNetifIdentifier);
+    VerifyOrExit(OT_ERROR_NONE == error, IgnoreError(mSocket.Close()));
+#endif
+
     VerifyOrExit((error = mSocket.Bind(aPort)) == OT_ERROR_NONE, IgnoreError(mSocket.Close()));
 
 exit:

@@ -612,7 +612,7 @@ public:
      * @retval OT_ERROR_ALREADY Already started.
      *
      */
-    otError Start(uint16_t aPort);
+    otError Start(uint16_t aPort, otNetifIdentifier aNetifIdentifier = OT_NETIF_UNSPECIFIED);
 
     /**
      * This method stops the CoAP service.
