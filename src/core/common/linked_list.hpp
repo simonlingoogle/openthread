@@ -357,23 +357,7 @@ public:
      * @retval OT_ERROR_NOT_FOUND  The entry was not found in the list.
      *
      */
-    otError Find(const Type &aEntry, const Type *&aPrevEntry) const
-    {
-        otError error = OT_ERROR_NOT_FOUND;
-
-        aPrevEntry = nullptr;
-
-        for (const Type *entry = mHead; entry != nullptr; aPrevEntry = entry, entry = entry->GetNext())
-        {
-            if (entry == &aEntry)
-            {
-                error = OT_ERROR_NONE;
-                break;
-            }
-        }
-
-        return error;
-    }
+    otError Find(const Type &aEntry, const Type *&aPrevEntry) const { return FindPrev(&aEntry, aPrevEntry); }
 
     /**
      * This method searches within the linked list to find an entry and if found returns a pointer to previous entry.
@@ -458,15 +442,9 @@ public:
      */
     const Type *GetTail(void) const
     {
-        const Type *tail = mHead;
+        const Type *tail;
 
-        if (tail != nullptr)
-        {
-            while (tail->GetNext() != nullptr)
-            {
-                tail = tail->GetNext();
-            }
-        }
+        FindPrev(nullptr, tail);
 
         return tail;
     }
@@ -480,6 +458,32 @@ public:
     Type *GetTail(void) { return const_cast<Type *>(const_cast<const LinkedList *>(this)->GetTail()); }
 
 private:
+    otError FindPrev(const Type *aEntry, const Type *&aPrevEntry) const
+    {
+        otError     error = OT_ERROR_NOT_FOUND;
+        const Type *entry = mHead;
+
+        aPrevEntry = nullptr;
+
+        while (true)
+        {
+            if (entry == aEntry)
+            {
+                error = OT_ERROR_NONE;
+                break;
+            }
+            else if (entry == nullptr)
+            {
+                break;
+            }
+
+            aPrevEntry = entry;
+            entry      = entry->GetNext();
+        }
+
+        return error;
+    }
+
     Type *mHead;
 };
 
