@@ -31,6 +31,7 @@
 #include "common/notifier.hpp"
 #include "common/random.hpp"
 #include "common/timer.hpp"
+#include "net/ip6_address.hpp"
 #include "thread/key_manager.hpp"
 
 namespace ot {
@@ -130,6 +131,7 @@ private:
     void     Stop(void);
     void     Join(const otExtAddress *aDstAddress);
     void     SetPrefix(const uint8_t *aUlaPrefix);
+    void     LogMleMessage(const char *aLogString, const otIp6Address *aIp6Address) const;
     void     ComputeLegacyKey(void);
     otError  AddReceiver(void);
     bool     HandleUdpReceive(const otMessage *aMessage, const otMessageInfo *aMessageInfo);
@@ -206,6 +208,8 @@ void ExtensionBase::SignalNcpInit(Ncp::NcpBase &aNcpBase)
 
 void ExtensionBase::HandleNotifierEvents(Events aEvents)
 {
+    otLogInfoMle("[Legacy] Notifier Events: %08x", aEvents.GetAsFlags());
+
     if (aEvents.Contains(kEventMasterKeyChanged))
     {
         static_cast<LegacyPairingExtension *>(this)->ComputeLegacyKey();
@@ -248,6 +252,17 @@ void LegacyPairingExtension::AfterNcpInit(Ncp::NcpBase &aNcpBase)
     IgnoreError(Init());
 }
 
+void LegacyPairingExtension::LogMleMessage(const char *aLogString, const otIp6Address *aIp6Address) const
+{
+    const Ip6::Address *address = reinterpret_cast<const Ip6::Address *>(aIp6Address);
+
+    OT_UNUSED_VARIABLE(aLogString);
+    OT_UNUSED_VARIABLE(aIp6Address);
+    OT_UNUSED_VARIABLE(address);
+
+    otLogInfoMle("%s (%s)", aLogString, address->ToString().AsCString());
+}
+
 void LegacyPairingExtension::ComputeLegacyKey(void)
 {
     static const uint8_t kLegacyString[] = {
@@ -256,6 +271,8 @@ void LegacyPairingExtension::ComputeLegacyKey(void)
 
     otCryptoHmacSha256(Get<KeyManager>().GetMasterKey().m8, OT_MASTER_KEY_SIZE, kLegacyString, sizeof(kLegacyString),
                        mLegacyKey);
+
+    otLogInfoMle("[Legacy] Update Legacy Key");
 }
 
 void LegacyPairingExtension::GenerateNonce(const otExtAddress *aMacAddr,
@@ -306,6 +323,8 @@ void LegacyPairingExtension::Start(void)
     mState               = kStateJoining;
     mJoinAttemptsCounter = 0;
     mTimer.Start(MLE_JOIN_TX_PERIOD_IN_MS);
+
+    otLogInfoMle("[Legacy] Start");
 }
 
 void LegacyPairingExtension::Stop(void)
@@ -314,6 +333,8 @@ void LegacyPairingExtension::Stop(void)
     memset(mLegacyUlaPrefix, 0, sizeof(mLegacyUlaPrefix));
     mMleFrameCounter = 0;
     mState           = kStateDisabled;
+
+    otLogInfoMle("[Legacy] Stop");
 }
 
 void LegacyPairingExtension::Join(const otExtAddress *aDstAddress)
@@ -328,6 +349,8 @@ void LegacyPairingExtension::Join(const otExtAddress *aDstAddress)
     {
         SetIp6AddressToLinkLocalMulticastAllRouters(&dstIpAddress);
     }
+
+    LogMleMessage("[Legacy] Send Link Request", &dstIpAddress);
 
     SendMleCommand(MLE_CMD_LINK_REQUEST, NULL, &dstIpAddress);
 }
@@ -547,6 +570,8 @@ void LegacyPairingExtension::HandleMleLinkRequest(const uint8_t *      aBufPtr,
     uint8_t        type;
     uint8_t        len;
 
+    otLogInfoMle("[Legacy] Receive Link Request");
+
     // Parse tlvs
     while (aBufPtr < bufferEnd)
     {
@@ -580,6 +605,8 @@ void LegacyPairingExtension::HandleMleLinkRequest(const uint8_t *      aBufPtr,
 
     VerifyOrExit(challenge != NULL, OT_NOOP);
 
+    LogMleMessage("[Legacy] Send Link Accept Request", &aMessageInfo->mPeerAddr);
+
     SendMleCommand(MLE_CMD_LINK_ACCEPT_REQUEST, challenge, &aMessageInfo->mPeerAddr);
 
     // For full legacy support, here we need to save the info (timeout, mac address) about this node in
@@ -609,6 +636,8 @@ void LegacyPairingExtension::HandleMleLinkAcceptAndRequest(uint8_t              
     uint8_t        len;
 
     VerifyOrExit((aCommand == MLE_CMD_LINK_ACCEPT_REQUEST) || (aCommand == MLE_CMD_LINK_ACCEPT), OT_NOOP);
+
+    otLogInfoMle("[Legacy] Receive Link Accept and Request");
 
     // Parse tlvs
     while (aBufPtr < bufferEnd)
@@ -674,6 +703,8 @@ void LegacyPairingExtension::HandleMleLinkAcceptAndRequest(uint8_t              
         // LinkAcceptAndRequest must include a challenge TLV
         VerifyOrExit(challenge != NULL, OT_NOOP);
 
+        LogMleMessage("[Legacy] Send Link Accept", &aMessageInfo->mPeerAddr);
+
         // Send a LinkAccept in response to the received LinkAcceptAndRequest.
         SendMleCommand(MLE_CMD_LINK_ACCEPT, challenge, &aMessageInfo->mPeerAddr);
 
@@ -689,6 +720,7 @@ void LegacyPairingExtension::HandleMleLinkAcceptAndRequest(uint8_t              
 
     GetExtAddressFromIpAddress(&dstAddr, &aMessageInfo->mPeerAddr);
     otNcpHandleLegacyNodeDidJoin(&dstAddr);
+    LogMleMessage("[Legacy] Legacy Node Did Join", &aMessageInfo->mPeerAddr);
 
     mState = kStateEnabled;
 
