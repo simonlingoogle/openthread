@@ -32,10 +32,13 @@ import bisect
 import os
 import socket
 import struct
+import threading
 import traceback
 import time
-
 import io
+from collections import defaultdict
+from typing import Callable, Any
+
 import config
 import mesh_cop
 import message
@@ -90,6 +93,7 @@ class BaseSimulator(object):
 
 
 class RealTime(BaseSimulator):
+    IsVirtualTime = False
 
     def __init__(self):
         super(RealTime, self).__init__()
@@ -121,7 +125,89 @@ class RealTime(BaseSimulator):
         return self._sniffer is not None
 
 
+class OtnsSimulator(BaseSimulator):
+    IsVirtualTime = True
+
+    class OtnsOperation:
+        def __init__(self, f: Callable[[], Any]):
+            self._f = f
+            self._done = threading.Event()
+
+        def do(self):
+            self._f()
+            self._done.set()
+
+        def wait(self):
+            self._done.wait()
+
+    def __init__(self):
+        super().__init__()
+        from otns.cli import OTNS
+        self._otns = OTNS(
+            otns_args=['-autogo=false', '-web=false', '-ot-cli', 'otns-otci-proxy', '-dump-packets',
+                       '-listen', 'localhost:9000',
+                       '-well-known-node-id', '34'])
+
+        self._otns.speed = float('inf')
+        self._message_factory = config.create_default_thread_message_factory()
+        self._node_messages = defaultdict(list)
+
+    def add_node(self, node):
+        super(OtnsSimulator, self).add_node(node)
+        self._otns.add('raw', id=node.nodeid, restore=True, x=500, y=400, uart_type='real')
+
+    def _add_message(self, nodeid, message_obj):
+        # Ignore any exceptions
+        try:
+            messages = self._message_factory.create(io.BytesIO(message_obj))
+            self._node_messages[nodeid].extend(messages)
+
+        except message.DropPacketException:
+            print('Drop current packet because it cannot be handled in test scripts')
+        except Exception as e:
+            # Just print the exception to the console
+            print("EXCEPTION: %s" % e)
+            traceback.print_exc()
+
+    def set_lowpan_context(self, cid, prefix):
+        self._message_factory.set_lowpan_context(cid, prefix)
+
+    def get_messages_sent_by(self, nodeid):
+        """ Get sniffed messages.
+
+        Note! This method flushes the message queue so calling this
+        method again will return only the newly logged messages.
+
+        Args:
+            nodeid (int): node id
+
+        Returns:
+            MessagesSet: a set with received messages.
+        """
+        messages = self._node_messages[nodeid]
+        self._node_messages[nodeid] = []
+
+        ret = message.MessagesSet(messages, self.commissioning_messages[nodeid])
+        self.commissioning_messages[nodeid] = []
+        return ret
+
+    def go(self, duration, nodeid=None):
+        result = self._otns.go(duration, nodeid=nodeid)
+        for timestamp, nodeid, frame in result.packets:
+            self._add_message(nodeid, frame)
+
+    def now(self):
+        return self._otns.now
+
+    def stop(self):
+        self._otns.close()
+
+    def sync_devices(self):
+        pass
+
+
 class VirtualTime(BaseSimulator):
+    IsVirtualTime = True
 
     OT_SIM_EVENT_ALARM_FIRED = 0
     OT_SIM_EVENT_RADIO_RECEIVED = 1
@@ -250,7 +336,7 @@ class VirtualTime(BaseSimulator):
         """ Receive events until all devices are asleep. """
         while True:
             if (self.current_event or len(self.awake_devices) or
-                (self._next_event_time() > self._pause_time and self.current_nodeid)):
+                    (self._next_event_time() > self._pause_time and self.current_nodeid)):
                 self.sock.settimeout(self.BLOCK_TIMEOUT)
                 try:
                     msg, addr = self.sock.recvfrom(self.MAX_MESSAGE)

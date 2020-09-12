@@ -497,5 +497,8 @@ def create_default_thread_sniffer():
 
 def create_default_simulator():
     if VIRTUAL_TIME:
-        return simulator.VirtualTime()
+        if int(os.getenv("OTNS_SIMULATOR", '0')):
+            return simulator.OtnsSimulator()
+        else:
+            return simulator.VirtualTime()
     return simulator.RealTime()

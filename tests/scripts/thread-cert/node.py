@@ -1027,7 +1027,7 @@ class Node:
     def send_network_diag_get(self, addr, tlv_types):
         self.send_command('networkdiagnostic get %s %s' % (addr, ' '.join([str(t.value) for t in tlv_types])))
 
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(8)
             timeout = 1
         else:
@@ -1038,7 +1038,7 @@ class Node:
     def send_network_diag_reset(self, addr, tlv_types):
         self.send_command('networkdiagnostic reset %s %s' % (addr, ' '.join([str(t.value) for t in tlv_types])))
 
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(8)
             timeout = 1
         else:
@@ -1056,7 +1056,7 @@ class Node:
         )
         self.send_command(cmd)
 
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(8)
             timeout = 1
         else:
@@ -1068,7 +1068,7 @@ class Node:
         cmd = 'commissioner panid %d %d %s' % (panid, mask, ipaddr)
         self.send_command(cmd)
 
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(8)
             timeout = 1
         else:
@@ -1103,7 +1103,7 @@ class Node:
                 if self.simulator.now() < end:
                     continue
                 result = False
-                if isinstance(self.simulator, simulator.VirtualTime):
+                if self.simulator.IsVirtualTime:
                     self.simulator.sync_devices()
                 break
             else:
@@ -1345,7 +1345,7 @@ class Node:
         """
         Wait for a CoAP response, and return it.
         """
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(5)
             timeout = 1
         else:
@@ -1370,7 +1370,7 @@ class Node:
         """
         Wait for a CoAP request to be made.
         """
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(5)
             timeout = 1
         else:
@@ -1395,7 +1395,7 @@ class Node:
         """
         Wait for a CoAP client to be subscribed.
         """
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(5)
             timeout = 1
         else:
@@ -1407,7 +1407,7 @@ class Node:
         """
         Wait for a CoAP notification ACK.
         """
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(5)
             timeout = 1
         else:
@@ -1450,7 +1450,7 @@ class Node:
         cmd = 'coap stop'
         self.send_command(cmd)
 
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(5)
             timeout = 1
         else:
@@ -1485,7 +1485,7 @@ class Node:
         cmd = 'coaps stop'
         self.send_command(cmd)
 
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(5)
             timeout = 1
         else:
@@ -1497,7 +1497,7 @@ class Node:
         cmd = 'coaps connect %s' % ipaddr
         self.send_command(cmd)
 
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(5)
             timeout = 1
         else:
@@ -1515,7 +1515,7 @@ class Node:
         cmd = 'coaps get test'
         self.send_command(cmd)
 
-        if isinstance(self.simulator, simulator.VirtualTime):
+        if self.simulator.IsVirtualTime:
             self.simulator.go(5)
             timeout = 1
         else:
