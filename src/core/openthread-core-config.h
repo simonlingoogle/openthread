@@ -50,6 +50,7 @@
 #define OPENTHREAD_CONFIG_THREAD_VERSION OT_THREAD_VERSION_1_1
 #endif
 
+#include "config/openthread-core-reference-device-config.h"
 #include "config/openthread-core-default-config.h"
 
 #include "config/announce_sender.h"

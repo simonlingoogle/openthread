@@ -108,16 +108,6 @@
 #endif
 
 /**
- * @def OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
- *
- * Define to 1 to enable Thread Test Harness reference device support.
- *
- */
-#ifndef OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE
-#define OPENTHREAD_CONFIG_REFERENCE_DEVICE_ENABLE 0
-#endif
-
-/**
  * @def OPENTHREAD_CONFIG_UDP_FORWARD_ENABLE
  *
  * Define to 1 to enable UDP forward support.
