@@ -34,12 +34,14 @@ import socket
 import struct
 import traceback
 import time
-
 import io
+from collections import Counter
+
 import config
 import mesh_cop
 import message
 import pcap
+import wpan
 
 
 def dbg_print(*args):
@@ -122,12 +124,12 @@ class RealTime(BaseSimulator):
 
 
 class VirtualTime(BaseSimulator):
-
     OT_SIM_EVENT_ALARM_FIRED = 0
     OT_SIM_EVENT_RADIO_RECEIVED = 1
     OT_SIM_EVENT_UART_WRITE = 2
     OT_SIM_EVENT_RADIO_SPINEL_WRITE = 3
     OT_SIM_EVENT_POSTCMD = 4
+    OT_SIM_EVENT_OTNS_STATUS_PUSH = 5
 
     EVENT_TIME = 0
     EVENT_SEQUENCE = 1
@@ -162,6 +164,10 @@ class VirtualTime(BaseSimulator):
         self.current_time = 0
         self.current_event = None
         self.awake_devices = set()
+        self._counter = Counter()
+        self._nodes_by_extaddr = {}
+        self._nodes_by_rloc16 = {}
+        self._nodes_by_ack_seq = {}
 
         self._pcap = pcap.PcapCodec(os.getenv('TEST_NAME', 'current'))
         # the addr for spinel-cli sending OT_SIM_EVENT_POSTCMD
@@ -180,9 +186,16 @@ class VirtualTime(BaseSimulator):
             self.sock.close()
             self.sock = None
 
+            print('=' * 32, "COUNTERS", '=' * 32)
+            for k, v in sorted(self._counter.items()):
+                print(' - %s = %d' % (k, v))
+
     @property
     def is_running(self):
         return self.sock is not None
+
+    def get_node_by_addr(self, addr):
+        return self._nodes[addr[1] - self.port]
 
     def _add_message(self, nodeid, message_obj):
         addr = ('127.0.0.1', self.port + nodeid)
@@ -225,6 +238,12 @@ class VirtualTime(BaseSimulator):
 
     def _is_radio(self, addr):
         return addr[1] < self.BASE_PORT * 2
+
+    def _addr_to_nodeid(self, addr: tuple) -> int:
+        return addr[1] - self.port
+
+    def _nodeid_to_addr(self, nodeid: int) -> tuple:
+        return ('127.0.0.1', self.port + nodeid)
 
     def _to_core_addr(self, addr):
         assert self._is_radio(addr)
@@ -322,8 +341,39 @@ class VirtualTime(BaseSimulator):
             elif type == self.OT_SIM_EVENT_RADIO_RECEIVED:
                 assert self._is_radio(addr)
                 # add radio receive events event queue
-                for device in self.devices:
+                src_node = self.get_node_by_addr(addr)
+
+                frame_info = wpan.dissect(data)
+                if frame_info.frame_type == wpan.FrameType.ACK:
+                    recv_devices = [
+                        self._nodeid_to_addr(node.nodeid)
+                        for node in self._nodes_by_ack_seq.get(frame_info.seq_no, ())
+                    ]
+                elif frame_info.dst_extaddr is not None:
+                    recv_devices = [
+                        self._nodeid_to_addr(node.nodeid)
+                        for node in self._nodes_by_extaddr.get(frame_info.dst_extaddr, ())
+                    ]
+                elif frame_info.dst_short not in (None, 0xffff):
+                    recv_devices = [
+                        self._nodeid_to_addr(node.nodeid)
+                        for node in self._nodes_by_rloc16.get(frame_info.dst_short, ())
+                    ]
+                else:
+                    recv_devices = None
+
+                recv_devices = recv_devices or self.devices.keys()
+
+                for device in recv_devices:
                     if device != addr and self._is_radio(device):
+                        dst_node = self.get_node_by_addr(device)
+
+                        if not dst_node.check_allow_list(src_node.extaddr):
+                            self._counter['drop-by-allowlist'] += 1
+                            continue
+
+                        self._counter['radio_event'] += 1
+                        self._counter[frame_info.frame_type.name] += 1
                         event = (
                             event_time,
                             self.event_sequence,
@@ -350,6 +400,19 @@ class VirtualTime(BaseSimulator):
                 )
                 self.event_sequence += 1
                 bisect.insort(self.event_queue, event)
+
+                if frame_info.frame_type != wpan.FrameType.ACK and not frame_info.is_broadcast:
+                    self._on_ack_seq_change(src_node, frame_info.seq_no)
+
+                self.awake_devices.add(addr)
+            elif type == self.OT_SIM_EVENT_OTNS_STATUS_PUSH:
+                for status in data.decode('ascii').split(';'):
+                    name, val = status.split('=')
+                    node = self.get_node_by_addr(addr)
+                    if name == 'extaddr':
+                        self._on_extaddr_change(node, val)
+                    elif name == 'rloc16':
+                        self._on_rloc16_change(node, int(val))
 
                 self.awake_devices.add(addr)
 
@@ -396,6 +459,27 @@ class VirtualTime(BaseSimulator):
                 nodeid = struct.unpack('=B', data)[0]
                 if self.current_nodeid == nodeid:
                     self.current_nodeid = None
+
+    def _on_extaddr_change(self, node, extaddr: str):
+        if node.extaddr is not None:
+            self._nodes_by_extaddr[node.extaddr].remove(node)
+
+        node.extaddr = extaddr
+        self._nodes_by_extaddr.setdefault(extaddr, set()).add(node)
+
+    def _on_rloc16_change(self, node, rloc16: int):
+        if node.rloc16 is not None:
+            self._nodes_by_rloc16[node.rloc16].remove(node)
+
+        node.rloc16 = rloc16
+        self._nodes_by_rloc16.setdefault(rloc16, set()).add(node)
+
+    def _on_ack_seq_change(self, node, seq_no: int):
+        if node.ack_seq is not None:
+            self._nodes_by_ack_seq[node.ack_seq].remove(node)
+
+        node.ack_seq = seq_no
+        self._nodes_by_ack_seq.setdefault(seq_no, set()).add(node)
 
     def _send_message(self, message, addr):
         while True:
