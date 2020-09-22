@@ -32,6 +32,14 @@
 #      nlbuild-autotools repository for this project.
 #
 
+echo ""
+echo " WELCOME TO ..."
+echo ""
+cat .banner.txt
+echo ""
+echo "Bootstrap may take a few minutes; please be patient."
+echo ""
+
 # Set this to the relative location of nlbuild-autotools to this script
 
 nlbuild_autotools_stem="third_party/nlbuild-autotools/repo"
