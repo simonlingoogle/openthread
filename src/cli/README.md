@@ -23,6 +23,7 @@ Done
 
 - [bbr](#bbr)
 - [bufferinfo](#bufferinfo)
+- [ccathreshold](#ccathreshold)
 - [channel](#channel)
 - [child](#child-list)
 - [childip](#childip)
@@ -60,11 +61,10 @@ Done
 - [mac](#mac-retries-direct)
 - [macfilter](#macfilter)
 - [masterkey](#masterkey)
+- [mlr](#mlr-reg-ipaddr--timeout)
 - [mode](#mode)
 - [neighbor](#neighbor-list)
-- [netdata](#netdata-steeringdata-check-eui64discerner)
-- [netdataregister](#netdataregister)
-- [netdatashow](#netdatashow)
+- [netdata](README_NETDATA.md)
 - [netstat](#netstat)
 - [networkdiagnostic](#networkdiagnostic-get-addr-type-)
 - [networkidtimeout](#networkidtimeout)
@@ -73,10 +73,10 @@ Done
 - [panid](#panid)
 - [parent](#parent)
 - [parentpriority](#parentpriority)
-- [ping](#ping-ipaddr-size-count-interval-hoplimit)
+- [ping](#ping-ipaddr-sizecount-intervalhoplimit)
 - [pollperiod](#pollperiod-pollperiod)
 - [preferrouterid](#preferrouterid-routerid)
-- [prefix](#prefix-add-prefix-padcrosnD-prf)
+- [prefix](#prefix)
 - [promiscuous](#promiscuous)
 - [pskc](#pskc--p-keypassphrase)
 - [rcp](#rcp)
@@ -182,6 +182,26 @@ Only for testing/reference Backbone Router device.
 > bbr mgmt mlr listener clear
 Done
 > bbr mgmt mlr listener
+Done
+```
+
+### bbr mgmt mlr response \<status\>
+
+Configure the response status for the next MLR.req.
+
+Only for testing/reference device.
+
+Known status values:
+
+- 0: ST_MLR_SUCCESS
+- 2: ST_MLR_INVALID
+- 3: ST_MLR_NO_PERSISTENT
+- 4: ST_MLR_NO_RESOURCES
+- 5: ST_MLR_BBR_NOT_PRIMARY
+- 6: ST_MLR_GENERAL_FAILURE
+
+```bash
+> bbr mgmt mlr response 2
 Done
 ```
 
@@ -299,6 +319,25 @@ mpl: 0 0
 mle: 0 0
 arp: 0 0
 coap: 0 0
+Done
+```
+
+### ccathreshold
+
+Get the CCA threshold in dBm.
+
+```bash
+> ccathreshold
+-75 dBm
+Done
+```
+
+### ccathreshold \<ccathreshold\>
+
+Set the CCA threshold.
+
+```bash
+> ccathreshold -62
 Done
 ```
 
@@ -1077,6 +1116,32 @@ Set the Thread Master Key value.
 Done
 ```
 
+### mlr reg \<ipaddr\> ... [timeout]
+
+Register Multicast Listeners to Primary Backbone Router, with an optional `timeout` (in seconds).
+
+Omit `timeout` to use the default MLR timeout on the Primary Backbone Router.
+
+Use `timeout = 0` to deregister Multicast Listeners.
+
+NOTE: Only for Thread 1.2 Commissioner FTD device.
+
+```bash
+> mlr reg ff04::1
+status 0, 0 failed
+Done
+> mlr reg ff04::1 ff04::2 ff02::1
+status 2, 1 failed
+ff02:0:0:0:0:0:0:1
+Done
+> mlr reg ff04::1 ff04::2 1000
+status 0, 0 failed
+Done
+> mlr reg ff04::1 ff04::2 0
+status 0, 0 failed
+Done
+```
+
 ### mode
 
 Get the Thread Device Mode value.
@@ -1127,41 +1192,6 @@ Print table of neighbors.
 |   C  | 0xcc01 |  96 |      -46 |       -46 |1|1|1|1| 1eb9ba8a6522636b |
 |   R  | 0xc800 |   2 |      -29 |       -29 |1|0|1|1| 9a91556102c39ddb |
 |   R  | 0xf000 |   3 |      -28 |       -28 |1|0|1|1| 0ad7ed6beaa6016d |
-Done
-```
-
-### netdata steeringdata check \<eui64\>|\<discerner\>
-
-Check whether the steering data includes a joiner.
-
-- eui64: The IEEE EUI-64 of the Joiner.
-- discerner: The Joiner discerner in format `number/length`.
-
-```bash
-> netdata steeringdata check d45e64fa83f81cf7
-Done
-> netdata steeringdata check 0xabc/12
-Done
-> netdata steeringdata check 0xdef/12
-Error 23: NotFound
-```
-
-### netdataregister
-
-Register local network data with Thread Leader.
-
-```bash
-> netdataregister
-Done
-```
-
-### netdatashow
-
-Show Thread Leader network data.
-
-```bash
-> netdatashow
-08040b020000
 Done
 ```
 
@@ -1707,6 +1737,39 @@ Perform an IEEE 802.15.4 Energy Scan.
 Done
 ```
 
+### service
+
+Module for controlling service registration in Network Data. Each change in service registration must be sent to leader by `netdata register` command before taking effect.
+
+### service add \<enterpriseNumber\> \<serviceData\> \<serverData\>
+
+Add service to the Network Data.
+
+- enterpriseNumber: IANA enterprise number
+- serviceData: hex-encoded binary service data
+- serverData: hex-encoded binary server data
+
+```bash
+> service add 44970 112233 aabbcc
+Done
+> netdata register
+Done
+```
+
+### service remove \<enterpriseNumber\> \<serviceData\>
+
+Remove service from Network Data.
+
+- enterpriseNumber: IANA enterprise number
+- serviceData: hext-encoded binary service data
+
+```bash
+> service remove 44970 112233
+Done
+> netdata register
+Done
+```
+
 ### singleton
 
 Return true when there are no other nodes in the network, otherwise return false.
@@ -1849,6 +1912,16 @@ OPENTHREAD/gf4f2f04; Jul  1 2016 17:00:09
 Done
 ```
 
+### version api
+
+Print API version number.
+
+```bash
+> version api
+28
+Done
+```
+
 ### mac retries direct
 
 Get the number of direct TX retries on the MAC layer.
@@ -1893,7 +1966,7 @@ List the macfilter status, including address and received signal strength filter
 
 ```bash
 > macfilter
-Address Mode: Whitelist
+Address Mode: Allowlist
 0f6127e33af6b403 : rss -95 (lqi 1)
 0f6127e33af6b402
 RssIn List:
@@ -1908,7 +1981,7 @@ List the address filter status.
 
 ```bash
 > macfilter addr
-Whitelist
+Allowlist
 0f6127e33af6b403 : rss -95 (lqi 1)
 0f6127e33af6b402
 Done
@@ -1923,21 +1996,21 @@ Disable address filter mode.
 Done
 ```
 
-### macfilter addr whitelist
+### macfilter addr allowlist
 
-Enable whitelist address filter mode.
+Enable allowlist address filter mode.
 
 ```bash
-> macfilter addr whitelist
+> macfilter addr allowlist
 Done
 ```
 
-### macfilter addr blacklist
+### macfilter addr denylist
 
-Enable blacklist address filter mode.
+Enable denylist address filter mode.
 
 ```bash
-> macfilter addr blacklist
+> macfilter addr denylist
 Done
 ```
 
@@ -2038,44 +2111,5 @@ Done
 ### diag
 
 Factory Diagnostics module is enabled only when building OpenThread with `OPENTHREAD_CONFIG_DIAG_ENABLE=1` option. Go [diagnostics module][diag] for more information.
-
-### service
-
-Module for controlling service registration in Network Data. Each change in service registration must be sent to leader by `netdataregister` command before taking effect.
-
-### service add \<enterpriseNumber\> \<serviceData\> \<serverData\>
-
-Add service to the Network Data.
-
-```bash
-> service add 44970 foo bar
-Done
-> netdataregister
-Done
-> ipaddr
-fdde:ad00:beef:0:0:ff:fe00:fc10
-fdde:ad00:beef:0:0:ff:fe00:fc00
-fdde:ad00:beef:0:0:ff:fe00:7c00
-fe80:0:0:0:1486:2f57:3c:6e10
-fdde:ad00:beef:0:8ca4:19ed:217a:eff9
-Done
-```
-
-### service remove \<enterpriseNumber\> \<serviceData\>
-
-Remove service from Network Data.
-
-```bash
-> service remove 44970 foo
-Done
-> netdataregister
-Done
-> ipaddr
-fdde:ad00:beef:0:0:ff:fe00:fc00
-fdde:ad00:beef:0:0:ff:fe00:7c00
-fe80:0:0:0:1486:2f57:3c:6e10
-fdde:ad00:beef:0:8ca4:19ed:217a:eff9
-Done
-```
 
 [diag]: ../../src/core/diags/README.md
