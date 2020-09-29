@@ -52,8 +52,6 @@
 #       | |                  |
 #       \ +------------------+ <--0x00000000
 
-cmake_minimum_required(VERSION 3.14)
-
 # Flash
 set(TERBIUM_MEMORY_SOC_FLASH_BASE_ADDRESS 0x00000000)
 set(TERBIUM_MEMORY_SOC_FLASH_SIZE         0x30000)

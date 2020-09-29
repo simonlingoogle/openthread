@@ -10,7 +10,7 @@
 #   Google LLC.
 #
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.10.2)
 project(terbium)
 
 include(${PROJECT_SOURCE_DIR}/etc/cmake/functions.cmake)
