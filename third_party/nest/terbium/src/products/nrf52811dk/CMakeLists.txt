@@ -61,6 +61,7 @@ add_executable(ot-cli-mtd
 set(COMMON_INCLUDES
     ${OT_PUBLIC_INCLUDES}
     ${OPENTHREAD_ROOT_DIR}/examples/platforms
+    ${OPENTHREAD_ROOT_DIR}/src
     ${OPENTHREAD_ROOT_DIR}/src/core
 )
 

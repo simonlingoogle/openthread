@@ -206,6 +206,8 @@ static void __attribute__((used)) crashDisableMpu(void)
 
 static void dumpMemFaultCode(uint32_t aPc)
 {
+    OT_UNUSED_VARIABLE(aPc);
+
     if ((SCB->CFSR & SCB_CFSR_MMFSR_IACCVIOL) != 0)
     {
         otLogCritPlat("%s: Instruction Access Violation Fault, PC=0x%08lx", __func__, aPc);
@@ -213,6 +215,8 @@ static void dumpMemFaultCode(uint32_t aPc)
     else if ((SCB->CFSR & SCB_CFSR_MMFSR_DACCVIOL) != 0)
     {
         uint32_t mmfar = 0;
+
+        OT_UNUSED_VARIABLE(mmfar);
 
         if ((SCB->CFSR & SCB_CFSR_MMFSR_MMARVALID) != 0)
         {
@@ -237,6 +241,8 @@ static void dumpMemFaultCode(uint32_t aPc)
 
 static void dumpBusFaultCode(uint32_t aPc)
 {
+    OT_UNUSED_VARIABLE(aPc);
+
     if ((SCB->CFSR & SCB_CFSR_BFSR_IBUSERR) != 0)
     {
         otLogCritPlat("%s: Instruction Bus Fault", __func__);
@@ -245,6 +251,7 @@ static void dumpBusFaultCode(uint32_t aPc)
     {
         uint32_t bfar = 0;
 
+        OT_UNUSED_VARIABLE(bfar);
         if ((SCB->CFSR & SCB_CFSR_BFSR_BFARVALID) != 0)
         {
             bfar = SCB->BFAR;
@@ -272,6 +279,8 @@ static void dumpBusFaultCode(uint32_t aPc)
 
 static void dumpUsageFaultCode(uint32_t aPc)
 {
+    OT_UNUSED_VARIABLE(aPc);
+
     if ((SCB->CFSR & SCB_CFSR_UFSR_UNDEFINSTR) != 0)
     {
         otLogCritPlat("%s: Undefined Instruction Usage Fault, PC=0x%08lx", __func__, aPc);
