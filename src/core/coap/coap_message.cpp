@@ -65,7 +65,7 @@ otError Message::Init(Type aType, Code aCode, const char *aUriPath)
     otError error;
 
     Init(aType, aCode);
-    SuccessOrExit(error = SetToken(kDefaultTokenLength));
+    SuccessOrExit(error = GenerateRandomToken(kDefaultTokenLength));
     SuccessOrExit(error = AppendUriPathOptions(aUriPath));
 
 exit:
@@ -227,6 +227,37 @@ exit:
     return error;
 }
 
+otError Message::ReadUriPathOptions(char (&aUriPath)[kMaxReceivedUriPath + 1]) const
+{
+    char *           curUriPath = aUriPath;
+    otError          error      = OT_ERROR_NONE;
+    Option::Iterator iterator;
+
+    SuccessOrExit(error = iterator.Init(*this, kOptionUriPath));
+
+    while (!iterator.IsDone())
+    {
+        uint16_t optionLength = iterator.GetOption()->GetLength();
+
+        if (curUriPath != aUriPath)
+        {
+            *curUriPath++ = '/';
+        }
+
+        VerifyOrExit(curUriPath + optionLength < OT_ARRAY_END(aUriPath), error = OT_ERROR_PARSE);
+
+        IgnoreError(iterator.ReadOptionValue(curUriPath));
+        curUriPath += optionLength;
+
+        SuccessOrExit(error = iterator.Advance(kOptionUriPath));
+    }
+
+    *curUriPath = '\0';
+
+exit:
+    return error;
+}
+
 otError Message::AppendBlockOption(Message::BlockType aType, uint32_t aNum, bool aMore, otCoapBlockSize aSize)
 {
     otError  error   = OT_ERROR_NONE;
@@ -302,7 +333,7 @@ otError Message::SetToken(const uint8_t *aToken, uint8_t aTokenLength)
     return SetLength(GetHelpData().mHeaderLength);
 }
 
-otError Message::SetToken(uint8_t aTokenLength)
+otError Message::GenerateRandomToken(uint8_t aTokenLength)
 {
     uint8_t token[kMaxTokenLength];
 
@@ -311,6 +342,11 @@ otError Message::SetToken(uint8_t aTokenLength)
     IgnoreError(Random::Crypto::FillBuffer(token, aTokenLength));
 
     return SetToken(token, aTokenLength);
+}
+
+otError Message::SetTokenFromMessage(const Message &aMessage)
+{
+    return SetToken(aMessage.GetToken(), aMessage.GetTokenLength());
 }
 
 bool Message::IsTokenEqual(const Message &aMessage) const
@@ -326,14 +362,14 @@ otError Message::SetDefaultResponseHeader(const Message &aRequest)
 
     SetMessageId(aRequest.GetMessageId());
 
-    return SetToken(aRequest.GetToken(), aRequest.GetTokenLength());
+    return SetTokenFromMessage(aRequest);
 }
 
 Message *Message::Clone(uint16_t aLength) const
 {
     Message *message = static_cast<Message *>(ot::Message::Clone(aLength));
 
-    VerifyOrExit(message != nullptr, OT_NOOP);
+    VerifyOrExit(message != nullptr);
 
     message->GetHelpData() = GetHelpData();
 
@@ -470,7 +506,7 @@ otError Option::Iterator::Advance(void)
     uint16_t optionDelta;
     uint16_t optionLength;
 
-    VerifyOrExit(!IsDone(), OT_NOOP);
+    VerifyOrExit(!IsDone());
 
     error = Read(sizeof(uint8_t), &headerByte);
 
@@ -565,7 +601,7 @@ otError Option::Iterator::ReadExtendedOptionField(uint16_t &aValue)
 {
     otError error = OT_ERROR_NONE;
 
-    VerifyOrExit(aValue >= Message::kOption1ByteExtension, OT_NOOP);
+    VerifyOrExit(aValue >= Message::kOption1ByteExtension);
 
     if (aValue == Message::kOption1ByteExtension)
     {
