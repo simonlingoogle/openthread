@@ -54,6 +54,17 @@ extern "C" {
 void otSysInit(int argc, char *argv[]);
 
 /**
+ * This function performs platform-specific setup of the OpenThread instance.
+ *
+ * @note This function is not called by the OpenThread library. Instead, the system/RTOS should call this function after
+ *       the OpenThread instance is constructed.
+ *
+ * @param[in] aInstance     The OpenThread instance structure.
+ *
+ */
+void otSysSetupInstance(otInstance *aInstance);
+
+/**
  * This function performs all platform-specific deinitialization for OpenThread's drivers.
  *
  * @note This function is not called by the OpenThread library. Instead, the system/RTOS should call this function

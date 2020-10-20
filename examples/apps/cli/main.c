@@ -107,6 +107,8 @@ pseudo_reset:
 #endif
     assert(instance);
 
+    otSysSetupInstance(instance);
+
 #if OPENTHREAD_CONFIG_CLI_TRANSPORT == OT_CLI_TRANSPORT_UART
     otCliUartInit(instance);
 #endif

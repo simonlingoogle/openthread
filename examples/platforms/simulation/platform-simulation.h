@@ -231,4 +231,10 @@ void otSimSendUartWriteEvent(const uint8_t *aData, uint16_t aLength);
  */
 bool platformRadioIsTransmitPending(void);
 
+/**
+ * This function initializes the Backbone link used by OpenThread.
+ *
+ */
+void platformBackboneInit(otInstance *);
+
 #endif // PLATFORM_SIMULATION_H_

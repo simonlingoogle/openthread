@@ -253,6 +253,11 @@ void otSysInit(int argc, char *argv[])
     signal(SIGHUP, &handleSignal);
 }
 
+void otSysSetupInstance(otInstance *aInstance)
+{
+    platformBackboneInit(aInstance);
+}
+
 bool otSysPseudoResetWasRequested(void)
 {
     return gPlatformPseudoResetWasRequested;

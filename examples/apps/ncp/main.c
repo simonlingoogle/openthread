@@ -105,6 +105,7 @@ pseudo_reset:
 #endif
     assert(instance);
 
+    otSysSetupInstance(instance);
     otNcpInit(instance);
 
     while (!otSysPseudoResetWasRequested())
