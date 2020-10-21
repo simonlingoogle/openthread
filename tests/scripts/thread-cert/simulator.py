@@ -29,13 +29,14 @@
 
 import binascii
 import bisect
+import io
 import os
 import socket
 import struct
-import traceback
+import sys
 import time
+import traceback
 
-import io
 import config
 import mesh_cop
 import message
@@ -122,12 +123,14 @@ class RealTime(BaseSimulator):
 
 
 class VirtualTime(BaseSimulator):
-
     OT_SIM_EVENT_ALARM_FIRED = 0
     OT_SIM_EVENT_RADIO_RECEIVED = 1
     OT_SIM_EVENT_UART_WRITE = 2
     OT_SIM_EVENT_RADIO_SPINEL_WRITE = 3
     OT_SIM_EVENT_POSTCMD = 4
+    OT_SIM_EVENT_OTNS_STATUS_PUSH = 5
+    OT_SIM_EVENT_IP6_DATAGRAM = 6
+    OT_SIM_EVENT_UDP_FORWARD = 7
 
     EVENT_TIME = 0
     EVENT_SEQUENCE = 1
@@ -164,6 +167,7 @@ class VirtualTime(BaseSimulator):
         self.awake_devices = set()
 
         self._pcap = pcap.PcapCodec(os.getenv('TEST_NAME', 'current'))
+        self._pcap_backbone = pcap.PcapCodec(os.getenv('TEST_NAME', 'current') + '_backbone', dlt_type=pcap.DLT_RAW)
         # the addr for spinel-cli sending OT_SIM_EVENT_POSTCMD
         self._spinel_cli_addr = (ip, self.BASE_PORT + self.port)
         self.current_nodeid = None
@@ -253,7 +257,7 @@ class VirtualTime(BaseSimulator):
         """ Receive events until all devices are asleep. """
         while True:
             if (self.current_event or len(self.awake_devices) or
-                (self._next_event_time() > self._pause_time and self.current_nodeid)):
+                    (self._next_event_time() > self._pause_time and self.current_nodeid)):
                 self.sock.settimeout(self.BLOCK_TIMEOUT)
                 try:
                     msg, addr = self.sock.recvfrom(self.MAX_MESSAGE)
@@ -339,7 +343,7 @@ class VirtualTime(BaseSimulator):
                         # print "-- Enqueue\t", event
                         bisect.insort(self.event_queue, event)
 
-                self._pcap.append(data, (event_time // 1000000, event_time % 1000000))
+                self._pcap.append(data[1:], (event_time // 1000000, event_time % 1000000))
                 self._add_message(addr[1] - self.port, data)
 
                 # add radio transmit done events to event queue
@@ -354,6 +358,55 @@ class VirtualTime(BaseSimulator):
                 self.event_sequence += 1
                 bisect.insort(self.event_queue, event)
 
+                self.awake_devices.add(addr)
+
+            elif type == self.OT_SIM_EVENT_IP6_DATAGRAM:
+                assert self._is_radio(addr)
+                print("OT_SIM_EVENT_IP6_DATAGRAM !!! len(data)=%d" % len(data))
+
+                self._pcap_backbone.append(data, (event_time // 1000000, event_time % 1000000))
+                # eth_header = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x86\xdd'
+                # self._pcap.append(eth_header + data, )
+
+                # add Ip6 Datagram events to event queue
+                event = (
+                    event_time,
+                    self.event_sequence,
+                    addr,
+                    type,
+                    datalen,
+                    data,
+                )
+                self.event_sequence += 1
+                bisect.insort(self.event_queue, event)
+
+                self.awake_devices.add(addr)
+
+            elif type == self.OT_SIM_EVENT_UDP_FORWARD:
+                assert self._is_radio(addr)
+                print("OT_SIM_EVENT_UDP_FORWARD !!! len(data)=%d" % len(data))
+
+                self._pcap_backbone.append(data, (event_time // 1000000, event_time % 1000000))
+                # eth_header = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x86\xdd'
+                # self._pcap.append(eth_header + data, )
+
+                # add Ip6 Datagram events to event queue
+                event = (
+                    event_time,
+                    self.event_sequence,
+                    addr,
+                    type,
+                    datalen,
+                    data,
+                )
+                self.event_sequence += 1
+                bisect.insort(self.event_queue, event)
+
+                self.awake_devices.add(addr)
+
+            elif type == self.OT_SIM_EVENT_OTNS_STATUS_PUSH:
+                assert self._is_radio(addr)
+                print("OTNS: %s" % data.decode('utf8'), file=sys.stderr)
                 self.awake_devices.add(addr)
 
             elif type == self.OT_SIM_EVENT_RADIO_SPINEL_WRITE:
@@ -399,6 +452,8 @@ class VirtualTime(BaseSimulator):
                 nodeid = struct.unpack('=B', data)[0]
                 if self.current_nodeid == nodeid:
                     self.current_nodeid = None
+            else:
+                print(f'!!! receive_events: unknown event type: {type}', file=sys.stderr)
 
     def _send_message(self, message, addr):
         while True:
@@ -454,6 +509,16 @@ class VirtualTime(BaseSimulator):
         elif type == self.OT_SIM_EVENT_UART_WRITE:
             message += data
             self._send_message(message, addr)
+        elif type == self.OT_SIM_EVENT_IP6_DATAGRAM:
+            print("send queue OT_SIM_EVENT_IP6_DATAGRAM!!!", self.awake_devices)
+            message += data
+            self._send_message(message, addr)
+        elif type == self.OT_SIM_EVENT_UDP_FORWARD:
+            print("send queue OT_SIM_EVENT_IP6_DATAGRAM!!!", self.awake_devices)
+            message += data
+            self._send_message(message, addr)
+        else:
+            print(f'unknown event type: {type}', file=sys.stderr)
 
     def sync_devices(self):
         self.current_time = self._pause_time

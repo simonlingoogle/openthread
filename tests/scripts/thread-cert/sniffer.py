@@ -32,11 +32,11 @@ import io
 import logging
 import os
 import sys
+import threading
 import time
+import traceback
 
 import pcap
-import threading
-import traceback
 
 try:
     import Queue
@@ -87,7 +87,7 @@ class Sniffer:
         while self._thread_alive.is_set():
             data, nodeid = self._transport.recv(self.RECV_BUFFER_SIZE)
 
-            pkt = self._pcap.append(data)
+            pkt = self._pcap.append(data[1:])
             if __name__ == '__main__':
                 try:
                     sys.stdout.buffer.write(pkt)

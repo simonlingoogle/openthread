@@ -87,7 +87,8 @@ void Otns::EmitStatus(const char *aFmt, ...)
     otPlatOtnsStatus(statusStr);
 }
 
-void Otns::HandleNotifierEvents(Events aEvents)
+typedef Ip6::ExternalNetifMulticastAddress address;
+void                                       Otns::HandleNotifierEvents(Events aEvents)
 {
     if (aEvents.Contains(kEventThreadRoleChanged))
     {
@@ -97,6 +98,27 @@ void Otns::HandleNotifierEvents(Events aEvents)
     if (aEvents.Contains(kEventThreadPartitionIdChanged))
     {
         EmitStatus("parid=%x", Get<Mle::Mle>().GetLeaderData().GetPartitionId());
+    }
+
+    if (aEvents.ContainsAny(kEventIp6AddressAdded | kEventIp6AddressRemoved))
+    {
+        EmitStatus("ip6address=");
+
+        for (const Ip6::NetifUnicastAddress *netifAddr = Get<ThreadNetif>().GetUnicastAddresses(); netifAddr != nullptr;
+             netifAddr                                 = netifAddr->GetNext())
+        {
+            EmitStatus("ip6address=%s", netifAddr->GetAddress().ToString().AsCString());
+        }
+    }
+
+    if (aEvents.ContainsAny(kEventIp6MulticastSubscribed | kEventIp6MulticastUnsubscribed))
+    {
+        EmitStatus("subscribe=");
+
+        for (Ip6::ExternalNetifMulticastAddress &addr : Get<ThreadNetif>().IterateExternalMulticastAddresses())
+        {
+            EmitStatus("subscribe=%s", addr.GetAddress().ToString().AsCString());
+        }
     }
 
 #if OPENTHREAD_CONFIG_JOINER_ENABLE

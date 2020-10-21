@@ -56,6 +56,7 @@
 #include <unistd.h>
 
 #include <openthread/instance.h>
+#include <openthread/ip6.h>
 
 #include "openthread-core-config.h"
 #include "platform-config.h"
@@ -67,7 +68,9 @@ enum
     OT_SIM_EVENT_UART_WRITE         = 2,
     OT_SIM_EVENT_RADIO_SPINEL_WRITE = 3,
     OT_SIM_EVENT_OTNS_STATUS_PUSH   = 5,
-    OT_EVENT_DATA_MAX_SIZE          = 1024,
+    OT_SIM_EVENT_IP6_DATAGRAM       = 6,
+    OT_SIM_EVENT_UDP_FORWARD        = 7,
+    OT_EVENT_DATA_MAX_SIZE          = 1280,
 };
 
 OT_TOOL_PACKED_BEGIN
@@ -236,5 +239,13 @@ bool platformRadioIsTransmitPending(void);
  *
  */
 void platformBackboneInit(otInstance *);
+
+/**
+ *
+ */
+void platformIp6DatagramReceive(uint8_t *aData, uint16_t aLength);
+
+void platformUdpForward(const otIp6Address *aDstAddr, uint16_t aDstPort, uint16_t aSrcPort,
+                        const uint8_t *     aData, uint16_t aLength);
 
 #endif // PLATFORM_SIMULATION_H_

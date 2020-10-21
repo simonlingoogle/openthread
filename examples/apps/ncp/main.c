@@ -105,7 +105,9 @@ pseudo_reset:
 #endif
     assert(instance);
 
+#if OPENTHREAD_FTD || OPENTHREAD_MTD
     otSysSetupInstance(instance);
+#endif
     otNcpInit(instance);
 
     while (!otSysPseudoResetWasRequested())

@@ -46,6 +46,7 @@
 #include <stdlib.h>
 #include <syslog.h>
 
+#include <openthread/ip6.h>
 #include <openthread/tasklet.h>
 #include <openthread/platform/alarm-milli.h>
 #include <openthread/platform/uart.h>
@@ -62,6 +63,7 @@ uint64_t sNow = 0; // microseconds
 int      sSockFd;
 uint16_t sPortOffset;
 
+static void handleUdpForwardEvent(struct Event *aEvent);
 static void handleSignal(int aSignal)
 {
     OT_UNUSED_VARIABLE(aSignal);
@@ -114,10 +116,63 @@ static void receiveEvent(otInstance *aInstance)
     case OT_SIM_EVENT_UART_WRITE:
         otPlatUartReceived(event.mData, event.mDataLength);
         break;
+    case OT_SIM_EVENT_IP6_DATAGRAM:
+        platformIp6DatagramReceive(event.mData, event.mDataLength);
+        break;
+    case OT_SIM_EVENT_UDP_FORWARD:
+        handleUdpForwardEvent(&event);
+        break;
 
     default:
         assert(false);
     }
+}
+
+static void handleUdpForwardEvent(struct Event *aEvent)
+{
+    const otIp6Address *dst;
+    const uint8_t *     data;
+    uint16_t            offset = 0;
+    uint16_t            dst_port;
+    uint16_t            src_port;
+
+    assert(aEvent->mDataLength >= 20);
+
+    dst = (const otIp6Address *)(&aEvent->mData[offset]);
+    offset += sizeof(otIp6Address);
+
+    dst_port = ntohs(*(uint16_t *)(&aEvent->mData[offset]));
+    offset += sizeof(uint16_t);
+
+    src_port = ntohs(*(uint16_t *)(&aEvent->mData[offset]));
+    offset += sizeof(uint16_t);
+
+    data = (&aEvent->mData[offset]);
+
+    OT_UNUSED_VARIABLE(src_port);
+    OT_UNUSED_VARIABLE(dst_port);
+    OT_UNUSED_VARIABLE(dst);
+    OT_UNUSED_VARIABLE(data);
+
+    platformUdpForward(dst, dst_port, src_port, data, aEvent->mDataLength - offset);
+}
+
+OT_TOOL_WEAK
+void platformUdpForward(const otIp6Address *aDstAddr, uint16_t aDstPort, uint16_t aSrcPort,
+                        const uint8_t *     aData, uint16_t aLength)
+{
+    OT_UNUSED_VARIABLE(aDstAddr);
+    OT_UNUSED_VARIABLE(aDstPort);
+    OT_UNUSED_VARIABLE(aSrcPort);
+    OT_UNUSED_VARIABLE(aData);
+    OT_UNUSED_VARIABLE(aLength);
+}
+
+OT_TOOL_WEAK
+void platformIp6DatagramReceive(uint8_t *aData, uint16_t aLength)
+{
+    OT_UNUSED_VARIABLE(aData);
+    OT_UNUSED_VARIABLE(aLength);
 }
 
 static void platformSendSleepEvent(void)
@@ -251,11 +306,6 @@ void otSysInit(int argc, char *argv[])
 
     signal(SIGTERM, &handleSignal);
     signal(SIGHUP, &handleSignal);
-}
-
-void otSysSetupInstance(otInstance *aInstance)
-{
-    platformBackboneInit(aInstance);
 }
 
 bool otSysPseudoResetWasRequested(void)

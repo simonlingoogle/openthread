@@ -31,6 +31,9 @@
 import struct
 import time
 
+DLT_EN10MB = 1
+DLT_RAW = 101
+DLT_IEEE802_11 = 105
 DLT_IEEE802_15_4 = 195
 PCAP_MAGIC_NUMBER = 0xA1B2C3D4
 PCAP_VERSION_MAJOR = 2
@@ -40,7 +43,8 @@ PCAP_VERSION_MINOR = 4
 class PcapCodec(object):
     """ Utility class for .pcap formatters. """
 
-    def __init__(self, filename):
+    def __init__(self, filename, dlt_type=DLT_IEEE802_15_4):
+        self._dlt_type = dlt_type
         self._pcap_file = open('%s.pcap' % filename, 'wb')
         self._pcap_file.write(self.encode_header())
 
@@ -54,12 +58,11 @@ class PcapCodec(object):
             0,
             0,
             256,
-            DLT_IEEE802_15_4,
+            self._dlt_type,
         )
 
     def encode_frame(self, frame, sec, usec):
         """ Returns a pcap encapsulation of the given frame. """
-        frame = frame[1:]
         length = len(frame)
         pcap_frame = struct.pack("<LLLL", sec, usec, length, length)
         pcap_frame += frame
