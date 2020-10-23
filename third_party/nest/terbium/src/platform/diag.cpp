@@ -44,7 +44,7 @@ int tbDiagResponseOutput(const char *aFormat, ...)
     va_list args;
     int     len = 0;
 
-    VerifyOrExit(sOutputMaxLen > 0, OT_NOOP);
+    VerifyOrExit(sOutputMaxLen > 0);
 
     va_start(args, aFormat);
 

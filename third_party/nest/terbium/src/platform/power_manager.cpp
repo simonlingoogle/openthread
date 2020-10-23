@@ -44,7 +44,7 @@ static otError lookupEncodedPower(uint16_t aRegulatoryCode,
     {
         // If target power is invalid, try to lookup the default target power as the target power.
         error = tbWirelessCalLookupTargetPower(aRegulatoryCode, frequency, &targetPower);
-        VerifyOrExit(error == OT_ERROR_NONE, OT_NOOP);
+        VerifyOrExit(error == OT_ERROR_NONE);
     }
     else
     {

@@ -170,8 +170,8 @@ static inline void coexDeactivateRequest(void)
 
 static void coexGrantActivated(void)
 {
-    VerifyOrExit(sCoexState == kCoexStateEnabled, OT_NOOP);
-    VerifyOrExit(!sGrantActive, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateEnabled);
+    VerifyOrExit(!sGrantActive);
 
     // Indicate that the grant has become active.
     sGrantActive = true;
@@ -213,8 +213,8 @@ exit:
 
 static void coexGrantDeactivated(void)
 {
-    VerifyOrExit(sCoexState == kCoexStateEnabled, OT_NOOP);
-    VerifyOrExit(sGrantActive, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateEnabled);
+    VerifyOrExit(sGrantActive);
 
     // Indicate that the grant has become inactive.
     sGrantActive = false;
@@ -398,7 +398,7 @@ static void coexGrantTimeoutHandler(tbHalTimer aTimer, void *aContext)
 
 int coexEnable(void)
 {
-    VerifyOrExit(sCoexState == kCoexStateDisabled, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateDisabled);
 
     sCoexState = kCoexStateWaitingForRadio;
 
@@ -441,7 +441,7 @@ int coexDisable(void)
 
 void tbCoexRadioInit(void)
 {
-    VerifyOrExit(sCoexState == kCoexStateUninitialized, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateUninitialized);
 
     sCoexState = kCoexStateDisabled;
 
@@ -552,7 +552,7 @@ void tbCoexRadioStart(void)
 
 void tbCoexRadioStop(void)
 {
-    VerifyOrExit(sCoexState == kCoexStateEnabled, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateEnabled);
 
     coexEnterWaitingForRadioState(false);
 
@@ -562,7 +562,7 @@ exit:
 
 bool tbCoexRadioRxRequest(void)
 {
-    VerifyOrExit(sCoexState == kCoexStateEnabled, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateEnabled);
 
     // Make the rx request processing atomic.
     tbHalInterruptDisable();
@@ -611,7 +611,7 @@ bool tbCoexTxAckRequest(void)
     bool retval = false;
 
     VerifyOrExit(sCoexState == kCoexStateEnabled, retval = true);
-    VerifyOrExit(sRxFrameState == kCoexRadioStateRadioInProcess, OT_NOOP);
+    VerifyOrExit(sRxFrameState == kCoexRadioStateRadioInProcess);
 
     // Make the ack request processing atomic.
     tbHalInterruptDisable();
@@ -633,7 +633,7 @@ bool tbCoexRadioTxRequest(const uint8_t *aTxFrame)
 {
     bool retval = true;
 
-    VerifyOrExit(sCoexState == kCoexStateEnabled, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateEnabled);
 
     // Make the tx request processing atomic.
     tbHalInterruptDisable();
@@ -688,7 +688,7 @@ bool tbCoexRadioIsGrantActive(void)
 {
     bool retval = true;
 
-    VerifyOrExit(sCoexState == kCoexStateEnabled, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateEnabled);
 
     retval = sGrantActive;
 
@@ -705,7 +705,7 @@ void tbCoexRadioCriticalSectionExit(void)
 {
     // The radio driver will occasionally call tbCoexRadioCriticalSectionExit()
     // more than once for a single call to tbCoexRadioCriticalSectionEnter().
-    VerifyOrExit(sRadioDriverInCriticalSection == true, OT_NOOP);
+    VerifyOrExit(sRadioDriverInCriticalSection == true);
 
     if (sCoexState == kCoexStateEnabled)
     {
@@ -754,7 +754,7 @@ exit:
 
 void tbCoexRadioRxEnded(bool aSuccess)
 {
-    VerifyOrExit(sCoexState == kCoexStateEnabled, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateEnabled);
 
     if (sRxFrameState != kCoexRadioStateIdle)
     {
@@ -796,7 +796,7 @@ exit:
 
 void tbCoexRadioTxEnded(bool aSuccess)
 {
-    VerifyOrExit(sCoexState == kCoexStateEnabled, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateEnabled);
 
     if (sTxFrameState != kCoexRadioStateIdle)
     {
@@ -835,7 +835,7 @@ static void coexGrantPinHandler(tbHalGpioPin aPin)
     // Get the current state of grant.
     sGrantPinValue = tbHalGpioGetValue(sCoexConfig.mGrantPin);
 
-    VerifyOrExit(sCoexState == kCoexStateEnabled, OT_NOOP);
+    VerifyOrExit(sCoexState == kCoexStateEnabled);
 
     if (sGrantPinValue == sGrantPinValuePrevious)
     {

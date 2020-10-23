@@ -28,7 +28,7 @@ otError tbRegulatoryDomainDecode(const uint16_t aCode, char *aCodeString, uint16
 {
     otError error = OT_ERROR_INVALID_ARGS;
 
-    VerifyOrExit((aCodeString != NULL) && (aCodeStringSize >= TB_REGULATORY_DOMAIN_STRING_SIZE), OT_NOOP);
+    VerifyOrExit((aCodeString != NULL) && (aCodeStringSize >= TB_REGULATORY_DOMAIN_STRING_SIZE));
 
     aCodeString[0] = (aCode >> 8) & 0xFF;
     aCodeString[1] = (aCode >> 0) & 0xFF;

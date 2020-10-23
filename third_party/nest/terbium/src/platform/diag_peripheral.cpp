@@ -253,19 +253,19 @@ static otError processFemPower(otInstance *aInstance, uint8_t aArgsLength, char 
     OT_UNUSED_VARIABLE(aInstance);
 
     // Check whether FEM supports this FEM diag command.
-    VerifyOrExit(strcmp(femPowerCommand, aArgs[-1]) == 0, OT_NOOP);
+    VerifyOrExit(strcmp(femPowerCommand, aArgs[-1]) == 0);
 
-    VerifyOrExit(aArgsLength == 1, OT_NOOP);
+    VerifyOrExit(aArgsLength == 1);
 
     // Argument is in format pXXX where p is 'v' or 'i' and XXX is the FEM power setting.
-    VerifyOrExit(*aArgs[0] == femPowerIdentifier, OT_NOOP);
+    VerifyOrExit(*aArgs[0] == femPowerIdentifier);
 
     // +1 skips the identifier 'v' or 'i'.
     outFemPower = strtol(aArgs[0] + 1, NULL, 10);
 
-    VerifyOrExit(tbHalFemIsPowerValid(outFemPower), OT_NOOP);
-    VerifyOrExit((error = tbHalFemSetPower(outFemPower)) == OT_ERROR_NONE, OT_NOOP);
-    VerifyOrExit((error = tbHalFemGetPower(&inFemPower)) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit(tbHalFemIsPowerValid(outFemPower));
+    VerifyOrExit((error = tbHalFemSetPower(outFemPower)) == OT_ERROR_NONE);
+    VerifyOrExit((error = tbHalFemGetPower(&inFemPower)) == OT_ERROR_NONE);
 
     if (tbHalFemGetPowerType() == TB_HAL_FEM_POWER_TYPE_VCC2)
     {
@@ -688,7 +688,7 @@ static otError processBacktrace(otInstance *aInstance, uint8_t aArgsLength, char
 void tbDiagAlarmCallback(otInstance *aInstance)
 {
     // Check if we were cancelled.
-    VerifyOrExit(sTxNumPackets, OT_NOOP);
+    VerifyOrExit(sTxNumPackets);
 
     if (sTxUserPayload)
     {

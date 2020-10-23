@@ -291,7 +291,7 @@ otError tbPowerSettingsSave(void)
     otLogDebgPlat("%s: Writting to sysenv for key %s", __func__, key);
 
     // Save the temporary power table to sysenv.
-    VerifyOrExit((error = tbSysenvSet(key, &sRamPowerSettingsTable[0], powerTableSize)) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit((error = tbSysenvSet(key, &sRamPowerSettingsTable[0], powerTableSize)) == OT_ERROR_NONE);
 
 exit:
     return error;

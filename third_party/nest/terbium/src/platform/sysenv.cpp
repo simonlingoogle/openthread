@@ -143,7 +143,7 @@ static int32_t sysenvBufferParseEntry(const uint8_t *aBuffer, EnvEntry *aEntry, 
 
     len = *(uint32_t *)aBuffer;
 
-    VerifyOrExit((len != SYSENV_INVALID_LENGTH) && (len < aBytesLeft), OT_NOOP);
+    VerifyOrExit((len != SYSENV_INVALID_LENGTH) && (len < aBytesLeft));
 
     // Get the key.
     data                 = aBuffer + sizeof(len);
@@ -257,10 +257,10 @@ static otError sysenvFindEntry(const char *aKey, EnvEntry *aEntry)
     key.mLength = strlen(aKey);
 
     // Read data from sysenv flash to EnvBuffer and check the CRC.
-    VerifyOrExit((error = sysenvReadAndCheck(&buffer)) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit((error = sysenvReadAndCheck(&buffer)) == OT_ERROR_NONE);
 
     // Find the entry from the EnvBuffer.
-    VerifyOrExit((error = sysenvBufferFindEntry(&buffer, &key, aEntry, NULL)) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit((error = sysenvBufferFindEntry(&buffer, &key, aEntry, NULL)) == OT_ERROR_NONE);
 
 exit:
     return error;
@@ -283,7 +283,7 @@ otError sysenvGetNext(uint32_t *   aIterator,
     {
         EnvBuffer buffer;
 
-        VerifyOrExit((error = sysenvReadAndCheck(&buffer)) == OT_ERROR_NONE, OT_NOOP);
+        VerifyOrExit((error = sysenvReadAndCheck(&buffer)) == OT_ERROR_NONE);
         bufferStart = reinterpret_cast<const uint8_t *>(buffer.mData);
         sBufferEnd  = bufferStart + buffer.mLength;
     }
@@ -371,7 +371,7 @@ otError tbSysenvGetPointer(const char *aKey, const void **aValue, uint32_t *aVal
     VerifyOrExit((aKey != NULL) && (aValue != NULL) && (aValueLen != NULL), error = OT_ERROR_INVALID_ARGS);
 
     // Find the entry for the given key from sysenv flash.
-    VerifyOrExit((error = sysenvFindEntry(aKey, &entry)) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit((error = sysenvFindEntry(aKey, &entry)) == OT_ERROR_NONE);
 
     // Directly return the address of the value data in sysenv flash.
     *aValue    = entry.mValue.mData;
@@ -395,7 +395,7 @@ otError tbSysenvGet(const char *aKey, void *aValue, uint32_t *aValueLen)
     VerifyOrExit((aKey != NULL) && (aValue != NULL) && (aValueLen != NULL), error = OT_ERROR_INVALID_ARGS);
 
     // Find the entry for the given key from sysenv flash.
-    VerifyOrExit((error = sysenvFindEntry(aKey, &entry)) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit((error = sysenvFindEntry(aKey, &entry)) == OT_ERROR_NONE);
     VerifyOrExit(entry.mValue.mLength <= *aValueLen, error = OT_ERROR_NO_BUFS);
 
     // Copy the value data from flash to user buffer.
@@ -560,17 +560,17 @@ static otError sysenvWriteEntryToFlash(const EnvEntry *aEntry)
     EnvBuffer buffer;
 
     // Read data from flash to RAM buffer.
-    VerifyOrExit((error = sysenvReadFlash(ramBuffer, sizeof(ramBuffer))) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit((error = sysenvReadFlash(ramBuffer, sizeof(ramBuffer))) == OT_ERROR_NONE);
 
     // Skip past the header to the data.
     buffer.mData   = ramBuffer + SYSENV_HEADER_SIZE;
     buffer.mLength = sizeof(ramBuffer) - SYSENV_HEADER_SIZE;
 
     // Write the entry to RAM buffer.
-    VerifyOrExit((error = sysenvBufferSetEntry(&buffer, aEntry)) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit((error = sysenvBufferSetEntry(&buffer, aEntry)) == OT_ERROR_NONE);
 
     // Write the RAM buffer to flash.
-    VerifyOrExit((error = sysenvWriteFlash(ramBuffer, sizeof(ramBuffer))) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit((error = sysenvWriteFlash(ramBuffer, sizeof(ramBuffer))) == OT_ERROR_NONE);
 
 exit:
     return error;
@@ -590,7 +590,7 @@ otError tbSysenvSet(const char *aKey, const void *aValue, uint32_t aValueLen)
     entry.mValue.mData   = aValue;
     entry.mValue.mLength = aValueLen;
 
-    VerifyOrExit((error = sysenvWriteEntryToFlash(&entry)) == OT_ERROR_NONE, OT_NOOP);
+    VerifyOrExit((error = sysenvWriteEntryToFlash(&entry)) == OT_ERROR_NONE);
     otLogDebgPlat("%s: key=%s len=%d", __func__, aKey, aValueLen);
 
     // The address of key-value entries may have already changed in sysenv,

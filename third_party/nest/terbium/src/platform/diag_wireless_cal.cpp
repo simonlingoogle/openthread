@@ -62,7 +62,7 @@ static void printWirelessCalTarget(const tbWirelessCalTarget *aTarget, bool aSho
     uint16_t                          numChannel;
     const tbWirelessCalSubbandTarget *subbandTarget;
 
-    VerifyOrExit(aTarget != NULL, OT_NOOP);
+    VerifyOrExit(aTarget != NULL);
 
     subbandTarget = aTarget->mSubbandTargets;
 
@@ -150,7 +150,7 @@ static void printWirelessCalSubbandSetting(const tbWirelessCalSubbandSetting *aS
     uint16_t                         startChannel;
     uint16_t                         numChannel;
 
-    VerifyOrExit(aSubbandSetting != NULL, OT_NOOP);
+    VerifyOrExit(aSubbandSetting != NULL);
 
     powerSetting = aSubbandSetting->mPowerSettings;
     startChannel = tbWirelessCalMapChannel(aSubbandSetting->mFrequencyStart);
@@ -219,7 +219,7 @@ static void printWirelessCalParameter(const tbWirelessCalParameter *aParameter)
     //   -b 14,11,4 -s 1020,-4,1,6/980,-4,1,3/620,-8,0,6/600,-8,0,2
     //   -b 25,2,4 -s 1010,0,0,5/950,0,0,0/610,-4,0,2/590,-4,0,0
 
-    VerifyOrExit(aParameter != NULL, OT_NOOP);
+    VerifyOrExit(aParameter != NULL);
 
     target         = aParameter->mTargetPowers;
     subbandSetting = aParameter->mSubbandSettings;
@@ -339,7 +339,7 @@ static otError processWirelessCalGet(uint8_t aArgsLength, char *aArgs[])
 {
     otError error = OT_ERROR_INVALID_ARGS;
 
-    VerifyOrExit((aArgsLength >= 1) && (strcmp(aArgs[0], "get") == 0), OT_NOOP);
+    VerifyOrExit((aArgsLength >= 1) && (strcmp(aArgs[0], "get") == 0));
 
     if (aArgsLength == 1)
     {
@@ -849,7 +849,7 @@ otError tbDiagProcessWirelessCal(otInstance *aInstance, uint8_t aArgsLength, cha
 
     OT_UNUSED_VARIABLE(aInstance);
 
-    VerifyOrExit(aArgsLength > 0, OT_NOOP);
+    VerifyOrExit(aArgsLength > 0);
 
     if (strcmp("set", aArgs[0]) == 0)
     {

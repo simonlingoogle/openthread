@@ -344,8 +344,8 @@ static uint16_t backtrace(uint32_t aPc, uint32_t aSp, uint32_t *aBuffer, uint16_
     uint32_t currentSp = aSp;
     uint32_t currentPc = aPc;
 
-    VerifyOrExit((aBuffer != NULL) && (aLength != 0), OT_NOOP);
-    VerifyOrExit(isAddressValidForCode(aPc), OT_NOOP);
+    VerifyOrExit((aBuffer != NULL) && (aLength != 0));
+    VerifyOrExit(isAddressValidForCode(aPc));
 
     while (level < aLength)
     {
@@ -461,7 +461,7 @@ uint16_t tbBacktrace(uint32_t *aBuffer, uint16_t aLength)
     // directly call `backtrace()`, the compiler optimizes the function `tbBacktrace()`, which
     // does not push LR to the stack. Then the backtrace can't find the correct PUSH instruction.
 
-    VerifyOrExit((aBuffer != NULL) && (aLength != 0), OT_NOOP);
+    VerifyOrExit((aBuffer != NULL) && (aLength != 0));
 
     while (level < aLength)
     {

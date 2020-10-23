@@ -217,7 +217,7 @@ otError tbWirelessCalLookupTargetPower(uint16_t aRegulatoryCode, uint32_t aFrequ
 
     otLogDebgPlat("%s: RegulatoryCode=0x%04x, Frequency=%d", __func__, aRegulatoryCode, aFrequency);
 
-    VerifyOrExit(parameters != NULL, OT_NOOP);
+    VerifyOrExit(parameters != NULL);
 
     target = parameters->mTargetPowers;
 
@@ -276,7 +276,7 @@ otError tbWirelessCalLookupPowerSetting(uint32_t aFrequency,
 
     otLogDebgPlat("%s: Frequency=%d, TargetPower=%d", __func__, aFrequency, aTargetPower);
 
-    VerifyOrExit(sCalibration.mParameters != NULL, OT_NOOP);
+    VerifyOrExit(sCalibration.mParameters != NULL);
 
     // Lookup the subband settings table.
     error = wirelessCalLookupSubbandSettings(sCalibration.mParameters->mSubbandSettings, aFrequency, aTargetPower,
