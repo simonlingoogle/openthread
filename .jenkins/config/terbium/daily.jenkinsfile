@@ -6,7 +6,7 @@ def config =
     versionBase : "${version}d" ,
     imagesPath : "/images/OpenThread/Terbium/Builds" ,
     repository : "tps/openthread" ,
-    repositoryBranch: "terbium/master" ,
+    repositoryBranch: "master" ,
     platform : "linux" ,
     buildType : "Daily" ,
     builder_id : "openthread_terbium-daily" ,
