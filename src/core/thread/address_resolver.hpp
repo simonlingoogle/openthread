@@ -103,7 +103,7 @@ public:
      * @retval OT_ERROR_NOT_FOUND  No more entries in the address cache table.
      *
      */
-    otError GetNextCacheEntry(EntryInfo &aInfo, Iterator &aIterator) const;
+    otError GetNextCacheEntry(EntryInfo &aInfo, Iterator &aIterator);
 
     /**
      * This method removes the EID-to-RLOC cache entries corresponding to an RLOC16.
