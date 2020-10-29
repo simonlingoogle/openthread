@@ -39,10 +39,11 @@
 /**
  * @def OPENTHREAD_CONFIG_LOG_OUTPUT
  *
- * The log output goes to NCP Spinel `STREAM_LOG` property.
+ * The log output goes to the "application" provided otPlatLog() in NCP and CLI code.
+ *
  */
 #ifndef OPENTHREAD_CONFIG_LOG_OUTPUT
-#define OPENTHREAD_CONFIG_LOG_OUTPUT OPENTHREAD_CONFIG_LOG_OUTPUT_NCP_SPINEL
+#define OPENTHREAD_CONFIG_LOG_OUTPUT OPENTHREAD_CONFIG_LOG_OUTPUT_APP
 #endif
 
 /**
