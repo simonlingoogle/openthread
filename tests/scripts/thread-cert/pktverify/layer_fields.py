@@ -293,6 +293,13 @@ _LAYER_FIELDS = {
     'mle.tlv.addr16': _auto,
     'mle.tlv.channel': _auto,
     'mle.tlv.addr_reg_iid': _list(_auto),
+    'mle.tlv.link_forward_series': _list(_auto),
+    'mle.tlv.link_sub_tlv': _auto,
+    'mle.tlv.link_status_sub_tlv': _auto,
+    'mle.tlv.query_id': _auto,
+    'mle.tlv.metric_type_id_flags.type': _list(_hex),
+    'mle.tlv.metric_type_id_flags.metric': _list(_hex),
+    'mle.tlv.metric_type_id_flags.l': _list(_hex),
 
     # IP
     'ip.version': _auto,
@@ -500,6 +507,7 @@ _LAYER_FIELDS = {
     'thread_address.tlv.len': _list(_auto),
     'thread_address.tlv.type': _list(_auto),
     'thread_address.tlv.status': _auto,
+    'thread_address.tlv.target_eid': _ipv6_addr,
     'thread_address.tlv.ext_mac_addr': _ext_addr,
     'thread_address.tlv.router_mask_id_seq': _auto,
     'thread_address.tlv.router_mask_assigned': _bytes,

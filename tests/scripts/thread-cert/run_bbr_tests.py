@@ -36,7 +36,7 @@ from collections import Counter
 
 import config
 
-MULTIPLE_JOBS = 10
+MULTIPLE_JOBS = 20
 
 logging.basicConfig(level=logging.DEBUG,
                     format='File "%(pathname)s", line %(lineno)d, in %(funcName)s\n'
@@ -86,8 +86,6 @@ def cleanup_env():
 
 def setup_env():
     bash(f'docker image inspect {config.OTBR_DOCKER_IMAGE} >/dev/null')
-    # Download codecov bash to be used for OTBR Dockers
-    bash('curl -L https://codecov.io/bash -o /tmp/codecov.bash --retry 5')
 
 
 def parse_args():

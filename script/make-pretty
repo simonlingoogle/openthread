@@ -116,7 +116,16 @@ readonly OT_CLANG_TIDY_BUILD_OPTS=(
 
 readonly OT_CLANG_TIDY_CHECKS="\
 -*,\
+google-explicit-constructor,\
+google-readability-casting,\
+misc-unused-using-decls,\
+modernize-use-bool-literals,\
+modernize-use-equals-default,\
+modernize-use-equals-delete,\
+modernize-use-nullptr,\
+readability-avoid-const-params-in-decls,\
 readability-make-member-function-const,\
+readability-simplify-boolean-expr,\
 "
 
 #performance-for-range-copy\
