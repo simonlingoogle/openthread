@@ -51,16 +51,24 @@
  * +---------+-------+-------+-------+
  */
 
-#define TLV75801_FEM_VCC2_MASK 0x01
-#define TLV75801_FEM_VCC2_MIN 0
-#define TLV75801_FEM_VCC2_MAX 1
-#define TLV75801_DEFAULT_FEM_VCC2 0x01
+/*
+ * On Newman, the FEM Power is composed of three bits. Each bit represents a control pin of the voltage regulator chip.
+ * The chip tlv75801 has only one control pin. The bit 2 of the FEM Power indicates the voltage level of tlv75801's
+ * control pin. For other two bits, the tlv75801 driver doesn't process them.
+ *
+ */
+#define FEM_POWER_VCC2_PIN0_MASK (1U << 0)
+#define FEM_POWER_VCC2_PIN1_MASK (1U << 1)
+#define FEM_POWER_VCC2_PIN2_MASK (1U << 2)
+#define FEM_POWER_VCC2_MIN 0x00
+#define FEM_POWER_VCC2_MAX 0x07
+#define FEM_POWER_VCC2_DEFAULT 0x07
 
-static uint16_t sFemPower = TLV75801_DEFAULT_FEM_VCC2;
+static uint16_t sFemPower = FEM_POWER_VCC2_DEFAULT;
 
 bool tbHalFemIsPowerValid(uint8_t aFemPower)
 {
-    return (aFemPower <= TLV75801_FEM_VCC2_MAX) ? true : false;
+    return (aFemPower <= FEM_POWER_VCC2_MAX) ? true : false;
 }
 
 otError tbHalFemGetPowerRange(uint8_t *aMinPower, uint8_t *aMaxPower)
@@ -69,8 +77,8 @@ otError tbHalFemGetPowerRange(uint8_t *aMinPower, uint8_t *aMaxPower)
 
     otEXPECT_ACTION((aMinPower != NULL) && (aMaxPower != NULL), error = OT_ERROR_INVALID_ARGS);
 
-    *aMinPower = TLV75801_FEM_VCC2_MIN;
-    *aMaxPower = TLV75801_FEM_VCC2_MAX;
+    *aMinPower = FEM_POWER_VCC2_MIN;
+    *aMaxPower = FEM_POWER_VCC2_MAX;
 
 exit:
     return error;
@@ -83,7 +91,7 @@ tbHalFemPowerType tbHalFemGetPowerType(void)
 
 static void tlv75801SetEncodedVoltage(uint8_t aEncodedVoltage)
 {
-    uint8_t value = (aEncodedVoltage & TLV75801_FEM_VCC2_MASK) ? TB_HAL_GPIO_VALUE_HIGH : TB_HAL_GPIO_VALUE_LOW;
+    uint8_t value = (aEncodedVoltage & FEM_POWER_VCC2_PIN2_MASK) ? TB_HAL_GPIO_VALUE_HIGH : TB_HAL_GPIO_VALUE_LOW;
 
     tbHalGpioOutputRequest(TERBIUM_BOARD_CONFIG_VOLTAGE_REGULATOR_ADJUST_PIN, value);
 }
@@ -91,7 +99,7 @@ static void tlv75801SetEncodedVoltage(uint8_t aEncodedVoltage)
 otError tbVoltageRegulatorInit(void)
 {
     tbHalGpioOutputRequest(TERBIUM_BOARD_CONFIG_VOLTAGE_REGULATOR_ENABLE_PIN, TB_HAL_GPIO_VALUE_HIGH);
-    tlv75801SetEncodedVoltage(TLV75801_DEFAULT_FEM_VCC2);
+    tlv75801SetEncodedVoltage(FEM_POWER_VCC2_DEFAULT);
 
     return OT_ERROR_NONE;
 }
@@ -146,7 +154,7 @@ exit:
 
 uint8_t tbHalFemGetDefaultPower(void)
 {
-    return TLV75801_DEFAULT_FEM_VCC2;
+    return FEM_POWER_VCC2_DEFAULT;
 }
 
 #endif // TERBIUM_CONFIG_VOLTAGE_REGULATOR_TLV75801_ENABLE
