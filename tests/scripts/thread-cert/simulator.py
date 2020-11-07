@@ -260,7 +260,7 @@ class VirtualTime(BaseSimulator):
         """ Receive events until all devices are asleep. """
         while True:
             if (self.current_event or len(self.awake_devices) or
-                (self._next_event_time() > self._pause_time and self.current_nodeid)):
+                    (self._next_event_time() > self._pause_time and self.current_nodeid)):
                 self.sock.settimeout(self.BLOCK_TIMEOUT)
                 try:
                     msg, addr = self.sock.recvfrom(self.MAX_MESSAGE)
@@ -337,6 +337,10 @@ class VirtualTime(BaseSimulator):
                 recv_devices = None
                 if frame_info.frame_type == wpan.FrameType.ACK:
                     recv_devices = self._nodes_by_ack_seq.get(frame_info.seq_no)
+                # elif frame_info.dst_addr_mode == wpan.DstAddrMode.EXTENDED:
+                #     dst_node_id = self._node_by_extaddr.get(frame_info.dst_extaddr)
+                #     if dst_node_id is not None:
+                #         recv_devices = [('127.0.0.1', self.port + dst_node_id)]
 
                 recv_devices = recv_devices or self.devices.keys()
                 src_node_id = addr[1] - self.port
