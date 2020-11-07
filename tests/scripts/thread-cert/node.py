@@ -639,15 +639,24 @@ class NodeImpl:
         self.send_command(cmd)
         self._expect('Done')
 
+        if isinstance(self.simulator, simulator.VirtualTime):
+            self.simulator.clear_allowlist(self)
+
     def enable_allowlist(self):
         cmd = 'macfilter addr allowlist'
         self.send_command(cmd)
         self._expect('Done')
 
+        if isinstance(self.simulator, simulator.VirtualTime):
+            self.simulator.enable_allowlist(self)
+
     def disable_allowlist(self):
         cmd = 'macfilter addr disable'
         self.send_command(cmd)
         self._expect('Done')
+
+        if isinstance(self.simulator, simulator.VirtualTime):
+            self.simulator.disable_allowlist(self)
 
     def add_allowlist(self, addr, rssi=None):
         cmd = 'macfilter addr add %s' % addr
@@ -657,6 +666,17 @@ class NodeImpl:
 
         self.send_command(cmd)
         self._expect('Done')
+
+        if isinstance(self.simulator, simulator.VirtualTime):
+            self.simulator.add_allowlist(self, addr)
+
+    def remove_allowlist(self, addr):
+        cmd = 'macfilter addr remove %s' % addr
+        self.send_command(cmd)
+        self._expect('Done')
+
+        if isinstance(self.simulator, simulator.VirtualTime):
+            self.simulator.remove_allowlist(self, addr)
 
     def get_bbr_registration_jitter(self):
         self.send_command('bbr jitter')
@@ -823,11 +843,6 @@ class NodeImpl:
 
     def set_outbound_link_quality(self, lqi):
         cmd = 'macfilter rss add-lqi * %s' % (lqi)
-        self.send_command(cmd)
-        self._expect('Done')
-
-    def remove_allowlist(self, addr):
-        cmd = 'macfilter addr remove %s' % addr
         self.send_command(cmd)
         self._expect('Done')
 

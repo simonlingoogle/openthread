@@ -49,10 +49,15 @@ build_simulation()
 {
     local version="$1"
     local options=("-DOT_THREAD_VERSION=${version}" "-DBUILD_TESTING=ON" "-DOT_REFERENCE_DEVICE=ON")
+    readonly OTNS=${OTNS:-1}
 
     if [[ ${version} == "1.2" ]]; then
         options+=("-DOT_DUA=ON")
         options+=("-DOT_MLR=ON")
+    fi
+
+    if [[ ${OTNS} == 1 ]]; then
+        options+=("-DOT_OTNS=ON")
     fi
 
     if [[ ${VIRTUAL_TIME} == 1 ]]; then

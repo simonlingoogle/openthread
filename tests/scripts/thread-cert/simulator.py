@@ -123,12 +123,12 @@ class RealTime(BaseSimulator):
 
 
 class VirtualTime(BaseSimulator):
-
     OT_SIM_EVENT_ALARM_FIRED = 0
     OT_SIM_EVENT_RADIO_RECEIVED = 1
     OT_SIM_EVENT_UART_WRITE = 2
     OT_SIM_EVENT_RADIO_SPINEL_WRITE = 3
     OT_SIM_EVENT_POSTCMD = 4
+    OT_SIM_EVENT_OTNS_STATUS_PUSH = 5
 
     EVENT_TIME = 0
     EVENT_SEQUENCE = 1
@@ -165,6 +165,10 @@ class VirtualTime(BaseSimulator):
         self.awake_devices = set()
         self._nodes_by_ack_seq = {}
         self._node_ack_seq = {}
+        self._node_by_extaddr = {}
+        self._node_extaddr = {}
+        self._node_allowlist = {}
+        self._node_allowlist_enabled = {}
 
         self._pcap = pcap.PcapCodec(os.getenv('TEST_NAME', 'current'))
         # the addr for spinel-cli sending OT_SIM_EVENT_POSTCMD
@@ -335,9 +339,15 @@ class VirtualTime(BaseSimulator):
                     recv_devices = self._nodes_by_ack_seq.get(frame_info.seq_no)
 
                 recv_devices = recv_devices or self.devices.keys()
+                src_node_id = addr[1] - self.port
 
                 for device in recv_devices:
                     if device != addr and self._is_radio(device):
+                        dst_node_id = device[1] - self.port
+
+                        if not self._in_allowlist(dst_node_id, src_node_id):
+                            continue
+
                         event = (
                             event_time,
                             self.event_sequence,
@@ -351,7 +361,7 @@ class VirtualTime(BaseSimulator):
                         bisect.insort(self.event_queue, event)
 
                 self._pcap.append(data, (event_time // 1000000, event_time % 1000000))
-                self._add_message(addr[1] - self.port, data)
+                self._add_message(src_node_id, data)
 
                 # add radio transmit done events to event queue
                 event = (
@@ -413,6 +423,31 @@ class VirtualTime(BaseSimulator):
                 nodeid = struct.unpack('=B', data)[0]
                 if self.current_nodeid == nodeid:
                     self.current_nodeid = None
+
+            elif type == self.OT_SIM_EVENT_OTNS_STATUS_PUSH:
+                assert self._is_radio(addr), addr
+
+                for status in data.decode('ascii').split(';'):
+                    name, val = status.split('=')
+                    if name == 'extaddr':
+                        self._on_extaddr_change(addr[1] - self.port, val)
+
+                self.awake_devices.add(addr)
+
+    def _on_extaddr_change(self, nodeid, extaddr: str):
+        old_extaddr = self._node_extaddr.get(nodeid)
+
+        if old_extaddr == extaddr:
+            return
+
+        assert extaddr not in self._node_by_extaddr, ('duplicate extaddr', extaddr)
+
+        if old_extaddr is not None:
+            assert self._node_by_extaddr[old_extaddr] == nodeid
+            del self._node_by_extaddr[old_extaddr]
+
+        self._node_extaddr[nodeid] = extaddr
+        self._node_by_extaddr[extaddr] = nodeid
 
     def _on_ack_seq_change(self, device: tuple, seq_no: int):
         old_seq = self._node_ack_seq.pop(device, None)
@@ -510,6 +545,36 @@ class VirtualTime(BaseSimulator):
         if duration > 0:
             self.sync_devices()
         dbg_print('current time %d us' % self.current_time)
+
+    def enable_allowlist(self, node):
+        nodeid = node.nodeid
+        self._node_allowlist_enabled[nodeid] = True
+
+    def disable_allowlist(self, node):
+        nodeid = node.nodeid
+        self._node_allowlist_enabled[nodeid] = False
+
+    def add_allowlist(self, node, addr):
+        nodeid = node.nodeid
+        self._node_allowlist.setdefault(nodeid, set()).add(addr)
+
+    def remove_allowlist(self, node, addr):
+        nodeid = node.nodeid
+        self._node_allowlist.setdefault(nodeid, set()).discard(addr)
+
+    def clear_allowlist(self, node):
+        nodeid = node.nodeid
+        self._node_allowlist.pop(nodeid, None)
+
+    def _in_allowlist(self, dst_nodeid, src_nodeid):
+        if not self._node_allowlist_enabled.get(dst_nodeid):
+            return True
+
+        src_extaddr = self._node_extaddr.get(src_nodeid)
+        if src_extaddr is None:
+            return True
+
+        return src_extaddr in self._node_allowlist.get(dst_nodeid, ())
 
 
 if __name__ == '__main__':
