@@ -31,6 +31,16 @@
 #endif
 
 /**
+ * @def TERBIUM_CONFIG_RADIO_ANTENNA_CCA_THRESHOLD
+ *
+ * The CCA threshold on antenna.
+ *
+ */
+#ifndef TERBIUM_CONFIG_RADIO_ANTENNA_CCA_THRESHOLD
+#define TERBIUM_CONFIG_RADIO_ANTENNA_CCA_THRESHOLD -74
+#endif
+
+/**
  * @def TERBIUM_CONFIG_VOLTAGE_REGULATOR_TLV75801_ENABLE
  *
  * Define to 1 to enable volgate regulator TLV75801 support.

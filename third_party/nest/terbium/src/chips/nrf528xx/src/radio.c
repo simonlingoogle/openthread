@@ -356,6 +356,7 @@ void nrf5RadioInit(void)
     tbHalFemInit();
     radioLoadRegulatoryDomainFromSysenv();
     radioSetChannel(11);
+    otPlatRadioSetCcaEnergyDetectThreshold(NULL, TERBIUM_CONFIG_RADIO_ANTENNA_CCA_THRESHOLD);
 #endif
 }
 
