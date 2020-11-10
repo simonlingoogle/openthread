@@ -50,6 +50,7 @@ libopenthread_posix_a_SOURCES             = \
     hdlc_interface.cpp                      \
     logging.cpp                             \
     misc.cpp                                \
+    multicast_routing.cpp                   \
     netif.cpp                               \
     radio.cpp                               \
     radio_url.cpp                           \

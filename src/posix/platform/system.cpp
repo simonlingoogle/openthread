@@ -46,6 +46,21 @@
 
 #include "common/code_utils.hpp"
 
+static void processStateChange(otChangedFlags aFlags, void *aContext)
+{
+    otInstance *instance = static_cast<otInstance *>(aContext);
+
+    OT_UNUSED_VARIABLE(instance);
+
+#if OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
+    platformNetifStateChange(instance, aFlags);
+#endif
+
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+    platformBackboneStateChange(instance, aFlags);
+#endif
+}
+
 otInstance *otSysInit(otPlatformConfig *aPlatformConfig)
 {
     otInstance *        instance = nullptr;
@@ -81,6 +96,8 @@ otInstance *otSysInit(otPlatformConfig *aPlatformConfig)
 #elif OPENTHREAD_CONFIG_PLATFORM_UDP_ENABLE
     platformUdpInit(aPlatformConfig->mInterfaceName);
 #endif
+
+    SuccessOrDie(otSetStateChangedCallback(instance, processStateChange, instance));
 
     return instance;
 }
@@ -141,6 +158,9 @@ void otSysMainloopUpdate(otInstance *aInstance, otSysMainloopContext *aMainloop)
 #if OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
     platformNetifUpdateFdSet(&aMainloop->mReadFdSet, &aMainloop->mWriteFdSet, &aMainloop->mErrorFdSet,
                              &aMainloop->mMaxFd);
+#endif
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+    platformBackboneUpdateFdSet(&aMainloop->mReadFdSet, &aMainloop->mMaxFd);
 #endif
 #if OPENTHREAD_POSIX_VIRTUAL_TIME
     virtualTimeUpdateFdSet(&aMainloop->mReadFdSet, &aMainloop->mWriteFdSet, &aMainloop->mErrorFdSet, &aMainloop->mMaxFd,
@@ -213,6 +233,9 @@ void otSysMainloopProcess(otInstance *aInstance, const otSysMainloopContext *aMa
 #endif
 #if OPENTHREAD_CONFIG_PLATFORM_UDP_ENABLE
     platformUdpProcess(aInstance, &aMainloop->mReadFdSet);
+#endif
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
+    platformBackboneProcess(&aMainloop->mReadFdSet);
 #endif
 }
 
