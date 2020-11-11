@@ -50,7 +50,6 @@ DiscoverScanner::DiscoverScanner(Instance &aInstance)
     , mHandlerContext(nullptr)
     , mTimer(aInstance, DiscoverScanner::HandleTimer, this)
     , mFilterIndexes()
-    , mScanChannels()
     , mState(kStateIdle)
     , mScanChannel(0)
     , mAdvDataLength(0)
@@ -331,7 +330,8 @@ void DiscoverScanner::HandleDiscoveryResponse(const Message &aMessage, const Ip6
             break;
 
         case MeshCoP::Tlv::kExtendedPanId:
-            SuccessOrExit(error = Tlv::ReadTlv(aMessage, offset, &result.mExtendedPanId, sizeof(Mac::ExtendedPanId)));
+            SuccessOrExit(error = Tlv::Read<MeshCoP::ExtendedPanIdTlv>(
+                              aMessage, offset, static_cast<Mac::ExtendedPanId &>(result.mExtendedPanId)));
             break;
 
         case MeshCoP::Tlv::kNetworkName:
@@ -364,7 +364,7 @@ void DiscoverScanner::HandleDiscoveryResponse(const Message &aMessage, const Ip6
             break;
 
         case MeshCoP::Tlv::kJoinerUdpPort:
-            SuccessOrExit(error = Tlv::ReadUint16Tlv(aMessage, offset, result.mJoinerUdpPort));
+            SuccessOrExit(error = Tlv::Read<MeshCoP::JoinerUdpPortTlv>(aMessage, offset, result.mJoinerUdpPort));
             break;
 
         default:

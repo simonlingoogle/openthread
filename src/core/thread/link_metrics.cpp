@@ -54,8 +54,8 @@ void LinkMetricsSeriesInfo::Init(uint8_t              aSeriesId,
     mLinkMetrics.mLqi        = aLinkMetricsFlags.mLqi;
     mLinkMetrics.mLinkMargin = aLinkMetricsFlags.mLinkMargin;
     mLinkMetrics.mRssi       = aLinkMetricsFlags.mRssi;
-    mRssAverager.Reset();
-    mLqiAverager.Reset();
+    mRssAverager.Clear();
+    mLqiAverager.Clear();
     mPduCount = 0;
 }
 
@@ -108,7 +108,6 @@ LinkMetrics::LinkMetrics(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mLinkMetricsReportCallback(nullptr)
     , mLinkMetricsReportCallbackContext(nullptr)
-    , mLinkMetricsSeriesInfoPool()
 {
 }
 
@@ -233,7 +232,7 @@ otError LinkMetrics::AppendLinkMetricsReport(Message &aMessage, const Message &a
         switch (tlv.GetType())
         {
         case kLinkMetricsQueryId:
-            SuccessOrExit(error = Tlv::ReadUint8Tlv(aRequestMessage, offset, queryId));
+            SuccessOrExit(error = Tlv::Read<LinkMetricsQueryIdTlv>(aRequestMessage, offset, queryId));
             hasQueryId = true;
             break;
 
