@@ -26,9 +26,9 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-
 #include "posix/platform/multicast_routing.hpp"
+
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
 
 #include <assert.h>
 #include <chrono>
@@ -167,14 +167,17 @@ otError MulticastRoutingManager::InitMulticastRouterSock(void)
 
     // Create a Multicast Routing socket
     mMulticastRouterSock = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+    otLogInfoPlat("Socket created: %d", mMulticastRouterSock);
     VerifyOrExit(mMulticastRouterSock != -1, error = OT_ERROR_FAILED);
 
     // Enable Multicast Forwarding in Kernel
+    otLogInfoPlat("MRT6_INIT");
     VerifyOrExit(0 == setsockopt(mMulticastRouterSock, IPPROTO_IPV6, MRT6_INIT, &one, sizeof(one)),
                  error = OT_ERROR_FAILED);
 
     // Filter all ICMPv6 messages
     ICMP6_FILTER_SETBLOCKALL(&filter);
+    otLogInfoPlat("ICMP6_FILTER");
     VerifyOrExit(0 == setsockopt(mMulticastRouterSock, IPPROTO_ICMPV6, ICMP6_FILTER, (void *)&filter, sizeof(filter)),
                  error = OT_ERROR_FAILED);
 
@@ -185,15 +188,19 @@ otError MulticastRoutingManager::InitMulticastRouterSock(void)
 
     // Add Thread network interface to MIF
     mif6ctl.mif6c_mifi = kMifIndexThread;
+    otLogInfoPlat("if_nametoindex %s", gNetifName);
     mif6ctl.mif6c_pifi = if_nametoindex(gNetifName);
     VerifyOrExit(mif6ctl.mif6c_pifi > 0, error = OT_ERROR_FAILED);
+    otLogInfoPlat("MRT6_ADD_MIF Thread");
     VerifyOrExit(0 == setsockopt(mMulticastRouterSock, IPPROTO_IPV6, MRT6_ADD_MIF, &mif6ctl, sizeof(mif6ctl)),
                  error = OT_ERROR_FAILED);
 
     // Add Backbone network interface to MIF
     mif6ctl.mif6c_mifi = kMifIndexBackbone;
+    otLogInfoPlat("if_nametoindex %s", gBackboneNetifName);
     mif6ctl.mif6c_pifi = if_nametoindex(gBackboneNetifName);
     VerifyOrExit(mif6ctl.mif6c_pifi > 0, error = OT_ERROR_FAILED);
+    otLogInfoPlat("MRT6_ADD_MIF Backbone");
     VerifyOrExit(0 == setsockopt(mMulticastRouterSock, IPPROTO_IPV6, MRT6_ADD_MIF, &mif6ctl, sizeof(mif6ctl)),
                  error = OT_ERROR_FAILED);
 

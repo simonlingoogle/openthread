@@ -305,6 +305,10 @@
 #define OPENTHREAD_CONFIG_CSL_RECEIVE_TIME_AHEAD 3
 #endif
 
+#ifndef OPENTHREAD_CONFIG_THREAD_VERSION
+#define OPENTHREAD_CONFIG_THREAD_VERSION OT_THREAD_VERSION_1_2
+#endif
+
 /*
  * Suppress the ARMCC warning on unreachable statement,
  * e.g. break after assert(false) or ExitNow() macro.
