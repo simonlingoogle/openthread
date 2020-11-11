@@ -537,7 +537,7 @@ public:
      * This method sets the IPv6 address from a given byte array.
      *
      * @param[in] aBuffer    Pointer to an array containing the IPv6 address. `kSize` bytes from the buffer
-     *                       are copied to form the Interface Identifier.
+     *                       are copied to form the IPv6 address.
      *
      */
     void SetBytes(const uint8_t *aBuffer) { memcpy(mFields.m8, aBuffer, kSize); }

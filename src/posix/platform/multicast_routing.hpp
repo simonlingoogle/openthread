@@ -29,10 +29,9 @@
 #ifndef POSIX_PLATFORM_MULTICAST_ROUTING_HPP_
 #define POSIX_PLATFORM_MULTICAST_ROUTING_HPP_
 
-#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
-
 #include "openthread-posix-config.h"
-#include "platform-posix.h"
+
+#if OPENTHREAD_CONFIG_BACKBONE_ROUTER_ENABLE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,6 +42,7 @@
 #include <openthread/backbone_router_ftd.h>
 #include <openthread/openthread-system.h>
 
+#include "platform-posix.h"
 #include "core/common/non_copyable.hpp"
 #include "core/net/ip6_address.hpp"
 #include "lib/url/url.hpp"
@@ -78,10 +78,7 @@ public:
      * This method updates the fd_set and timeout for mainloop.
      *
      * @param[inout]    aReadFdSet      A reference to fd_set for polling read.
-     * @param[inout]    aWriteFdSet     A reference to fd_set for polling read.
-     * @param[inout]    aErrorFdSet     A reference to fd_set for polling error.
      * @param[inout]    aMaxFd          A reference to the current max fd in @p aReadFdSet and @p aWriteFdSet.
-     * @param[inout]    aTimeout        A reference to the timeout.
      *
      */
     void UpdateFdSet(fd_set &aReadFdSet, int &aMaxFd) const;
@@ -90,8 +87,6 @@ public:
      * This method performs Multicast Routing processing.
      *
      * @param[in]   aReadFdSet   A reference to read file descriptors.
-     * @param[in]   aWriteFdSet  A reference to write file descriptors.
-     * @param[in]   aErrorFdSet  A reference to error file descriptors.
      *
      */
     void Process(const fd_set &aReadFdSet);

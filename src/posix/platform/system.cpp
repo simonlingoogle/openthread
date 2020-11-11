@@ -51,6 +51,7 @@ static void processStateChange(otChangedFlags aFlags, void *aContext)
     otInstance *instance = static_cast<otInstance *>(aContext);
 
     OT_UNUSED_VARIABLE(instance);
+    OT_UNUSED_VARIABLE(aFlags);
 
 #if OPENTHREAD_CONFIG_PLATFORM_NETIF_ENABLE
     platformNetifStateChange(instance, aFlags);

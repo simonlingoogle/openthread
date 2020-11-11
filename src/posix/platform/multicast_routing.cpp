@@ -257,7 +257,8 @@ otError MulticastRoutingManager::AddMulticastForwardingCache(const Ip6::Address 
 
     if (aIif == kMifIndexBackbone)
     {
-        // Forward multicast traffic form Backbone to Thread if the group address is subscribed by MLR.
+        // Forward multicast traffic from Backbone to Thread if the group address is subscribed by any Thread device via
+        // MLR.
         if (mListenerSet.find(aGroupAddr) != mListenerSet.end())
         {
             forwardMif = kMifIndexThread;
@@ -399,10 +400,10 @@ void MulticastRoutingManager::ExpireMulticastForwardingCache(void)
     for (std::map<MulticastRoute, MulticastRouteInfo>::const_iterator it = mMulticastForwardingCache.begin();
          it != mMulticastForwardingCache.end();)
     {
-        otError               error;
-        const MulticastRoute &route     = it->first;
-        MulticastRouteInfo    routeInfo = it->second;
-        bool                  erase     = false;
+        otError                   error;
+        const MulticastRoute &    route     = it->first;
+        const MulticastRouteInfo &routeInfo = it->second;
+        bool                      erase     = false;
 
         if ((routeInfo.mLastUseTime + std::chrono::seconds(kMulticastForwardingCacheExpireTimeout) < now))
         {
@@ -544,17 +545,13 @@ void MulticastRoutingManager::HandleStateChange(otInstance *aInstance, otChanged
 
 bool MulticastRoutingManager::MulticastRoute::operator<(const MulticastRoutingManager::MulticastRoute &aOther) const
 {
-    if (mGroupAddr != aOther.mGroupAddr)
-    {
-        return mGroupAddr < aOther.mGroupAddr;
-    }
+    bool less = false;
 
-    if (mSrcAddr != aOther.mSrcAddr)
-    {
-        return mSrcAddr < aOther.mSrcAddr;
-    }
+    VerifyOrExit(mGroupAddr == aOther.mGroupAddr, less = mGroupAddr < aOther.mGroupAddr);
+    VerifyOrExit(mSrcAddr == aOther.mSrcAddr, less = mSrcAddr < aOther.mSrcAddr);
 
-    return false;
+exit:
+    return less;
 }
 
 } // namespace Posix

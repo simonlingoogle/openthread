@@ -273,6 +273,9 @@ void platformNetifProcess(const fd_set *aReadFdSet, const fd_set *aWriteFdSet, c
 /**
  * This function performs notifies state changes to platform netif.
  *
+ * @param[in]   aInstance       A pointer to the OpenThread instance.
+ * @param[in]   aFlags          Flags that denote the state change events.
+ *
  */
 void platformNetifStateChange(otInstance *aInstance, otChangedFlags aFlags);
 
@@ -434,7 +437,6 @@ void platformBackboneUpdateFdSet(fd_set *aReadFdSet, int *aMaxFd);
 /**
  * This function performs platform Backbone network processing.
  *
- * @param[in]   aInstance   The OpenThread instance structure.
  * @param[in]   aReadFdSet  A pointer to the read file descriptors.
  *
  */
@@ -442,6 +444,9 @@ void platformBackboneProcess(const fd_set *aReadSet);
 
 /**
  * This function performs notifies state changes to platform Backbone network.
+ *
+ * @param[in]   aInstance       A pointer to the OpenThread instance.
+ * @param[in]   aFlags          Flags that denote the state change events.
  *
  */
 void platformBackboneStateChange(otInstance *aInstance, otChangedFlags aFlags);

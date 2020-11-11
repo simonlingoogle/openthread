@@ -69,6 +69,7 @@ libopenthread_posix_a_LIBADD                                                    
 
 noinst_HEADERS                            = \
     hdlc_interface.hpp                      \
+    multicast_routing.hpp                   \
     openthread-posix-config.h               \
     platform-posix.h                        \
     radio_url.hpp                           \
