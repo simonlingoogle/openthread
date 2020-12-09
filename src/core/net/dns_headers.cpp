@@ -35,12 +35,69 @@
 
 #include "common/code_utils.hpp"
 #include "common/debug.hpp"
+#include "common/random.hpp"
 #include "common/string.hpp"
 
 namespace ot {
 namespace Dns {
 
 using ot::Encoding::BigEndian::HostSwap16;
+
+otError Header::SetRandomMessageId(void)
+{
+    return Random::Crypto::FillBuffer(reinterpret_cast<uint8_t *>(&mMessageId), sizeof(mMessageId));
+}
+
+otError Header::ResponseCodeToError(Response aResponse)
+{
+    otError error = OT_ERROR_FAILED;
+
+    switch (aResponse)
+    {
+    case kResponseSuccess:
+        error = OT_ERROR_NONE;
+        break;
+
+    case kResponseFormatError:   // Server unable to interpret request due to format error.
+    case kResponseBadName:       // Bad name
+    case kResponseBadTruncation: // Bad truncation.
+    case kResponseNotZone:       // A name is not in the zone.
+        error = OT_ERROR_PARSE;
+        break;
+
+    case kResponseServerFailure: // Server encountered an internal failure,
+        error = OT_ERROR_FAILED;
+        break;
+
+    case kResponseNameError:       // Name that ought to exist, does not exists.
+    case kResponseRecordNotExists: // Some RRset that out to exist, does not exist.
+        error = OT_ERROR_NOT_FOUND;
+        break;
+
+    case kResponseNotImplemented: // Server does not support the query type (OpCode).
+        error = OT_ERROR_NOT_IMPLEMENTED;
+        break;
+
+    case kResponseBadAlg: // Bad algorithm.
+        error = OT_ERROR_NOT_CAPABLE;
+        break;
+
+    case kResponseNameExists:   // Some name that ought not to exist, does exist.
+    case kResponseRecordExists: // Some RRset that ought not to exits, does exist.
+        error = OT_ERROR_DUPLICATED;
+        break;
+
+    case kResponseRefused: // Server refused to perform operation for policy or security reasons.
+    case kResponseNotAuth: // Service is not authoritative for zone.
+        error = OT_ERROR_SECURITY;
+        break;
+
+    default:
+        break;
+    }
+
+    return error;
+}
 
 otError Name::AppendLabel(const char *aLabel, Message &aMessage)
 {
@@ -321,8 +378,6 @@ bool AaaaRecord::IsValid(void) const
     return GetType() == Dns::ResourceRecord::kTypeAaaa && GetSize() == sizeof(*this);
 }
 
-#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
-
 bool KeyRecord::IsValid(void) const
 {
     return GetType() == Dns::ResourceRecord::kTypeKey;
@@ -345,6 +400,12 @@ bool SigRecord::IsValid(void) const
     return GetType() == Dns::ResourceRecord::kTypeSig && GetLength() >= sizeof(*this) - sizeof(ResourceRecord);
 }
 
+bool LeaseOption::IsValid(void) const
+{
+    return GetLeaseInterval() <= GetKeyLeaseInterval();
+}
+
+/*
 void UpdateLeaseOptRecord::Init(void)
 {
     OptRecord::Init(0); // Update lease uses CLASS value zero.
@@ -362,7 +423,7 @@ bool UpdateLeaseOptRecord::IsValid(void) const
            // Earlier version of the Lease Option includes optional serial number at the end.
            GetSize() >= sizeof(*this);
 }
-#endif // OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+*/
 
 } // namespace Dns
 } // namespace ot

@@ -96,6 +96,15 @@ public:
     void SetMessageId(uint16_t aMessageId) { mMessageId = HostSwap16(aMessageId); }
 
     /**
+     * This method sets the Message ID to a crypto-secure randomly generated number.
+     *
+     * @retval  OT_ERROR_NONE     Successfully generated random Message ID.
+     * @retval  OT_ERROR_FAILED   Could not generate random Message ID.
+     *
+     */
+    otError SetRandomMessageId(void);
+
+    /**
      * Defines types of DNS message.
      *
      */
@@ -245,18 +254,20 @@ public:
      */
     enum Response
     {
-        kResponseSuccess        = 0,
-        kResponseFormatError    = 1,
-        kResponseServerFailure  = 2,
-        kResponseNameError      = 3,
-        kResponseNotImplemented = 4,
-        kResponseRefused        = 5,
-        kResponseYxDomain       = 6,
-        kResponseNotAuth        = 9,
-        kResponseNotZone        = 10,
-        kResponseBadName        = 20,
-        kResponseBadAlg         = 21,
-        kResponseBadTruncation  = 22,
+        kResponseSuccess         = 0,  ///< Success (no error condition).
+        kResponseFormatError     = 1,  ///< Server unable to interpret request due to format error.
+        kResponseServerFailure   = 2,  ///< Server encountered an internal failure,
+        kResponseNameError       = 3,  ///< Name that ought to exist, does not exists.
+        kResponseNotImplemented  = 4,  ///< Server does not support the query type (OpCode).
+        kResponseRefused         = 5,  ///< Server refused to perform operation for policy or security reasons.
+        kResponseNameExists      = 6,  ///< Some name that ought not to exist, does exist.
+        kResponseRecordExists    = 7,  ///< Some RRset that ought not to exits, does exist.
+        kResponseRecordNotExists = 8,  ///< Some RRset that ought to exist, does not exist.
+        kResponseNotAuth         = 9,  ///< Service is not authoritative for zone.
+        kResponseNotZone         = 10, ///< A name is not in the zone.
+        kResponseBadName         = 20, ///< Bad name
+        kResponseBadAlg          = 21, ///< Bad algorithm.
+        kResponseBadTruncation   = 22, ///< Bad truncation.
     };
 
     /**
@@ -278,6 +289,30 @@ public:
         mFlags[1] &= ~kRCodeMask;
         mFlags[1] |= static_cast<uint8_t>(aResponse) << kRCodeOffset;
     }
+
+    /**
+     * This method converts a Response Code into a related `otError`.
+     *
+     * - kResponseSuccess (0)         : Success (no error condition)                    -> OT_ERROR_NONE
+     * - kResponseFormatError (1)     : Server unable to interpret due to format error  -> OT_ERROR_PARSE
+     * - kResponseServerFailure (2)   : Server encountered an internal failure          -> OT_ERROR_FAILED
+     * - kResponseNameError (3)       : Name that ought to exist, does not exists       -> OT_ERROR_NOT_FOUND
+     * - kResponseNotImplemented (4)  : Server does not support the query type (OpCode) -> OT_ERROR_NOT_IMPLEMENTED
+     * - kResponseRefused (5)         : Server refused for policy/security reasons      -> OT_ERROR_SECURITY
+     * - kResponseNameExists (6)      : Some name that ought not to exist, does exist   -> OT_ERROR_DUPLICATED
+     * - kResponseRecordExists (7)    : Some RRset that ought not to exits, does exist  -> OT_ERROR_DUPLICATED
+     * - kResponseRecordNotExists (8) : Some RRset that out to exist, does not exist    -> OT_ERROR_NOT_FOUND
+     * - kResponseNotAuth (9)         : Service is not authoritative for zone           -> OT_ERROR_SECURITY
+     * - kResponseNotZone (10)        : A name is not in the zone                       -> OT_ERROR_PARSE
+     * - kResponseBadName (20)        : Bad name                                        -> OT_ERROR_PARSE
+     * - kResponseBadAlg (21)         : Bad algorithm                                   -> OT_ERROR_SECURITY
+     * - kResponseBadTruncation (22)  : Bad truncation                                  -> OT_ERROR_PARSE
+     * - Other error                                                                    -> OT_ERROR_FAILED
+     *
+     * @param[in] aResponse  The response code to convert.
+     *
+     */
+    static otError ResponseCodeToError(Response aResponse);
 
     /**
      * This method returns the number of entries in question section.
@@ -343,15 +378,6 @@ public:
      */
     void SetAdditionalRecordsCount(uint16_t aCount) { mArCount = HostSwap16(aCount); }
 
-#define GetZoneCount GetQuestionCount
-#define SetZoneCount SetQuestionCount
-#define GetPrerequisiteCount GetAnswerCount
-#define SetPrerequisiteCount SetAnswerCount
-#define GetUpdateCount GetAuthorityRecordsCount
-#define SetUpdateCount SetAuthorityRecordsCount
-#define GetAdditionalDataCount GetAdditionalRecordsCount
-#define SetAdditionalDataCount SetAdditionalRecordsCount
-
 private:
     /**
      * Protocol Constants (RFC 1035).
@@ -382,6 +408,74 @@ private:
     uint16_t mAnCount;   // Number of entries in the answer section.
     uint16_t mNsCount;   // Number of entries in the authority records section.
     uint16_t mArCount;   // Number of entries in the additional records section.
+
+} OT_TOOL_PACKED_END;
+
+/**
+ * This class implements DNS Update message header generation and parsing.
+ *
+ * The DNS header specifies record counts for its four sections: Question, Answer, Authority, and Additional. A DNS
+ * Update header uses the same fields, and the same section formats, but the naming and use of these sections differs:
+ * DNS Update header uses Zone, Prerequisite, Update, Additional Data sections.
+ *
+ */
+OT_TOOL_PACKED_BEGIN
+class UpdateHeader : public Header
+{
+public:
+    /**
+     * Default constructor for DNS Update message header.
+     *
+     */
+    UpdateHeader(void) { SetQueryType(kQueryTypeUpdate); }
+
+    /**
+     * This method returns the number of records in Zone section.
+     *
+     * @returns The number of records in Zone section.
+     *
+     */
+    uint16_t GetZoneRecordCount(void) const { return GetQuestionCount(); }
+
+    /**
+     * This method sets the number of records in Zone section.
+     *
+     * @param[in]  aCount The number of records in Zone section.
+     *
+     */
+    void SetZoneRecordCount(uint16_t aCount) { SetQuestionCount(aCount); }
+
+    /**
+     * This method returns the number of records in Prerequisite section.
+     *
+     * @returns The number of records in Prerequisite section.
+     *
+     */
+    uint16_t GetPrerequisiteRecordCount(void) const { return GetAnswerCount(); }
+
+    /**
+     * This method sets the number of records in Prerequisite section.
+     *
+     * @param[in]  aCount The number of records in Prerequisite section.
+     *
+     */
+    void SetPrerequisiteRecordCount(uint16_t aCount) { SetAnswerCount(aCount); }
+
+    /**
+     * This method returns the number of records in Update section.
+     *
+     * @returns The number of records in Update section.
+     *
+     */
+    uint16_t GetUpdateRecordCount(void) const { return GetAuthorityRecordsCount(); }
+
+    /**
+     * This method sets the number of records in Update section.
+     *
+     * @param[in]  aCount The number of records in Update section.
+     *
+     */
+    void SetUpdateRecordCount(uint16_t aCount) { SetAuthorityRecordsCount(aCount); }
 
 } OT_TOOL_PACKED_END;
 
@@ -626,8 +720,10 @@ private:
  *
  */
 OT_TOOL_PACKED_BEGIN
-class ResourceRecord : public Clearable<ResourceRecord>
+class ResourceRecord
 {
+    friend class OptRecord;
+
 public:
     /**
      * Resource Record Types.
@@ -637,7 +733,7 @@ public:
     {
         kTypeZero = 0,   ///< Zero is used as a special indicator for the SIG RR (SIG(0) from RFC 2931).
         kTypeA    = 1,   ///< Address record (IPv4).
-        kTypeSoa  = 6,   ///< SOA record.
+        kTypeSoa  = 6,   ///< Start of (zone of) authority.
         kTypePtr  = 12,  ///< PTR record.
         kTypeTxt  = 16,  ///< TXT record.
         kTypeSig  = 24,  ///< SIG record.
@@ -645,7 +741,7 @@ public:
         kTypeAaaa = 28,  ///< IPv6 address record.
         kTypeSrv  = 33,  ///< SRV locator record.
         kTypeOpt  = 41,  ///< Option record.
-        kTypeAny  = 255, ///< Any record. A request for some or all records the server has available.
+        kTypeAny  = 255, ///< ANY record.
     };
 
     /**
@@ -654,23 +750,11 @@ public:
      */
     enum : uint16_t
     {
-        kClassZero     = 0,   ///< Class code 0. Reserved.
+        kClassZero     = 0,   ///< Class code zero (used by OPT).
         kClassInternet = 1,   ///< Class code Internet (IN).
-        kClassNone     = 254, ///< Class code NONE.
-        kClassAny      = 255, ///< Class code ANY.
+        kClassNone     = 254, ///< Class code None (NONE) - RFC 2136
+        kClassAny      = 255, ///< Class code Any (ANY).
     };
-
-    /**
-     * This constructor initializes the object to all-zero.
-     *
-     */
-    ResourceRecord()
-        : mType(kTypeZero)
-        , mClass(kClassZero)
-        , mTtl(0)
-        , mLength(0)
-    {
-    }
 
     /**
      * This method initializes the resource record by setting its type and class.
@@ -783,6 +867,46 @@ private:
 } OT_TOOL_PACKED_END;
 
 /**
+ * This class implements Resource Record body format of PTR type.
+ *
+ */
+OT_TOOL_PACKED_BEGIN
+class PtrRecord : public ResourceRecord
+{
+public:
+    /**
+     * This method initializes the PTR Resource Record by setting its type and class.
+     *
+     * Other record fields (TTL, length) remain unchanged/uninitialized.
+     *
+     * @param[in] aClass  The class of the resource record (default is `kClassInternet`).
+     *
+     */
+    void Init(uint16_t aClass = kClassInternet) { ResourceRecord::Init(kTypePtr, aClass); }
+
+} OT_TOOL_PACKED_END;
+
+/**
+ * This class implements Resource Record body format of TXT type.
+ *
+ */
+OT_TOOL_PACKED_BEGIN
+class TxtRecord : public ResourceRecord
+{
+public:
+    /**
+     * This method initializes the TXT Resource Record by setting its type and class.
+     *
+     * Other record fields (TTL, length) remain unchanged/uninitialized.
+     *
+     * @param[in] aClass  The class of the resource record (default is `kClassInternet`).
+     *
+     */
+    void Init(uint16_t aClass = kClassInternet) { ResourceRecord::Init(kTypeTxt, aClass); }
+
+} OT_TOOL_PACKED_END;
+
+/**
  * This class implements Resource Record body format of AAAA type.
  *
  */
@@ -812,7 +936,7 @@ public:
      * @param[in]  aAddress The IPv6 address of the resource record.
      *
      */
-    void SetAddress(Ip6::Address &aAddress) { mAddress = aAddress; }
+    void SetAddress(const Ip6::Address &aAddress) { mAddress = aAddress; }
 
     /**
      * This method returns the reference to IPv6 address of the resource record.
@@ -820,48 +944,10 @@ public:
      * @returns The reference to IPv6 address of the resource record.
      *
      */
-    Ip6::Address &GetAddress(void) { return mAddress; }
+    const Ip6::Address &GetAddress(void) const { return mAddress; }
 
 private:
     Ip6::Address mAddress; // IPv6 Address of AAAA Resource Record.
-} OT_TOOL_PACKED_END;
-
-#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
-
-/**
- * This class implements Resource Record body format of PTR type.
- *
- */
-OT_TOOL_PACKED_BEGIN
-class PtrRecord : public ResourceRecord
-{
-public:
-    /**
-     * This method initializes the PTR Resource Record by setting its type and class.
-     *
-     * Other record fields (TTL, length) remain unchanged/uninitialized.
-     *
-     */
-    void Init(void) { ResourceRecord::Init(kTypePtr); }
-
-} OT_TOOL_PACKED_END;
-
-/**
- * This class implements Resource Record body format of TXT type.
- *
- */
-OT_TOOL_PACKED_BEGIN
-class TxtRecord : public ResourceRecord
-{
-public:
-    /**
-     * This method initializes the TXT Resource Record by setting its type and class.
-     *
-     * Other record fields (TTL, length) remain unchanged/uninitialized.
-     *
-     */
-    void Init(void) { ResourceRecord::Init(kTypeTxt); }
-
 } OT_TOOL_PACKED_END;
 
 /**
@@ -877,8 +963,10 @@ public:
      *
      * Other record fields (TTL, length, propriety, weight, port, ...) remain unchanged/uninitialized.
      *
+     * @param[in] aClass  The class of the resource record (default is `kClassInternet`).
+     *
      */
-    void Init(void) { ResourceRecord::Init(kTypeSrv); }
+    void Init(uint16_t aClass = kClassInternet) { ResourceRecord::Init(kTypeSrv, aClass); }
 
     /**
      * This method returns the SRV record's priority value.
@@ -1009,11 +1097,15 @@ public:
      *
      * Other record fields (TTL, length, flags, protocol, algorithm) remain unchanged/uninitialized.
      *
+     * @param[in] aClass  The class of the resource record (default is `kClassInternet`).
+     *
      */
-    void Init(void) { ResourceRecord::Init(kTypeKey); }
+    void Init(uint16_t aClass = kClassInternet) { ResourceRecord::Init(kTypeKey, aClass); }
 
     /**
-     * This method tells whether this is a valid DNSKEY Resource Record.
+     * This method tells whether the KEY record is valid.
+     *
+     * @returns  TRUE if this is a valid KEY record, FALSE if not an invalid KEY record.
      *
      */
     bool IsValid(void) const;
@@ -1113,7 +1205,7 @@ private:
 } OT_TOOL_PACKED_END;
 
 OT_TOOL_PACKED_BEGIN
-class Ecdsa256KeyRecord : public KeyRecord
+class Ecdsa256KeyRecord : public KeyRecord, public Clearable<Ecdsa256KeyRecord>
 {
 public:
     /**
@@ -1166,21 +1258,15 @@ private:
  *
  */
 OT_TOOL_PACKED_BEGIN
-class SigRecord : public ResourceRecord
+class SigRecord : public ResourceRecord, public Clearable<SigRecord>
 {
 public:
-    enum : uint8_t
-    {
-        kMaxSignatureLength = 128, ///< The maximum signature length.
-    };
-
     /**
      * This method initializes the SIG Resource Record by setting its type and class.
      *
      * Other record fields (TTL, length, ...) remain unchanged/uninitialized.
      *
-     * SIG(0) requires SIG RR to set class field as ANY or `kClassAny` (RFC 2931 - section 3), unlike other RR which
-     * commonly use IN class or `kClassInternet`. Therefore, `Init()` has @p aClass parameter to specify it by caller.
+     * SIG(0) requires SIG RR to set class field as ANY or `kClassAnyANY (RFC 2931 - section 3).
      *
      * @param[in] aClass  The class of the resource record.
      *
@@ -1188,9 +1274,9 @@ public:
     void Init(uint16_t aClass) { ResourceRecord::Init(kTypeSig, aClass); }
 
     /**
-     * This method tells whether this is an valid LEASE OPT RR.
+     * This method tells whether the SIG record is valid.
      *
-     * @retval  A boolean indicates whether this record is valid.
+     * @returns  TRUE if this is a valid SIG record, FALSE if not a valid SIG record.
      *
      */
     bool IsValid(void) const;
@@ -1309,6 +1395,14 @@ public:
      */
     void SetKeyTag(uint16_t aKeyTag) { mKeyTag = HostSwap16(aKeyTag); }
 
+    /**
+     * This method returns a pointer to the start of the record data fields.
+     *
+     * @returns A pointer to the start of the record data fields.
+     *
+     */
+    const uint8_t *GetRecordData(void) const { return reinterpret_cast<const uint8_t *>(&mTypeCovered); }
+
 private:
     uint16_t mTypeCovered; // type of the other RRs covered by this SIG. set to zero for SIG(0).
     uint8_t  mAlgorithm;   // Algorithm number (see `KeyRecord` enumeration).
@@ -1321,11 +1415,145 @@ private:
 } OT_TOOL_PACKED_END;
 
 /**
- * This class implements a Resource Record body format of OPT type (RFC 6981 - Section 6.1)
+ * This class implements DNS OPT Pseudo Resource Record header for EDNS(0) (RFC 6981 - Section 6.1).
  *
  */
 OT_TOOL_PACKED_BEGIN
 class OptRecord : public ResourceRecord
+{
+public:
+    /**
+     * This method initializes the OPT Resource Record by setting its type and clearing extended Response Code, version
+     * and all flags.
+     *
+     * Other record fields (UDP payload size, length) remain unchanged/uninitialized.
+     *
+     */
+    void Init(void)
+    {
+        SetType(kTypeOpt);
+        SetTtl(0);
+    }
+
+    /**
+     * This method gets the requester's UDP payload size (the number of bytes of the largest UDP payload that can be
+     * delivered in the requester's network).
+     *
+     * The field is encoded in the CLASS field.
+     *
+     * @returns The UDP payload size.
+     *
+     */
+    uint16_t GetUdpPayloadSize(void) const { return GetClass(); }
+
+    /**
+     * This method gets the requester's UDP payload size (the number of bytes of the largest UDP payload that can be
+     * delivered in the requester's network).
+     *
+     * @param[in] aPayloadSize  The UDP payload size.
+     *
+     */
+    void SetUdpPayloadSize(uint16_t aPayloadSize) { SetClass(aPayloadSize); }
+
+    /**
+     * This method gets the upper 8-bit of the extended 12-bit Response Code.
+     *
+     * Value of 0 indicates that an unextended Response code is in use.
+     *
+     * @return The upper 8-bit of the extended 12-bit Response Code.
+     *
+     */
+    uint8_t GetExtendedResponseCode(void) const
+    {
+        return static_cast<uint8_t>((mTtl & kExtRCodeMask) >> kExtRCodeffset);
+    }
+
+    /**
+     * This method sets the upper 8-bit of the extended 12-bit Response Code.
+     *
+     * Value of 0 indicates that an unextended Response code is in use.
+     *
+     * @param[in] aExtendedResponse The upper 8-bit of the extended 12-bit Response Code.
+     *
+     */
+    void SetExtnededResponseCode(uint8_t aExtendedResponse)
+    {
+        mTtl &= ~kExtRCodeffset;
+        mTtl |= (static_cast<uint32_t>(aExtendedResponse) << kExtRCodeffset);
+    }
+
+    /**
+     * This method gets the Version field.
+     *
+     * @returns The version.
+     *
+     */
+    uint8_t GetVersion(void) const { return static_cast<uint8_t>((mTtl & kVersionMask) >> kVersionOffset); }
+
+    /**
+     * This method set the Version field.
+     *
+     * @param[in] aVersion  The version.
+     *
+     */
+    void SetVersion(uint8_t aVersion)
+    {
+        mTtl &= ~kVersionMask;
+        mTtl |= (static_cast<uint32_t>(aVersion) << kVersionOffset);
+    }
+
+    /**
+     * This method indicates whether the DNSSEC OK flag is set or not.
+     *
+     * @returns True if DNSSEC OK flag is set in the header, false otherwise.
+     *
+     */
+    bool IsDnsSecurityFlagSet(void) const { return (mTtl & kDnsSecFlag) != 0; }
+
+    /**
+     * This method clears the DNSSEC OK bit flag.
+     *
+     */
+    void ClearDnsSecurityFlags(void) { mTtl &= ~kDnsSecFlag; }
+
+    /**
+     * This method sets the DNSSEC OK bit flag.
+     *
+     */
+    void SetDnsSecurityFlags(void) { mTtl |= kDnsSecFlag; }
+
+private:
+    // The OPT RR re-purposes the existing CLASS and TTL fields in the
+    // RR The CLASS field (`uint16_t`) is used for requester UDP
+    // payload size The TTL field is used for extended Response Code,
+    // version and flags as follows:
+    //
+    //    0   1   2   3   4   5   6   7   8   9   0   1   2   3   4   5
+    //  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    //  |         EXTENDED-RCODE        |            VERSION            |
+    //  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    //  | DO|                           Z                               |
+    //  +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    //
+    // The variable data part of OPT RR can contain zero of more `Option`.
+
+    enum : uint32_t
+    {
+        kExtRCodeffset = 24,                    // Extended RCODE field offset.
+        kExtRCodeMask  = 0xf << kExtRCodeffset, // Extended RCODE field mask.
+        kVersionOffset = 16,                    // Version field offset.
+        kVersionMask   = 0xf << kVersionOffset, // Version field mask.
+        kDnsSecFlag    = 1 << 15,               // DnsSec bit flag.
+    };
+
+} OT_TOOL_PACKED_END;
+
+/**
+ * This class implements the body of an Option in OPT Pseudo Resource Record (RFC 6981 - Section 6.1)
+ *
+ */
+OT_TOOL_PACKED_BEGIN
+class Option
 {
 public:
     /**
@@ -1334,21 +1562,11 @@ public:
      */
     enum : uint16_t
     {
-        kOptionCodeUpdateLease = 2, ///< Update lease option code.
+        kUpdateLease = 2, ///< Update lease option code.
     };
 
     /**
-     * This method initializes the OPT Resource Record by setting its type and class.
-     *
-     * Other record fields (TTL, length, ...) remain unchanged/uninitialized.
-     *
-     * @param[in] aClass  The class of the resource record.
-     *
-     */
-    void Init(uint16_t aClass) { ResourceRecord::Init(kTypeOpt, aClass); }
-
-    /**
-     * This method returns the OPT record's option code value.
+     * This method returns the option code value.
      *
      * @returns The option code value.
      *
@@ -1356,7 +1574,7 @@ public:
     uint16_t GetOptionCode(void) const { return HostSwap16(mOptionCode); }
 
     /**
-     * This method sets the OPT record's option code value.
+     * This method sets the option code value.
      *
      * @param[in]  aOptionCode  The option code value.
      *
@@ -1364,7 +1582,7 @@ public:
     void SetOptionCode(uint16_t aOptionCode) { mOptionCode = HostSwap16(aOptionCode); }
 
     /**
-     * This method returns the OPT record's option length value.
+     * This method returns the option length value.
      *
      * @returns The option length (size of option data in bytes).
      *
@@ -1372,12 +1590,20 @@ public:
     uint16_t GetOptionLength(void) const { return HostSwap16(mOptionLength); }
 
     /**
-     * This method sets the OPT record's option length value.
+     * This method sets the option length value.
      *
      * @param[in]  aOptionLength  The option length (size of option data in bytes).
      *
      */
     void SetOptionLength(uint16_t aOptionLength) { mOptionLength = HostSwap16(aOptionLength); }
+
+    /**
+     * This method returns the size of (number of bytes) in the Option and its data.
+     *
+     * @returns Size (number of bytes) of the Option its data section.
+     *
+     */
+    uint32_t GetSize(void) const { return sizeof(Option) + GetOptionLength(); }
 
 private:
     uint16_t mOptionCode;
@@ -1387,28 +1613,37 @@ private:
 } OT_TOOL_PACKED_END;
 
 /**
- * This class implements an Update Lease OPT Resource Record.
+ * This class implements an Update Lease Option body.
  *
  * This implementation is intended for use in Dynamic DNS Update Lease Requests and Responses as specified in
  * https://tools.ietf.org/html/draft-sekar-dns-ul-02.
  *
  */
 OT_TOOL_PACKED_BEGIN
-class UpdateLeaseOptRecord : public OptRecord
+class LeaseOption : public Option
 {
 public:
-    /**
-     * This method initializes the Update Lease OPT Resource Record.
-     *
-     * This method sets all the fields in the record, except for leave and key lease intervals.
-     *
-     */
-    void Init(void);
+    enum : uint16_t
+    {
+        kOptionLength = sizeof(uint32_t) + sizeof(uint32_t), ///< Option length (lease and key lease values)
+    };
 
     /**
-     * This method tells whether this is an valid LEASE OPT RR.
+     * This method initialize the Update Lease Option by setting the Option Code and Option Length.
      *
-     * @retval  A boolean indicates whether this record is valid.
+     * The lease and key lease intervals remain unchanged/uninitialized.
+     *
+     */
+    void Init(void)
+    {
+        SetOptionCode(kUpdateLease);
+        SetOptionLength(kOptionLength);
+    }
+
+    /**
+     * This method tells whether this is a valid Lease Option.
+     *
+     * @returns  TRUE if this is a valid Lease Option, FALSE if not a valid Lease Option.
      *
      */
     bool IsValid(void) const;
@@ -1449,8 +1684,6 @@ private:
     uint32_t mLeaseInterval;
     uint32_t mKeyLeaseInterval;
 } OT_TOOL_PACKED_END;
-
-#endif // OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
 
 /**
  * This class implements Question format.
@@ -1511,12 +1744,6 @@ private:
 } OT_TOOL_PACKED_END;
 
 /**
- * This class implements Zone Section in a DNS Update.
- *
- */
-typedef Question Zone;
-
-/**
  * This class implements Question format of AAAA type.
  *
  */
@@ -1550,6 +1777,26 @@ private:
         kClass = 0x01, // The value of the Internet class.
     };
 };
+
+/**
+ * This class implements Zone section body for DNS Update (RFC 2136 - section 2.3).
+ *
+ */
+OT_TOOL_PACKED_BEGIN
+class Zone : public Question
+{
+public:
+    /**
+     * Constructor for Zone.
+     *
+     * @param[in] aClass  The class of the zone (default is `kClassInternet`).
+     *
+     */
+    explicit Zone(uint16_t aClass = ResourceRecord::kClassInternet)
+        : Question(ResourceRecord::kTypeSoa, aClass)
+    {
+    }
+} OT_TOOL_PACKED_END;
 
 /**
  * @}

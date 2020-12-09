@@ -49,6 +49,7 @@
 #include "common/timer.hpp"
 #include "crypto/ecdsa.hpp"
 #include "net/dns_headers.hpp"
+#include "net/ip6.hpp"
 #include "net/ip6_address.hpp"
 #include "net/udp6.hpp"
 
@@ -541,13 +542,18 @@ private:
         kThreadServiceTypeSrpServer = 0x5du, // The temporary Thread service type for SRP server.
     };
 
+    enum : uint16_t
+    {
+        kUdpPayloadSize = Ip6::Ip6::kMaxDatagramLength - sizeof(Ip6::Udp::Header), // Max UDP payload size
+    };
+
     enum : uint32_t
     {
-        kDefaultMinLease             = 60u * 30,       // Default minimum lease time, 30 min (in seconds).
-        kDefaultMaxLease             = 3600u * 2,      // Default maximum lease time, 2 hours (in seconds).
-        kDefaultMinKeyLease          = 3600u * 24,     // Default minimum key-lease time, 1 day (in seconds).
-        kDefaultMaxKeyLease          = 3600u * 24 * 7, // Default maximum key-lease time, 14 days (in seconds).
-        kDefaultEventsHandlerTimeout = 500u,           // Default events handler timeout (in milliseconds).
+        kDefaultMinLease             = 60u * 30,        // Default minimum lease time, 30 min (in seconds).
+        kDefaultMaxLease             = 3600u * 2,       // Default maximum lease time, 2 hours (in seconds).
+        kDefaultMinKeyLease          = 3600u * 24,      // Default minimum key-lease time, 1 day (in seconds).
+        kDefaultMaxKeyLease          = 3600u * 24 * 14, // Default maximum key-lease time, 14 days (in seconds).
+        kDefaultEventsHandlerTimeout = 500u,            // Default events handler timeout (in milliseconds).
     };
 
     /**
@@ -560,23 +566,23 @@ private:
     public:
         friend class LinkedListEntry<UpdateMetadata>;
 
-        static UpdateMetadata * New(const Dns::Header &aHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
-        static void             Destroy(UpdateMetadata *aUpdateMetadata);
-        TimeMilli               GetExpireTime(void) const { return mExpireTime; }
-        const Dns::Header &     GetDnsHeader(void) const { return mDnsHeader; }
-        Host &                  GetHost(void) { return *mHost; }
-        const Ip6::MessageInfo &GetMessageInfo(void) const { return mMessageInfo; }
+        static UpdateMetadata *New(const Dns::UpdateHeader &aHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
+        static void            Destroy(UpdateMetadata *aUpdateMetadata);
+        TimeMilli              GetExpireTime(void) const { return mExpireTime; }
+        const Dns::UpdateHeader &GetDnsHeader(void) const { return mDnsHeader; }
+        Host &                   GetHost(void) { return *mHost; }
+        const Ip6::MessageInfo & GetMessageInfo(void) const { return mMessageInfo; }
         bool Matches(uint16_t aDnsMessageId) const { return mDnsHeader.GetMessageId() == aDnsMessageId; }
         bool Matches(const Host *aHost) const { return mHost == aHost; }
 
     private:
-        UpdateMetadata(const Dns::Header &aHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
+        UpdateMetadata(const Dns::UpdateHeader &aHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
 
-        TimeMilli        mExpireTime;  // Expire time of this update; In milliseconds.
-        Dns::Header      mDnsHeader;   // The header of the DNS update request.
-        Host *           mHost;        // The host will be updated. The UpdateMetadata has no ownership of this host.
-        Ip6::MessageInfo mMessageInfo; // The message info of the DNS update request.
-        UpdateMetadata * mNext;        // The pointer to the next UpdateMetadata object.
+        TimeMilli         mExpireTime;  // Expire time of this update; In milliseconds.
+        Dns::UpdateHeader mDnsHeader;   // The header of the DNS update request.
+        Host *            mHost;        // The host will be updated. The UpdateMetadata has no ownership of this host.
+        Ip6::MessageInfo  mMessageInfo; // The message info of the DNS update request.
+        UpdateMetadata *  mNext;        // The pointer to the next UpdateMetadata object.
     };
 
     void     Start(void);
@@ -586,59 +592,59 @@ private:
     void     UnpublishService(void);
     uint32_t GrantLease(uint32_t aLease) const;
     uint32_t GrantKeyLease(uint32_t aKeyLease) const;
-    void     HandleSrpUpdateResult(otError                 aError,
-                                   const Dns::Header &     aDnsHeader,
-                                   Host &                  aHost,
-                                   const Ip6::MessageInfo &aMessageInfo);
+    void     HandleSrpUpdateResult(otError                  aError,
+                                   const Dns::UpdateHeader &aDnsHeader,
+                                   Host &                   aHost,
+                                   const Ip6::MessageInfo & aMessageInfo);
 
-    void    HandleDnsUpdate(Message &               aMessage,
-                            const Ip6::MessageInfo &aMessageInfo,
-                            const Dns::Header &     aDnsHeader,
-                            uint16_t                aOffset);
-    otError ProcessZoneSection(const Message &    aMessage,
-                               const Dns::Header &aDnsHeader,
-                               uint16_t &         aOffset,
-                               Dns::Zone &        aZone);
-    otError ProcessUpdateSection(Host &             aHost,
-                                 const Message &    aMessage,
-                                 const Dns::Header &aDnsHeader,
-                                 const Dns::Zone &  aZone,
-                                 uint16_t           aHeaderOffset,
-                                 uint16_t &         aOffset);
-    otError ProcessAdditionalSection(Host *             aHost,
-                                     const Message &    aMessage,
-                                     const Dns::Header &aDnsHeader,
-                                     uint16_t           aHeaderOffset,
-                                     uint16_t &         aOffset);
+    void    HandleDnsUpdate(Message &                aMessage,
+                            const Ip6::MessageInfo & aMessageInfo,
+                            const Dns::UpdateHeader &aDnsHeader,
+                            uint16_t                 aOffset);
+    otError ProcessZoneSection(const Message &          aMessage,
+                               const Dns::UpdateHeader &aDnsHeader,
+                               uint16_t &               aOffset,
+                               Dns::Zone &              aZone);
+    otError ProcessUpdateSection(Host &                   aHost,
+                                 const Message &          aMessage,
+                                 const Dns::UpdateHeader &aDnsHeader,
+                                 const Dns::Zone &        aZone,
+                                 uint16_t                 aHeaderOffset,
+                                 uint16_t &               aOffset);
+    otError ProcessAdditionalSection(Host *                   aHost,
+                                     const Message &          aMessage,
+                                     const Dns::UpdateHeader &aDnsHeader,
+                                     uint16_t                 aHeaderOffset,
+                                     uint16_t &               aOffset);
     otError VerifySignature(const Dns::Ecdsa256KeyRecord &aKey,
                             const Message &               aMessage,
-                            Dns::Header                   aDnsHeader,
+                            Dns::UpdateHeader             aDnsHeader,
                             uint16_t                      aSigOffset,
                             uint16_t                      aSigRdataOffset,
                             uint16_t                      aSigRdataLength,
                             const char *                  aSignerName);
 
-    static otError ProcessHostDescriptionInstruction(Host &             aHost,
-                                                     const Message &    aMessage,
-                                                     const Dns::Header &aDnsHeader,
-                                                     const Dns::Zone &  aZone,
-                                                     uint16_t           aHeaderOffset,
-                                                     uint16_t           aOffset);
-    static otError ProcessServiceDiscoveryInstructions(Host &             aHost,
-                                                       const Message &    aMessage,
-                                                       const Dns::Header &aDnsHeader,
-                                                       const Dns::Zone &  aZone,
-                                                       uint16_t           aHeaderOffset,
-                                                       uint16_t           aOffset);
-    static otError ProcessServiceDescriptionInstructions(Host &             aHost,
-                                                         const Message &    aMessage,
-                                                         const Dns::Header &aDnsHeader,
-                                                         const Dns::Zone &  aZone,
-                                                         uint16_t           aHeaderOffset,
-                                                         uint16_t &         aOffset);
+    static otError ProcessHostDescriptionInstruction(Host &                   aHost,
+                                                     const Message &          aMessage,
+                                                     const Dns::UpdateHeader &aDnsHeader,
+                                                     const Dns::Zone &        aZone,
+                                                     uint16_t                 aHeaderOffset,
+                                                     uint16_t                 aOffset);
+    static otError ProcessServiceDiscoveryInstructions(Host &                   aHost,
+                                                       const Message &          aMessage,
+                                                       const Dns::UpdateHeader &aDnsHeader,
+                                                       const Dns::Zone &        aZone,
+                                                       uint16_t                 aHeaderOffset,
+                                                       uint16_t                 aOffset);
+    static otError ProcessServiceDescriptionInstructions(Host &                   aHost,
+                                                         const Message &          aMessage,
+                                                         const Dns::UpdateHeader &aDnsHeader,
+                                                         const Dns::Zone &        aZone,
+                                                         uint16_t                 aHeaderOffset,
+                                                         uint16_t &               aOffset);
     static bool    IsValidDeleteAllRecord(const Dns::ResourceRecord &aRecord);
 
-    void HandleUpdate(const Dns::Header &aDnsHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
+    void HandleUpdate(const Dns::UpdateHeader &aDnsHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
 
     /**
      * This method adds a SRP service host and takes ownership of it.
@@ -655,13 +661,13 @@ private:
     void        RemoveHost(Host *aHost);
     Service *   FindService(const char *aFullName);
     bool        HasNameConflictsWith(Host &aHost);
-    void        SendResponse(const Dns::Header &     aHeader,
-                             Dns::Header::Response   aResponseCode,
-                             const Ip6::MessageInfo &aMessageInfo);
-    void        SendResponse(const Dns::Header &     aHeader,
-                             uint32_t                aLease,
-                             uint32_t                aKeyLease,
-                             const Ip6::MessageInfo &aMessageInfo);
+    void        SendResponse(const Dns::UpdateHeader &   aHeader,
+                             Dns::UpdateHeader::Response aResponseCode,
+                             const Ip6::MessageInfo &    aMessageInfo);
+    void        SendResponse(const Dns::UpdateHeader &aHeader,
+                             uint32_t                 aLease,
+                             uint32_t                 aKeyLease,
+                             const Ip6::MessageInfo & aMessageInfo);
     static void HandleUdpReceive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
     void        HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
     static void HandleLeaseTimer(Timer &aTimer);
