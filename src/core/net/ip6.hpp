@@ -53,6 +53,7 @@
 #include "net/ip6_mpl.hpp"
 #include "net/netif.hpp"
 #include "net/socket.hpp"
+#include "net/tcp6.hpp"
 #include "net/udp6.hpp"
 
 namespace ot {
@@ -120,6 +121,12 @@ public:
          *
          */
         kMaxAssembledDatagramLength = OPENTHREAD_CONFIG_IP6_MAX_ASSEMBLED_DATAGRAM,
+
+        /**
+         * The length of reserved Ip6 message header length.
+         *
+         */
+        kMessageReserveHeaderLength = sizeof(Header) + sizeof(HopByHopHeader) + sizeof(OptionMpl),
     };
 
     /**
@@ -373,8 +380,11 @@ private:
     Tasklet       mSendQueueTask;
 
     Icmp mIcmp;
-    Udp  mUdp;
-    Mpl  mMpl;
+#if OPENTHREAD_CONFIG_TCP_ENABLE
+    Tcp mTcp;
+#endif
+    Udp mUdp;
+    Mpl mMpl;
 
 #if OPENTHREAD_CONFIG_IP6_FRAGMENTATION_ENABLE
     MessageQueue mReassemblyList;
