@@ -126,6 +126,9 @@ Interpreter::Interpreter(Instance *aInstance)
 #endif
     , mDataset(*this)
     , mNetworkData(*this)
+#if OPENTHREAD_CONFIG_TCP_ENABLE
+    , mTcp(*this)
+#endif
     , mUdp(*this)
 #if OPENTHREAD_CONFIG_COAP_API_ENABLE
     , mCoap(*this)
@@ -4128,6 +4131,13 @@ otError Interpreter::ProcessUdp(uint8_t aArgsLength, char *aArgs[])
 {
     return mUdp.Process(aArgsLength, aArgs);
 }
+
+#if OPENTHREAD_CONFIG_TCP_ENABLE
+otError Interpreter::ProcessTcp(uint8_t aArgsLength, char *aArgs[])
+{
+    return mTcp.Process(aArgsLength, aArgs);
+}
+#endif
 
 otError Interpreter::ProcessUnsecurePort(uint8_t aArgsLength, char *aArgs[])
 {

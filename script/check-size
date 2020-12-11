@@ -129,6 +129,7 @@ size_nrf52840_version()
         "SNTP_CLIENT=1"
         "SRP_CLIENT=1"
         "SRP_SERVER=1"
+        "TCP=1"
         "TIME_SYNC=1"
         "UDP_FORWARD=1"
     )

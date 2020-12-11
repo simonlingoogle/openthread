@@ -69,6 +69,9 @@ Ip6::Ip6(Instance &aInstance)
     , mReceiveIp6DatagramCallbackContext(nullptr)
     , mSendQueueTask(aInstance, Ip6::HandleSendQueue)
     , mIcmp(aInstance)
+#if OPENTHREAD_CONFIG_TCP_ENABLE
+    , mTcp(aInstance)
+#endif
     , mUdp(aInstance)
     , mMpl(aInstance)
 {
@@ -76,8 +79,7 @@ Ip6::Ip6(Instance &aInstance)
 
 Message *Ip6::NewMessage(uint16_t aReserved, const Message::Settings &aSettings)
 {
-    return Get<MessagePool>().New(Message::kTypeIp6,
-                                  sizeof(Header) + sizeof(HopByHopHeader) + sizeof(OptionMpl) + aReserved, aSettings);
+    return Get<MessagePool>().New(Message::kTypeIp6, kMessageReserveHeaderLength + aReserved, aSettings);
 }
 
 Message *Ip6::NewMessage(const uint8_t *aData, uint16_t aDataLength, const Message::Settings &aSettings)
@@ -950,7 +952,7 @@ otError Ip6::HandlePayload(Message &          aMessage,
     otError  error   = OT_ERROR_NONE;
     Message *message = nullptr;
 
-    VerifyOrExit(aIpProto == kProtoUdp || aIpProto == kProtoIcmp6);
+    VerifyOrExit(aIpProto == kProtoUdp || aIpProto == kProtoIcmp6 || aIpProto == kProtoTcp);
 
     switch (aMessageOwnership)
     {
@@ -976,6 +978,15 @@ otError Ip6::HandlePayload(Message &          aMessage,
     case kProtoIcmp6:
         error = mIcmp.HandleMessage(*message, aMessageInfo);
         break;
+
+#if OPENTHREAD_CONFIG_TCP_ENABLE
+    case kProtoTcp:
+        mTcp.HandleMessage(*message, aMessageInfo);
+        // TCP always takes the custody of the message
+        message = nullptr;
+        break;
+
+#endif
 
     default:
         break;
