@@ -32,15 +32,23 @@
 """
 
 import functools
+import logging
 import re
+import socket
+import time
 import traceback
 from Queue import Queue
 from abc import abstractmethod
 
-import logging
 import serial
-import socket
-import time
+
+THREAD_1_1 = 2
+THREAD_1_2 = 3
+
+if 'Thread1.2' in __file__:
+    THREAD_VERSION = THREAD_1_2
+else:
+    THREAD_VERSION = THREAD_1_1
 
 from GRLLibs.ThreadPacket.PlatformPackets import (
     PlatformDiagnosticPacket,
@@ -57,12 +65,27 @@ from GRLLibs.UtilityModules.enums import (
     PlatformDiagnosticPacket_Direction,
     PlatformDiagnosticPacket_Type,
 )
+
+if THREAD_VERSION == THREAD_1_2:
+    pass
+
 from IThci import IThci
 
 LINESEPX = re.compile(r'\r\n|\n')
 """regex: used to split lines"""
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+
+role_mode_dict = {
+    Thread_Device_Role.Leader: 'rsdn',
+    Thread_Device_Role.Router: 'rsdn',
+    Thread_Device_Role.SED: 's',
+    Thread_Device_Role.EndDevice: 'rsn',
+    Thread_Device_Role.REED: 'rsdn',
+    Thread_Device_Role.EndDevice_FED: 'rsdn',
+    Thread_Device_Role.EndDevice_MED: 'rsn',
+    Thread_Device_Role.SSED: 's',
+}
 
 _callStackDepth = 0
 
@@ -316,7 +339,8 @@ class OpenThreadTHCI(object):
 
         # init serial port
         self._connect()
-
+        if THREAD_VERSION == THREAD_1_2:
+            self.__discoverDeviceCapability()
         self.UIStatusMsg = self.getVersionNumber()
 
         if self.firmwarePrefix in self.UIStatusMsg:
@@ -760,6 +784,7 @@ class OpenThreadTHCI(object):
         try:
             cmd = 'channel %s' % channel
             datasetCmd = 'dataset channel %s' % channel
+            self.hasSetChannel = True
             self.hasActiveDatasetToCommit = True
             return (self.__executeCommand(cmd)[-1] == 'Done' and self.__executeCommand(datasetCmd)[-1] == 'Done')
         except Exception as e:
@@ -1066,7 +1091,7 @@ class OpenThreadTHCI(object):
         self.deviceRole = eRoleId
         mode = '-'
         try:
-            if ModuleHelper.LeaderDutChannelFound:
+            if ModuleHelper.LeaderDutChannelFound and not self.hasSetChannel:
                 self.channel = ModuleHelper.Default_Channel
 
             # FIXME: when Harness call setNetworkDataRequirement()?
@@ -1275,7 +1300,7 @@ class OpenThreadTHCI(object):
         """factory reset"""
         print('%s call reset' % self)
         self.__sendCommand('factoryreset', expectEcho=False)
-        self.sleep(0.5)
+        self.sleep(3)
 
     @API
     def removeRouter(self, xRouterId):
@@ -1339,6 +1364,9 @@ class OpenThreadTHCI(object):
         self._addressfilterSet = set()  # cache filter entries
         # indicate if Thread device is an active commissioner
         self.isActiveCommissioner = False
+        # indicate that the channel has been set, in case the channel was set
+        # to default when joining network
+        self.hasSetChannel = False
 
         # initialize device configuration
         try:
@@ -1528,7 +1556,7 @@ class OpenThreadTHCI(object):
     @API
     def configBorderRouter(
         self,
-        P_Prefix,
+        P_Prefix=None,
         P_stable=1,
         P_default=1,
         P_slaac_preferred=0,
@@ -1536,6 +1564,7 @@ class OpenThreadTHCI(object):
         P_preference=0,
         P_on_mesh=1,
         P_nd_dns=0,
+        P_dp=0,
     ):
         """configure the border router with a given prefix entry parameters
 
@@ -1554,7 +1583,24 @@ class OpenThreadTHCI(object):
             False: fail to configure the border router with a given prefix entry
         """
         print('%s call configBorderRouter' % self)
-        prefix = self.__convertIp6PrefixStringToIp6Address(str(P_Prefix))
+        assert THREAD_VERSION == THREAD_1_2 or P_dp == 0
+
+        if THREAD_VERSION == THREAD_1_2 and P_dp == 0 and not self.__isOpenThreadRunning():
+            # TODO: add domain prefix by default for Thread 1.2 BBR
+            self.__removeDomainPrefix()
+
+        if THREAD_VERSION == THREAD_1_2:
+            # TestHarness 1.2 converts 0x2001000000000000 to "2001000000000000"
+            if P_Prefix is None:
+                P_Prefix = 0xfd007d037d037d03
+
+            P_Prefix = '%016x' % P_Prefix
+        else:
+            # TestHarness 1.1 converts 2001000000000000 to "2001000000000000" (bad)
+            P_Prefix = str(P_Prefix)
+            int(P_Prefix, 16)
+
+        prefix = self.__convertIp6PrefixStringToIp6Address(P_Prefix)
         print(prefix)
         try:
             parameter = ''
@@ -1575,6 +1621,10 @@ class OpenThreadTHCI(object):
 
             if P_on_mesh == 1:
                 parameter += 'o'
+
+            if P_dp == 1:
+                assert P_slaac_preferred and P_default and P_on_mesh and P_stable
+                parameter += 'D'
 
             if P_preference == 1:
                 prf = 'high'
@@ -2943,7 +2993,7 @@ class OpenThreadTHCI(object):
         print(cmd)
         return self.__executeCommand(cmd)[-1] == 'Done'
 
-    #TODO: Series Id is not in this API.
+    # TODO: Series Id is not in this API.
     @API
     def LinkMetricsSendProbe(self, dst_addr, ack=True, size=0):
         self.log('call LinkMetricsSendProbe')
@@ -2988,6 +3038,22 @@ class OpenThreadTHCI(object):
         print(cmd2)
         return (self.__executeCommand(cmd1)[-1] == 'Done' and self.__executeCommand(cmd2)[-1] == 'Done')
 
+    def send_udp(self, interface, dst, port, payload):
+        # TODO
+        print('%s call send_udp' % self.port)
+        if interface == 0:  # Thread Interface
+            ifname = 'wpan0'
+        elif interface == 1:
+            ifname = 'eth0'
+        else:
+            print('invalid interface')
+            return
+
+        cmd = 'sudo /home/pi/script/send_udp.py %s %s %s %s' % (ifname, dst, port, payload)
+        print(cmd)
+        self.__executeCommand(cmd)[0]
+
+
     @API
     def sendMACcmd(self, enh=False):
         self.log('call sendMACcmd')
@@ -3009,6 +3075,218 @@ class OpenThreadTHCI(object):
             self.__setPollPeriod(1000000)
         else:
             self.__setPollPeriod(self.__sedPollPeriod)
+
+    @API
+    def set_max_addrs_per_child(self, num):
+        cmd = 'childipmax %d' % int(num)
+        print(cmd)
+        self.__executeCommand(cmd)
+
+    @API
+    def config_next_dua_status_rsp(self, mliid, status_code):
+        # TODO
+        pass
+
+    @API
+    def getDUA(self):
+        dua = self.getGUA('fd00:7d03')
+        return dua
+
+    def __removeDomainPrefix(self):
+        pass
+
+    def __setDUA(self, sDua=''):
+        """specify the DUA before Thread Starts."""
+        # TODO
+        cmd = 'dua addr %s' % sDua
+        print(cmd)
+        return self.__executeCommand(cmd)[-1] == 'Done'
+
+    def __getMlIid(self):
+        """get the Mesh Local IID."""
+        print('%s call __getMlIid' % self.port)
+        # getULA64() would return the full string representation
+        mleid = ModuleHelper.GetFullIpv6Address(self.getULA64()).lower()
+        mliid = mleid[-19:].replace(':', '')
+        print('mliid: %s' % mliid)
+        return mliid
+
+    def __setMlIid(self, sMlIid=''):
+        """TODO: specify the Mesh Local IID before Thread Starts."""
+        print('%s call __setMlIid' % self.port)
+        cmd = 'dua mliid %s' % sMlIid
+        print(cmd)
+        return self.__executeCommand(cmd)[-1] == 'Done'
+
+    @API
+    def registerDUA(self, destAddr='', sMleId='', sAddr=''):
+        """TODO: only used for explicitly registration (DEV-1916/DEV-1923) """
+
+        # TODO-P1: workaround for DEV-2007
+        # overwrite generated DUA
+        if sAddr != '' and destAddr == '' and sMleId == '':
+            self.__setDUA(sAddr)
+            return
+
+        # TODO-P1: to be removed for pseudo operation which would be replaced by send_udp
+        cmd = 'dua reg'
+
+        if sAddr != '':
+            cmd += ' addr %s' % sAddr
+        if sMleId != '':
+            # sMleId is colon seperated, here converts.
+            cmd += ' mliid %s' % sMleId.replace(':', '')
+        if destAddr != '':
+            fullIp = ModuleHelper.GetFullIpv6Address(destAddr).lower()
+            print('dest fullip %s' % fullIp)
+            if fullIp.startswith(self.meshLocalPrefix.lower()[0:19]) and fullIp.startswith('0000:00ff:fe00:', 20):
+                dest = fullIp.split(':')[-1]
+                cmd += ' dest %s' % dest
+            else:
+                print('dest should be rloc address')
+                return False
+        print(cmd)
+        return self.__executeCommand(cmd)[-1] == 'Done'
+
+    def config_next_mlr_status_rsp(self, status_code):
+        # TODO
+        print('%s call config_next_mlr_status_rsp' % self.port)
+        return self.__configReferenceDevice(REFERENCE_DEVICE_CONFIG_MA_RESPONSE, '%02x' % status_code)
+
+    @API
+    def setMLRtimeout(self, iMsecs):
+        self.__executeCommand('ipmaddr reg timeout ' + str(iMsecs))
+
+    @API
+    def stopListeningToAddr(self, sAddr):
+        print('%s call stopListeningToAddr' % self.port)
+
+        # convert to list for single element, for possible extension
+        # requirements.
+        if not isinstance(sAddr, list):
+            sAddr = [sAddr]
+
+        for addr in sAddr:
+            cmd = 'ipmaddr del ' + addr
+            if self.__executeCommand(cmd)[-1] != 'Done':
+                return False
+
+        return True
+
+    @API
+    def registerMulticast(self, sAddr='ff04::1234:777a:1'):
+        """subscribe to the given ipv6 address (sAddr) in interface and send MLR.req OTA
+
+        note: workaround agreed before finial decision discussed in the DEV-1819.
+
+        Args:
+            sAddr   : str : Multicast address to be subscribed and notified OTA.
+        """
+        print('%s call registerMulticast' % self.port)
+
+        # convert to list for single element, for possible extension
+        # requirements.
+        if not isinstance(sAddr, list):
+            sAddr = [sAddr]
+
+        # subscribe address one by one
+        for addr in sAddr:
+            cmd = 'ipmaddr add ' + str(addr)
+            # Ignore the impact of possible `OT_ERROR_ALREADY` error code in case
+            # `registerMulticast` would be called more than once on the same MA
+            self._sendline(cmd)
+            self._expect(cmd)
+
+        time.sleep(2)
+        cmd = 'ipmaddr reg'
+        return self.__executeCommand(cmd)[-1] == 'Done'
+
+    @API
+    def migrateNetwork(self, channel=None, net_name=None):
+        """migrate to another Thread Partition 'net_name' (could be None)
+            on specified 'channel'. Make sure same Mesh Local IID and DUA
+            after migration for DUA-TC-06/06b (DEV-1923)
+        """
+        try:
+            if channel is None:
+                raise Exception('channel None')
+
+            if channel not in range(11, 27):
+                raise Exception('channel %d not in [11, 26] Invalid' % channel)
+
+            print('new partition %s on channel %d' % (net_name, channel))
+
+            mliid = self.__getMlIid()
+            dua = self.getDUA()
+            self.reset()
+            deviceRole = self.deviceRole
+            self.setDefaultValues()
+            self.setChannel(channel)
+            if net_name is not None:
+                self.setNetworkName(net_name)
+            self.__setMlIid(mliid)
+            self.__setDUA(dua)
+            return self.joinNetwork(deviceRole)
+
+        except Exception as e:
+            ModuleHelper.WriteIntoDebugLogger('migrateNetwork() Error: ' + str(e))
+
+    @API
+    def setParentPrio(self, prio):
+        cmd = 'parentpriority %u' % prio
+        print(cmd)
+        return self.__executeCommand(cmd)[-1] == 'Done'
+
+    def role_transition(self, role):
+        try:
+            cmd = 'mode %s' % role_mode_dict[role]
+            return self.__executeCommand(cmd)[-1] == 'Done'
+        except Exception as e:
+            ModuleHelper.WriteIntoDebugLogger('role_transition() Error: ' + str(e))
+
+    @API
+    def setLeaderWeight(self, iWeight=72):
+        self.__executeCommand('leaderweight 72')
+
+    def __discoverDeviceCapability(self):
+        """Discover device capability according to version"""
+        self.DeviceCapability = DevCapb.NotSpecified
+
+        # Get Thread stack version to distinguish device capability.
+        thver = self.__executeCommand('thread version')[0]
+
+        if thver in ['1.2', '3']:
+            self.DeviceCapability = (DevCapb.C_FFD | DevCapb.C_RFD | DevCapb.L_AIO)
+        elif thver in ['1.1', '2']:
+            self.DeviceCapability = DevCapb.V1_1
+        else:
+            ModuleHelper.WriteIntoDebugLogger('__discoverDeviceCapability() failed: unknown thread version: %s' %
+                                              thver)
+
+
+    def ip_neighbors_flush(self):
+        print('%s call clear_cache' % self.port)
+        # clear neigh cache on linux
+        cmd1 = 'sudo ip -6 neigh flush nud all nud failed nud noarp dev eth0'
+        cmd2 = 'sudo ip -6 neigh list nud all dev eth0 ' \
+               '| cut -d " " -f1 ' \
+               '| sudo xargs -I{} ip -6 neigh delete {} dev eth0'
+        cmd = '%s ; %s' % (cmd1, cmd2)
+        self.__executeCommand(cmd)
+
+    def ip_neighbors_add(self, addr, lladdr, nud='noarp'):
+        print('%s ip_neighbors_add' % self.port)
+        cmd1 = 'sudo ip -6 neigh delete %s dev eth0' % addr
+        cmd2 = 'sudo ip -6 neigh add %s dev eth0 lladdr %s nud %s' % (addr, lladdr, nud)
+        cmd = '%s ; %s' % (cmd1, cmd2)
+        self.__executeCommand(cmd)
+
+    def get_eth_ll(self):
+        print('%s get_eth_ll' % self.port)
+        cmd = "ifconfig eth0 | grep inet6 | grep fe80 | awk '{print $2}'"
+        ret = self.__executeCommand(cmd)[0]
+        print(ret)
+        return ret
 
     @staticmethod
     def __lstrip0x(s):
