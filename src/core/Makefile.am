@@ -221,6 +221,7 @@ SOURCES_COMMON                                  = \
     net/ip6_mpl.cpp                               \
     net/netif.cpp                                 \
     net/sntp_client.cpp                           \
+    net/srp_server.cpp                            \
     net/udp6.cpp                                  \
     radio/radio.cpp                               \
     radio/radio_callbacks.cpp                     \
@@ -462,6 +463,7 @@ HEADERS_COMMON                                  = \
     net/netif.hpp                                 \
     net/sntp_client.hpp                           \
     net/socket.hpp                                \
+    net/srp_server.hpp                            \
     net/tcp.hpp                                   \
     net/udp6.hpp                                  \
     radio/radio.hpp                               \

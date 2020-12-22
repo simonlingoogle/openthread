@@ -486,4 +486,14 @@
 #define OPENTHREAD_CONFIG_MLR_ENABLE 0
 #endif
 
+/**
+ * @def OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+ *
+ * Define to 1 to enable SRP server support.
+ *
+ */
+#ifndef OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
+#define OPENTHREAD_CONFIG_SRP_SERVER_ENABLE 0
+#endif
+
 #endif // OPENTHREAD_CORE_DEFAULT_CONFIG_H_
