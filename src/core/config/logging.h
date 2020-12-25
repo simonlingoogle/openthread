@@ -312,7 +312,7 @@
 /**
  * @def OPENTHREAD_CONFIG_LOG_SRP
  *
- * Define to enable Service Registration Protocol(SRP) region logging.
+ * Define to enable Service Registration Protocol (SRP) region logging.
  *
  */
 #ifndef OPENTHREAD_CONFIG_LOG_SRP
