@@ -48,34 +48,23 @@ extern "C" {
  * @addtogroup api-srp
  *
  * @brief
- *  This module includes functions to control service registrations.
+ *  This module includes functions of the Service Registration Protocol.
  *
  * @{
  *
  */
 
 /**
- * This opaque type represents an SRP service host.
+ * This opaque type represents a SRP service host.
  *
  */
 typedef void otSrpServerHost;
 
 /**
- * This structure represents a SRP service.
+ * This opaque type represents a SRP service.
  *
  */
-struct otSrpServerService
-{
-    char *              mFullName;  ///< The full service name.
-    bool                mIsDeleted; ///< A boolean that indicates whether this service is deleted.
-    uint16_t            mPriority;  ///< The priority.
-    uint16_t            mWeight;    ///< The weight.
-    uint16_t            mPort;      ///< The service port.
-    uint16_t            mTxtLength; ///< The TXT record length.
-    uint8_t *           mTxtData;   ///< The standard DNS TXT record data.
-    otSrpServerHost *   mHost;      ///< The host of this service.
-    otSrpServerService *mNext;      ///< The next linked service within the same host.
-};
+typedef void otSrpServerService;
 
 /**
  * This method enables/disables the SRP server.
@@ -89,9 +78,19 @@ void otSrpServerSetEnabled(otInstance *aInstance, bool aEnabled);
 /**
  * This method sets LEASE & KEY-LEASE range that is acceptable by the SRP server.
  *
- * When a LEASE time is requested from a client, the granted value will be
- * limited in range [aMinLease, aMaxLease]; and a KEY-LEASE will be granted
- * in range [aMinKeyLease, aMaxKeyLease].
+ * When a non-zero LEASE time is requested from a client, the granted value will be
+ * limited in range [aMinLease, aMaxLease]; and a non-zero KEY-LEASE will be granted
+ * in range [aMinKeyLease, aMaxKeyLease]. For zero LEASE or KEY-LEASE time, zero will
+ * be granted.
+ *
+ * @param[in]  aInstance     A pointer to an OpenThread instance.
+ * @param[in]  aMinLease     The minimum LEASE interval in seconds.
+ * @param[in]  aMaxLease     The maximum LEASE interval in seconds.
+ * @param[in]  aMinKeyLease  The minimum KEY-LEASE interval in seconds.
+ * @param[in]  aMaxKeyLease  The maximum KEY-LEASE interval in seconds.
+ *
+ * @retval  OT_ERROR_NONE          Successfully set the LEASE and KEY-LEASE ranges.
+ * @retval  OT_ERROR_INVALID_ARGS  The LEASE or KEY-LEASE range is not valid.
  *
  */
 otError otSrpServerSetLeaseRange(otInstance *aInstance,
@@ -101,34 +100,42 @@ otError otSrpServerSetLeaseRange(otInstance *aInstance,
                                  uint32_t    aMaxKeyLease);
 
 /**
- * This method handles SRP service events by advertising the service on multicast-capable link.
+ * This method handles SRP service updates.
  *
- * This function is called by the SRP server to notify a Advertising Proxy to propagate the
- * service updates on the multiple-capable link. The Advertising Proxy should call
- * otSrpServerHandleAdvertisingResult to return the result.
+ * This function is called by the SRP server to notify that a SRP host and possibly SRP services
+ * are being updated. It is important that the SRP updates are not commited until the handler
+ * returns the result by calling otSrpServerHandleServiceUpdateResult or times out after @p aTimeout.
+ *
+ * A SRP service observer should always call otSrpServerHandleServiceUpdateResult with errorcode
+ * OT_ERROR_NONE immediately after receiving the update events.
+ *
+ * A more generic handler may perform validations on the SRP host/services and rejects the SRP updates
+ * if any validation fails. For example, an Advertising Proxy should advertise (or remove) the host and
+ * services on a multicast-capable link and returns specific errorcode if any failure occurs.
  *
  * @param[in]  aHost     A pointer to the otSrpServerHost object which contains the SRP updates.
- *                       The pointer should be passed back to otSrpServerHandleAdvertisingResult, but
+ *                       The pointer should be passed back to otSrpServerHandleServiceUpdateResult, but
  *                       the content MUST not be accessed after this method returns. The handler
  *                       should publish/un-publish the host and each service points to this host
  *                       with below rules:
- *                         1. If the host has valid addresses, then it should be published or updated
- *                            with mDNS. Otherwise, the host should be un-published (remove AAAA RRs).
+ *                         1. If the host is not deleted (indicated by `otSrpServerHostIsDeleted`),
+ *                            then it should be published or updated with mDNS. Otherwise, the host
+ *                            should be un-published (remove AAAA RRs).
  *                         2. For each service points to this host, it must be un-published if the host
  *                            is to be un-published. Otherwise, the handler should publish or update the
- *                            service when it is not deleted (indicated by `otSrpServerService::mIsDeleted`)
+ *                            service when it is not deleted (indicated by `otSrpServerServiceIsDeleted`)
  *                            and un-publish it when deleted.
  * @param[in]  aTimeout  The maximum time in milliseconds for the handler to process the service event.
  * @param[in]  aContext  A pointer to application-specific context.
  *
- * @sa otSrpServerSetAdvertisingHandler
- * @sa otSrpServerHandleAdvertisingResult
+ * @sa otSrpServerSetServiceUpdateHandler
+ * @sa otSrpServerHandleServiceUpdateResult
  *
  */
-typedef void (*otSrpServerAdvertisingHandler)(const otSrpServerHost *aHost, uint32_t aTimeout, void *aContext);
+typedef void (*otSrpServerServiceUpdateHandler)(const otSrpServerHost *aHost, uint32_t aTimeout, void *aContext);
 
 /**
- * This method sets the Advertising Proxy handler on SRP server.
+ * This method sets the SRP service updates handler on SRP server.
  *
  * @param[in]  aInstance        A pointer to an OpenThread instance.
  * @param[in]  aServiceHandler  A pointer to a service handler. Use NULL to remove the
@@ -140,9 +147,9 @@ typedef void (*otSrpServerAdvertisingHandler)(const otSrpServerHost *aHost, uint
  *        The default behavior of not calling this method is just accepting a SRP update.
  *
  */
-void otSrpServerSetAdvertisingHandler(otInstance *                  aInstance,
-                                      otSrpServerAdvertisingHandler aServiceHandler,
-                                      void *                        aContext);
+void otSrpServerSetServiceUpdateHandler(otInstance *                    aInstance,
+                                        otSrpServerServiceUpdateHandler aServiceHandler,
+                                        void *                          aContext);
 
 /**
  * This method reports the result of advertising a SRP update to the SRP server.
@@ -156,13 +163,13 @@ void otSrpServerSetAdvertisingHandler(otInstance *                  aInstance,
  *                        to represent DNS name conflicts.
  *
  */
-void otSrpServerHandleAdvertisingResult(otInstance *aInstance, const otSrpServerHost *aHost, otError aError);
+void otSrpServerHandleServiceUpdateResult(otInstance *aInstance, const otSrpServerHost *aHost, otError aError);
 
 /**
  * This method returns the next registered host on the SRP server.
  *
  * @param[in]  aInstance  A pointer to an OpenThread instance.
- * @param[in]  aHost      A pointer to current host. Use NULL to get the first host.
+ * @param[in]  aHost      A pointer to current host; use NULL to get the first host.
  *
  * @retval  A pointer to the registered host. NULL, if no more hosts can be found.
  *
@@ -170,7 +177,20 @@ void otSrpServerHandleAdvertisingResult(otInstance *aInstance, const otSrpServer
 const otSrpServerHost *otSrpServerGetNextHost(otInstance *aInstance, const otSrpServerHost *aHost);
 
 /**
- * This method returns the full name of a given host.
+ * This method tells if the SRP service host has been deleted.
+ *
+ * A SRP service host can be deleted but retains its name for future uses.
+ * In this case, the host instance is not removed from the SRP server/registry.
+ *
+ * @param[in]  aHost  A pointer to the SRP service host.
+ *
+ * @retval  TRUE if the host has been deleted, FALSE if not.
+ *
+ */
+bool otSrpServerHostIsDeleted(const otSrpServerHost *aHost);
+
+/**
+ * This method returns the full name of the host.
  *
  * @param[in]  aHost  A pointer to the SRP service host.
  *
@@ -185,20 +205,97 @@ const char *otSrpServerHostGetFullName(const otSrpServerHost *aHost);
  * @param[in]   aHost          A pointer to the SRP service host.
  * @param[out]  aAddressesNum  A pointer to where we should output the number of the addresses to.
  *
- * @retval  A pointer to the array of IPv6 Address.
+ * @returns  A pointer to the array of IPv6 Address.
  *
  */
 const otIp6Address *otSrpServerHostGetAddresses(const otSrpServerHost *aHost, uint8_t *aAddressesNum);
 
 /**
- * This method returns the list of services of given host.
+ * This method returns the next service of given host.
  *
- * @param[in]  aHost  A pointer to the SRP service host.
+ * @param[in]  aHost     A pointer to the SRP service host.
+ * @param[in]  aService  A pointer to current SRP service instance; use NULL to get the first service.
  *
- * @retval  A pointer to the head of the service list.
+ * @returns  A pointer to the next service or NULL if there is no more services.
  *
  */
-const otSrpServerService *otSrpServerHostGetServices(const otSrpServerHost *aHost);
+const otSrpServerService *otSrpServerHostGetNextService(const otSrpServerHost *   aHost,
+                                                        const otSrpServerService *aService);
+
+/**
+ * This method tells if the SRP service has been deleted.
+ *
+ * A SRP service can be deleted but retains its name for future uses.
+ * In this case, the service instance is not removed from the SRP server/registry.
+ * It is guaranteed that all services are deleted if the host is deleted.
+ *
+ * @param[in]  aService  A pointer to the SRP service.
+ *
+ * @retval  TRUE if the service has been deleted, FALSE if not.
+ *
+ */
+bool otSrpServerServiceIsDeleted(const otSrpServerService *aService);
+
+/**
+ * This method returns the full name of the service.
+ *
+ * @param[in]  aService  A pointer to the SRP service.
+ *
+ * @returns  A pointer to the null-terminated service name string.
+ *
+ */
+const char *otSrpServerServiceGetFullName(const otSrpServerService *aService);
+
+/**
+ * This method returns the port of the service instance.
+ *
+ * @param[in]  aService  A pointer to the SRP service.
+ *
+ * @returns  The port of the service.
+ *
+ */
+uint16_t otSrpServerServiceGetPort(const otSrpServerService *aService);
+
+/**
+ * This method returns the weight of the service instance.
+ *
+ * @param[in]  aService  A pointer to the SRP service.
+ *
+ * @returns  The weight of the service.
+ *
+ */
+uint16_t otSrpServerServiceGetWeight(const otSrpServerService *aService);
+
+/**
+ * This method returns the priority of the service instance.
+ *
+ * @param[in]  aService  A pointer to the SRP service.
+ *
+ * @returns  The priority of the service.
+ *
+ */
+uint16_t otSrpServerServiceGetPriority(const otSrpServerService *aService);
+
+/**
+ * This method returns the TXT data of the service instance.
+ *
+ * @param[in]   aService    A pointer to the SRP service.
+ * @param[out]  aTxtLength  A pointer to the output of the TXT data length.
+ *
+ * @returns  A pointer to the standard TXT data with format described by RFC 6763.
+ *
+ */
+const uint8_t *otSrpServerServiceGetTxtData(const otSrpServerService *aService, uint16_t *aTxtLength);
+
+/**
+ * This method returns the host which the service instance reside on.
+ *
+ * @param[in]  aService  A pointer to the SRP service.
+ *
+ * @returns  A pointer to the host instance.
+ *
+ */
+const otSrpServerHost *otSrpServerServiceGetHost(const otSrpServerService *aService);
 
 /**
  * @}

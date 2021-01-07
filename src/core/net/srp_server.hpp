@@ -54,7 +54,6 @@
 #include "net/udp6.hpp"
 
 namespace ot {
-
 namespace Srp {
 
 /**
@@ -71,47 +70,104 @@ public:
 
     enum : uint8_t
     {
-        kMaxAddressesNum = 8, ///< The maximum number of addresses for a host.
+        kMaxAddressesNum = 8u, ///< The maximum number of addresses for a host.
     };
 
     /**
-     * This class represents a server-side SRP service.
+     * This class implements a server-side SRP service.
      *
      */
-    class Service : public otSrpServerService, public LinkedListEntry<Service>, private NonCopyable
+    class Service : public InstanceLocator, public LinkedListEntry<Service>, private NonCopyable
     {
+        friend class LinkedListEntry<Service>;
         friend class Server;
 
     public:
         /**
          * This method creates a new Service object with given full name.
          *
+         * @param[in]  aInstance  A reference to the OpenThread instance.
          * @param[in]  aFullName  The full name of the service instance.
          *
          * @returns  A pointer to the newly created Service object. nullptr if
          *           cannot allocate memory for the object.
          *
          */
-        static Service *New(const char *aFullName);
+        static Service *New(Instance &aInstance, const char *aFullName);
 
         /**
-         * This method destroys a Service object.
-         *
-         * @param[in]  aService  The Service object to be destroyed.
+         * This method frees the Service object.
          *
          */
-        static void Destroy(Service *aService);
+        void Free(void);
 
         /**
-         * This method tells whether this Service object has been deleted.
+         * This method tells if the SRP service has been deleted.
          *
-         * The Service object retains event if the service instance has been deleted by the SRP client,
-         * because the service instance name may retain.
+         * A SRP service can be deleted but retains its name for future uses.
+         * In this case, the service instance is not removed from the SRP server/registry.
+         * It is guaranteed that all services are deleted if the host is deleted.
          *
-         * @returns  A boolean that indicates whether the service has been deleted.
+         * @retval  TRUE if the service has been deleted, FALSE if not.
          *
          */
         bool IsDeleted(void) const { return mIsDeleted; }
+
+        /**
+         * This method returns the full name of the service.
+         *
+         * @returns  A pointer to the null-terminated service name string.
+         *
+         */
+        const char *GetFullName(void) const { return mFullName; }
+
+        /**
+         * This method returns the port of the service instance.
+         *
+         * @returns  The port of the service.
+         *
+         */
+        uint16_t GetPort(void) const { return mPort; }
+
+        /**
+         * This method returns the weight of the service instance.
+         *
+         * @returns  The weight of the service.
+         *
+         */
+        uint16_t GetWeight(void) const { return mWeight; }
+
+        /**
+         * This method returns the priority of the service instance.
+         *
+         * @param[in]  aService  A pointer to the SRP service.
+         *
+         * @returns  The priority of the service.
+         *
+         */
+        uint16_t GetPriority(void) const { return mPriority; }
+
+        /**
+         * This method returns the TXT data of the service instance.
+         *
+         * @param[out]  aTxtLength  A pointer to the output of the TXT data length.
+         *
+         * @returns  A pointer to the standard TXT data with format described by RFC 6763.
+         *
+         */
+        const uint8_t *GetTxtData(uint16_t &aTxtLength) const
+        {
+            aTxtLength = mTxtLength;
+            return mTxtData;
+        }
+
+        /**
+         * This method returns the host which the service instance reside on.
+         *
+         * @returns  A reference to the host instance.
+         *
+         */
+        const Host &GetHost(void) const { return *static_cast<const Host *>(mHost); }
 
         /**
          * This method returns the expire time (in milliseconds) of the service.
@@ -122,7 +178,7 @@ public:
         TimeMilli GetExpireTime(void) const;
 
         /**
-         * This method returns the expire time (in milliseconds) of the key associated to the service.
+         * This method returns the key expire time (in milliseconds) of the service.
          *
          * @returns  The service key expire time in milliseconds.
          *
@@ -130,163 +186,86 @@ public:
         TimeMilli GetKeyExpireTime(void) const;
 
         /**
-         * This method returns the Host associated with this service.
+         * This method tells whether this service matches a given full name.
          *
-         * @returns  A reference to the host.
+         * @param[in]  aFullName  The full name.
          *
-         */
-        const Host &GetHost(void) const { return *static_cast<Host *>(mHost); }
-
-        /**
-         * This method returns the full service name.
-         *
-         * @returns  A pointer to the null-terminated full name string.
-         *
-         */
-        const char *GetFullName(void) const { return mFullName; }
-
-        /**
-         * This method tells whether this service matches to a given full service name.
-         *
-         * @param[in]  aFullName  The full service name.
-         *
-         * @returns  A boolean that indicates whether this service matches the given name.
+         * @returns  TRUE if the servce matches the full name, FALSE if doesn't match.
          *
          */
         bool Matches(const char *aFullName) const;
 
     private:
-        Service();
-        ~Service();
-
-        /**
-         * This method deletes but retains the service instance.
-         *
-         * @param[in]  aDeleted  A boolean that indicates whether the service should be deleted or not.
-         *
-         */
-        void  SetDeleted(bool aDeleted) { mIsDeleted = aDeleted; }
-        Host &GetHost(void) { return *static_cast<Host *>(mHost); }
-        char *GetFullName(void) { return mFullName; }
-
-        /**
-         * This method sets the full service name.
-         *
-         * @param[in]  aFullName  The full service name.
-         *
-         * @retval  OT_ERROR_NONE     Successfully set the full service name.
-         * @retval  OT_ERROR_NO_BUFS  Failed to allocate memory for the name.
-         *
-         */
+        explicit Service(Instance &aInstance);
         otError SetFullName(const char *aFullName);
-
-        /**
-         * This method sets the TXT data.
-         *
-         * @param[in]  aTxtData        A pointer to the TXT data.
-         * @param[in]  aTxtDataLength  The length of the TXT data in bytes.
-         *
-         * @retval OT_ERROR_NONE     Successfully set the TXT data.
-         * @retval OT_ERROR_NO_BUFS  Failed to allocate memory for the TXT data.
-         *
-         */
         otError SetTxtData(const uint8_t *aTxtData, uint16_t aTxtDataLength);
-
-        /**
-         * This method reads and sets TXT data from a message.
-         *
-         * @param[in]  aMessage  The message that includes the TXT data.
-         * @param[in]  aOffset   The offset from which TXT data starts.
-         * @param[in]  aLength   The length of the TXT data.
-         *
-         * @retval  OT_ERROR_NONE    Successfully read and set the TXT data from the message.
-         * @retval  OT_ERROR_PARSE   Failed to read the TXT data from the message.
-         * @retval OT_ERROR_NO_BUFS  Failed to allocate memory for the TXT data.
-         *
-         */
         otError SetTxtDataFromMessage(const Message &aMessage, uint16_t aOffset, uint16_t aLength);
-
-        /**
-         * This method clears all resources associated to this service.
-         *
-         */
-        void ClearResources(void);
-
-        /**
-         * This method copies all resources from another service.
-         *
-         * @param[in]  aService  The service to copies resource from.
-         *
-         * @retval  OT_ERROR_NONE     Successfully copied all resources.
-         * @retval  OT_ERROR_NO_BUFS  Failed to allocate memory for those resources.
-         *
-         */
         otError CopyResourcesFrom(const Service &aService);
+        void    ClearResources(void);
+        void    DeleteResourcesButRetainName(void);
 
-        TimeMilli mTimeLastUpdate;
+        char *           mFullName;
+        uint16_t         mPriority;
+        uint16_t         mWeight;
+        uint16_t         mPort;
+        uint16_t         mTxtLength;
+        uint8_t *        mTxtData;
+        otSrpServerHost *mHost;
+        Service *        mNext;
+        TimeMilli        mTimeLastUpdate;
+        bool             mIsDeleted;
     };
 
     /**
-     * This class represents a Host which registers one or more services on this SRP server.
+     * This class implements the Host which registers services on the SRP server.
      *
      */
-    class Host : public LinkedListEntry<Host>, private NonCopyable
+    class Host : public InstanceLocator, public LinkedListEntry<Host>, private NonCopyable
     {
-    public:
         friend class LinkedListEntry<Host>;
+        friend class Server;
 
+    public:
         /**
          * This method creates a new Host object with given full name.
+         *
+         * @param[in]  aInstance  A reference to the OpenThread instance.
          *
          * @returns  A pointer to the newly created Host object. nullptr if
          *           cannot allocate memory for the object.
          *
          */
-        static Host *New(void);
+        static Host *New(Instance &aInstance);
 
         /**
-         * This method destroys a Host object.
-         *
-         * @param[in]  aHost  A pointer to the host to be destroyed.
+         * This method Frees the Host object.
          *
          */
-        static void Destroy(Host *aHost);
+        void Free(void);
 
         /**
-         * This method tells whether this Host object has been deleted.
+         * This method tells whether the Host object has been deleted.
          *
          * The Host object retains event if the host has been deleted by the SRP client,
          * because the host name may retain.
          *
-         * @returns  A boolean that indicates whether the host has been deleted.
+         * @returns  TRUE if the host is deleted, FALSE if the host is not deleted.
          *
          */
         bool IsDeleted(void) const { return (mLease == 0); }
 
         /**
-         * This method returns the full host name.
+         * This method returns the full name of the host.
          *
          * @returns  A pointer to the null-terminated full host name.
          *
          */
         const char *GetFullName(void) const { return mFullName; }
-        char *      GetFullName(void) { return mFullName; }
 
         /**
-         * This method sets the full name for this host.
+         * This method returns adrersses of the host.
          *
-         * @param[in]  aFullName  A pointer to the null-terminated full name.
-         *
-         * @retval  OT_ERROR_NONE     Successfully set the name.
-         * @retval  OT_ERROR_NO_BUFS  Failed to allocate memory for the name.
-         *
-         */
-        otError SetFullName(const char *aFullName);
-
-        /**
-         * This method returns adrersses of this host.
-         *
-         * @param[out]  aAddressesNum  The number of the address.
+         * @param[out]  aAddressesNum  The number of the addresses.
          *
          * @returns  A pointer to the addresses array.
          *
@@ -298,41 +277,17 @@ public:
         }
 
         /**
-         * This method sets the KEY resource for this host.
+         * This method returns the LEASE time of the host.
          *
-         * @param[in]  aKey  The ECDSA P-256 public key.
-         *
-         */
-        void SetKey(Dns::Ecdsa256KeyRecord &aKey);
-
-        /**
-         * This method sets the LEASE time value for the host and all its services.
-         *
-         * @param[in]  aLease  The LEASE in seconds.
-         *
-         */
-        void SetLease(uint32_t aLease);
-
-        /**
-         * This method returns the LEASE time value of the host.
-         *
-         * @returns  The LEASE time value in seconds.
+         * @returns  The LEASE time in seconds.
          *
          */
         uint32_t GetLease(void) const { return mLease; }
 
         /**
-         * This method sets the KEY-LEASE time value for the key of the host and all its services.
+         * This method returns the KEY-LEASE time of the key of the host.
          *
-         * @param[in]  aKeyLease  The KEY-LEASE in seconds.
-         *
-         */
-        void SetKeyLease(uint32_t aKeyLease);
-
-        /**
-         * This method returns the KEY-LEASE time value of the key of the host
-         *
-         * @returns  The KEY-LEASE time value in seconds.
+         * @returns  The KEY-LEASE time in seconds.
          *
          */
         uint32_t GetKeyLease(void) const { return mKeyLease; }
@@ -340,7 +295,8 @@ public:
         /**
          * This method returns the KEY resource of the host.
          *
-         * @returns  A pointer to the ECDSA P 256 public key if there is valid one. Otherwise, nullptr.
+         * @returns  A pointer to the ECDSA P 256 public key if there is valid one.
+         *           nullptr if no valid key exists.
          *
          */
         const Dns::Ecdsa256KeyRecord *GetKey(void) const { return mKey.IsValid() ? &mKey : nullptr; }
@@ -362,107 +318,53 @@ public:
         TimeMilli GetKeyExpireTime(void) const;
 
         /**
-         * This method returns the list of all services associated with this host.
+         * This method returns the next service of the host.
          *
-         * @returns  A pointer to the first service.
+         * @param[in]  aService  A pointer to current service.
          *
-         */
-        const Service *GetServices(void) const { return mServices.GetHead(); }
-        Service *      GetServices(void) { return mServices.GetHead(); }
-
-        /**
-         * This method adds a service to this host, do nothing if a service with the same name already exists.
-         *
-         * @param[in]  aFullName  The full name of the service.
-         *
-         * @returns  A pointer to the newly added service or existing service which has the same name. nullptr if
-         *           failed to allocate memory for the new service.
+         * @returns  A pointer to the next service or NULL if no more services exist.
          *
          */
-        Service *AddService(const char *aFullName);
+        const Service *GetNextService(const Service *aService) const
+        {
+            return aService ? aService->GetNext() : mServices.GetHead();
+        }
 
         /**
-         * This method adds a service to this host.
+         * This method tells whether the host matches a given full name.
          *
-         * @param[in]  aService  The service to be added.
+         * @param[in]  aFullName  The full name.
          *
-         */
-        void AddService(Service *aService);
-
-        /**
-         * This method removes a service from this host.
-         *
-         * @param[in]  aService  The service to be removed.
-         *
-         */
-        void RemoveService(Service *aService);
-
-        /**
-         * This method removes and destroys all services from this host.
-         *
-         */
-        void RemoveAllServices(void);
-
-        /**
-         * This method clears resources of this host.
-         *
-         */
-        void ClearResources(void);
-
-        /**
-         * This method copies resources from another host.
-         *
-         * @param[in]  aHost  The host to copy resources from.
-         *
-         */
-        void CopyResourcesFrom(const Host &aHost);
-
-        /**
-         * This method returns the service with given full name.
-         *
-         * @param[in]  aFullName  The full name of the service.
-         *
-         * @returns  A pointer to the matched service if there exists. Otherwise, nullptr.
-         *
-         */
-        Service *FindService(const char *aFullName);
-
-        /**
-         * This method adds an IPv6 address to this host.
-         *
-         * @param[in]  aIp6Address  The IPv6 address to be added.
-         *
-         * @retval  OT_ERROR_NONE     Successfully added the IPv6 address.
-         * @retval  OT_ERROR_DROP     The address has been dropped.
-         * @retval  OT_ERROR_NO_BUFS  There is no space for the IPv6 address.
-         *
-         */
-        otError AddIp6Address(const Ip6::Address &aIp6Address);
-
-        /**
-         * This method tells whether this host matches to a given full host name.
-         *
-         * @param[in]  aFullName  The full host name.
-         *
-         * @returns  A boolean that indicates whether this host matches to the given name.
+         * @returns  A boolean that indicates whether the host matches the given name.
          *
          */
         bool Matches(const char *aName) const;
 
     private:
-        Host(void);
-        ~Host(void);
+        explicit Host(Instance &aInstance);
+        otError  SetFullName(const char *aFullName);
+        void     SetKey(Dns::Ecdsa256KeyRecord &aKey);
+        void     SetLease(uint32_t aLease);
+        void     SetKeyLease(uint32_t aKeyLease);
+        Service *GetNextService(Service *aService) { return aService ? aService->GetNext() : mServices.GetHead(); }
+        Service *AddService(const char *aFullName);
+        void     RemoveAndFreeService(Service *aService);
+        void     RemoveAndFreeAllServices(void);
+        void     ClearResources(void);
+        void     CopyResourcesFrom(const Host &aHost);
+        Service *FindService(const char *aFullName);
+        otError  AddIp6Address(const Ip6::Address &aIp6Address);
 
-        char *       mFullName;                    // The full hostname.
-        Ip6::Address mAddresses[kMaxAddressesNum]; // The address list to be advertised.
-        uint8_t      mAddressesNum;                // The number of addresses.
-        Host *       mNext;                        // The pointer to the next host.
+        char *       mFullName;
+        Ip6::Address mAddresses[kMaxAddressesNum];
+        uint8_t      mAddressesNum;
+        Host *       mNext;
 
-        Dns::Ecdsa256KeyRecord mKey;            // The KEY resource.
-        uint32_t               mLease;          // The LEASE time in seconds.
-        uint32_t               mKeyLease;       // The LEASE time of the KEY in seconds.
-        TimeMilli              mTimeLastUpdate; // The time of the last update to this host.
-        LinkedList<Service>    mServices;       // The service list.
+        Dns::Ecdsa256KeyRecord mKey;
+        uint32_t               mLease;    // The LEASE time in seconds.
+        uint32_t               mKeyLease; // The KEY-LEASE time in seconds.
+        TimeMilli              mTimeLastUpdate;
+        LinkedList<Service>    mServices;
     };
 
     /**
@@ -480,12 +382,12 @@ public:
      * @param[in]  aServiceHandlerContext  A pointer to arbitrary context information.
      *
      * @note  The handler SHOULD call HandleAdvertisingResult to report the result of its processing.
-     *        Otherwise, a SRP service will be considered failed.
+     *        Otherwise, a SRP update will be considered failed.
      *
      * @sa  HandleAdvertisingResult
      *
      */
-    void SetServiceHandler(otSrpServerAdvertisingHandler aServiceHandler, void *aServiceHandlerContext);
+    void SetServiceHandler(otSrpServerServiceUpdateHandler aServiceHandler, void *aServiceHandlerContext);
 
     /**
      * This method tells whether the SRP server is currently running.
@@ -504,12 +406,16 @@ public:
     void SetEnabled(bool aEnabled);
 
     /**
-     * This method sets the LEASE & KEY-LEASE ranges that are acceptable for the SRP server.
+     * This method sets LEASE & KEY-LEASE range that is acceptable by the SRP server.
      *
-     * @param[in]  aMinLease     The minimum LEASE in seconds.
-     * @param[in]  aMaxLease     The maximum LEASE in seconds.
-     * @param[in]  aMinKeyLease  The minimum KEY-LEASE in seconds.
-     * @param[in]  aMaxKeyLease  The maximum KEY-LEASE in seconds.
+     * When a LEASE time is requested from a client, the granted value will be
+     * limited in range [aMinLease, aMaxLease]; and a KEY-LEASE will be granted
+     * in range [aMinKeyLease, aMaxKeyLease].
+     *
+     * @param[in]  aMinLease     The minimum LEASE interval in seconds.
+     * @param[in]  aMaxLease     The maximum LEASE interval in seconds.
+     * @param[in]  aMinKeyLease  The minimum KEY-LEASE interval in seconds.
+     * @param[in]  aMaxKeyLease  The maximum KEY-LEASE interval in seconds.
      *
      * @retval  OT_ERROR_NONE          Successfully set the LEASE and KEY-LEASE ranges.
      * @retval  OT_ERROR_INVALID_ARGS  The LEASE or KEY-LEASE range is not valid.
@@ -518,11 +424,11 @@ public:
     otError SetLeaseRange(uint32_t aMinLease, uint32_t aMaxLease, uint32_t aMinKeyLease, uint32_t aMaxKeyLease);
 
     /**
-     * This method returns the next SRP host registered on this SRP server.
+     * This method returns the next registered SRP host.
      *
-     * @param[in]  aHost  The current SRP host. Use nullptr to get the first SRP host.
+     * @param[in]  aHost  The current SRP host; use nullptr to get the first SRP host.
      *
-     * @returns  A pointer to the next SRP host; nullptr, if no more SRP host can be found.
+     * @returns  A pointer to the next SRP host or nullptr if no more SRP hosts can be found.
      *
      */
     const Host *GetNextHost(const Host *aHost);
@@ -561,50 +467,51 @@ private:
      * and sending DNS response to the client.
      *
      */
-    class UpdateMetadata : public LinkedListEntry<UpdateMetadata>
+    class UpdateMetadata : public InstanceLocator, public LinkedListEntry<UpdateMetadata>
     {
-    public:
         friend class LinkedListEntry<UpdateMetadata>;
 
-        static UpdateMetadata *New(const Dns::UpdateHeader &aHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
-        static void            Destroy(UpdateMetadata *aUpdateMetadata);
-        TimeMilli              GetExpireTime(void) const { return mExpireTime; }
+    public:
+        static UpdateMetadata *  New(Instance &               aInstance,
+                                     const Dns::UpdateHeader &aHeader,
+                                     Host *                   aHost,
+                                     const Ip6::MessageInfo & aMessageInfo);
+        void                     Free(void);
+        TimeMilli                GetExpireTime(void) const { return mExpireTime; }
         const Dns::UpdateHeader &GetDnsHeader(void) const { return mDnsHeader; }
         Host &                   GetHost(void) { return *mHost; }
         const Ip6::MessageInfo & GetMessageInfo(void) const { return mMessageInfo; }
-        bool Matches(uint16_t aDnsMessageId) const { return mDnsHeader.GetMessageId() == aDnsMessageId; }
-        bool Matches(const Host *aHost) const { return mHost == aHost; }
+        bool                     Matches(const Host *aHost) const { return mHost == aHost; }
 
     private:
-        UpdateMetadata(const Dns::UpdateHeader &aHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
+        UpdateMetadata(Instance &               aInstance,
+                       const Dns::UpdateHeader &aHeader,
+                       Host *                   aHost,
+                       const Ip6::MessageInfo & aMessageInfo);
 
-        TimeMilli         mExpireTime;  // Expire time of this update; In milliseconds.
-        Dns::UpdateHeader mDnsHeader;   // The header of the DNS update request.
+        TimeMilli         mExpireTime;
+        Dns::UpdateHeader mDnsHeader;
         Host *            mHost;        // The host will be updated. The UpdateMetadata has no ownership of this host.
         Ip6::MessageInfo  mMessageInfo; // The message info of the DNS update request.
-        UpdateMetadata *  mNext;        // The pointer to the next UpdateMetadata object.
+        UpdateMetadata *  mNext;
     };
 
     void     Start(void);
     void     Stop(void);
     void     HandleNotifierEvents(Events aEvents);
-    otError  PublishService(void);
-    void     UnpublishService(void);
+    otError  PublishServerData(void);
+    void     UnpublishServerData(void);
     uint32_t GrantLease(uint32_t aLease) const;
     uint32_t GrantKeyLease(uint32_t aKeyLease) const;
-    void     HandleSrpUpdateResult(otError                  aError,
-                                   const Dns::UpdateHeader &aDnsHeader,
-                                   Host &                   aHost,
-                                   const Ip6::MessageInfo & aMessageInfo);
 
+    void    HandleSrpUpdateResult(otError                  aError,
+                                  const Dns::UpdateHeader &aDnsHeader,
+                                  Host &                   aHost,
+                                  const Ip6::MessageInfo & aMessageInfo);
     void    HandleDnsUpdate(Message &                aMessage,
                             const Ip6::MessageInfo & aMessageInfo,
                             const Dns::UpdateHeader &aDnsHeader,
                             uint16_t                 aOffset);
-    otError ProcessZoneSection(const Message &          aMessage,
-                               const Dns::UpdateHeader &aDnsHeader,
-                               uint16_t &               aOffset,
-                               Dns::Zone &              aZone);
     otError ProcessUpdateSection(Host &                   aHost,
                                  const Message &          aMessage,
                                  const Dns::UpdateHeader &aDnsHeader,
@@ -624,6 +531,10 @@ private:
                             uint16_t                      aSigRdataLength,
                             const char *                  aSignerName);
 
+    static otError ProcessZoneSection(const Message &          aMessage,
+                                      const Dns::UpdateHeader &aDnsHeader,
+                                      uint16_t &               aOffset,
+                                      Dns::Zone &              aZone);
     static otError ProcessHostDescriptionInstruction(Host &                   aHost,
                                                      const Message &          aMessage,
                                                      const Dns::UpdateHeader &aDnsHeader,
@@ -644,21 +555,9 @@ private:
                                                          uint16_t &               aOffset);
     static bool    IsValidDeleteAllRecord(const Dns::ResourceRecord &aRecord);
 
-    void HandleUpdate(const Dns::UpdateHeader &aDnsHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
-
-    /**
-     * This method adds a SRP service host and takes ownership of it.
-     *
-     * The caller MUST make sure that there is no existing host with the same hostname.
-     *
-     */
-    void AddHost(Host *aHost);
-
-    /**
-     * This method removes and destroys the host.
-     *
-     */
-    void        RemoveHost(Host *aHost);
+    void        HandleUpdate(const Dns::UpdateHeader &aDnsHeader, Host *aHost, const Ip6::MessageInfo &aMessageInfo);
+    void        AddHost(Host *aHost);
+    void        RemoveAndFreeHost(Host *aHost);
     Service *   FindService(const char *aFullName);
     bool        HasNameConflictsWith(Host &aHost);
     void        SendResponse(const Dns::UpdateHeader &   aHeader,
@@ -675,13 +574,12 @@ private:
     static void HandleOutstandingUpdatesTimer(Timer &aTimer);
     void        HandleOutstandingUpdatesTimer(void);
 
-    void HandleAdvertisingResult(UpdateMetadata *aUpdate, otError aError);
+    void                  HandleAdvertisingResult(UpdateMetadata *aUpdate, otError aError);
+    const UpdateMetadata *FindOutstandingUpdate(const Ip6::MessageInfo &aMessageInfo, uint16_t aDnsMessageId);
 
-    bool mEnabled;
-
-    Ip6::Udp::Socket              mSocket;
-    otSrpServerAdvertisingHandler mAdvertisingHandler;
-    void *                        mAdvertisingHandlerContext;
+    Ip6::Udp::Socket                mSocket;
+    otSrpServerServiceUpdateHandler mAdvertisingHandler;
+    void *                          mAdvertisingHandlerContext;
 
     uint32_t mMinLease;    // The minimum lease time in seconds.
     uint32_t mMaxLease;    // The maximum lease time in seconds.
@@ -693,12 +591,12 @@ private:
 
     TimerMilli                 mOutstandingUpdatesTimer;
     LinkedList<UpdateMetadata> mOutstandingUpdates;
+
+    bool mEnabled;
 };
 
 } // namespace Srp
-
 } // namespace ot
 
 #endif // OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
-
 #endif // BORDER_ROUTER_SRP_SERVER_HPP_

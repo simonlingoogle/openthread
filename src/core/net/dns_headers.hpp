@@ -1204,6 +1204,7 @@ private:
 
 } OT_TOOL_PACKED_END;
 
+#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
 OT_TOOL_PACKED_BEGIN
 class Ecdsa256KeyRecord : public KeyRecord, public Clearable<Ecdsa256KeyRecord>
 {
@@ -1251,6 +1252,7 @@ public:
 private:
     Crypto::Ecdsa::P256::PublicKey mKey;
 } OT_TOOL_PACKED_END;
+#endif // OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
 
 /**
  * This class implements Resource Record body format of SIG type (RFC 2535 - section-4.1)

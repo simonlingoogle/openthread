@@ -383,6 +383,7 @@ bool KeyRecord::IsValid(void) const
     return GetType() == Dns::ResourceRecord::kTypeKey;
 }
 
+#if OPENTHREAD_CONFIG_SRP_SERVER_ENABLE
 void Ecdsa256KeyRecord::Init(void)
 {
     KeyRecord::Init();
@@ -394,6 +395,7 @@ bool Ecdsa256KeyRecord::IsValid(void) const
     return KeyRecord::IsValid() && GetLength() == sizeof(*this) - sizeof(ResourceRecord) &&
            GetAlgorithm() == kAlgorithmEcdsaP256Sha256;
 }
+#endif
 
 bool SigRecord::IsValid(void) const
 {

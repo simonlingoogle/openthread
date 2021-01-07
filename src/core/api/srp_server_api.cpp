@@ -37,8 +37,6 @@
 
 #include <openthread/srp_server.h>
 
-#include "net/srp_server.hpp"
-
 #include "common/instance.hpp"
 #include "common/locator-getters.hpp"
 
@@ -62,16 +60,16 @@ otError otSrpServerSetLeaseRange(otInstance *aInstance,
     return instance.Get<Srp::Server>().SetLeaseRange(aMinLease, aMaxLease, aMinKeyLease, aMaxKeyLease);
 }
 
-void otSrpServerSetAdvertisingHandler(otInstance *                  aInstance,
-                                      otSrpServerAdvertisingHandler aServiceHandler,
-                                      void *                        aContext)
+void otSrpServerSetAdvertisingHandler(otInstance *                    aInstance,
+                                      otSrpServerServiceUpdateHandler aServiceHandler,
+                                      void *                          aContext)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
     instance.Get<Srp::Server>().SetServiceHandler(aServiceHandler, aContext);
 }
 
-void otSrpServerHandleAdvertisingResult(otInstance *aInstance, const otSrpServerHost *aHost, otError aError)
+void otSrpServerHandleServiceUpdateResult(otInstance *aInstance, const otSrpServerHost *aHost, otError aError)
 {
     Instance &instance = *static_cast<Instance *>(aInstance);
 
@@ -83,6 +81,11 @@ const otSrpServerHost *otSrpServerGetNextHost(otInstance *aInstance, const otSrp
     Instance &instance = *static_cast<Instance *>(aInstance);
 
     return instance.Get<Srp::Server>().GetNextHost(static_cast<const Srp::Server::Host *>(aHost));
+}
+
+bool otSrpServerHostIsDeleted(const otSrpServerHost *aHost)
+{
+    return static_cast<const Srp::Server::Host *>(aHost)->IsDeleted();
 }
 
 const char *otSrpServerHostGetFullName(const otSrpServerHost *aHost)
@@ -97,9 +100,47 @@ const otIp6Address *otSrpServerHostGetAddresses(const otSrpServerHost *aHost, ui
     return host->GetAddresses(*aAddressesNum);
 }
 
-const otSrpServerService *otSrpServerHostGetServices(const otSrpServerHost *aHost)
+const otSrpServerService *otSrpServerHostGetNextService(const otSrpServerHost *   aHost,
+                                                        const otSrpServerService *aService)
 {
-    return static_cast<const Srp::Server::Host *>(aHost)->GetServices();
+    auto host = static_cast<const Srp::Server::Host *>(aHost);
+
+    return host->GetNextService(static_cast<const Srp::Server::Service *>(aService));
+}
+
+bool otSrpServerServiceIsDeleted(const otSrpServerService *aService)
+{
+    return static_cast<const Srp::Server::Service *>(aService)->IsDeleted();
+}
+
+const char *otSrpServerServiceGetFullName(const otSrpServerService *aService)
+{
+    return static_cast<const Srp::Server::Service *>(aService)->GetFullName();
+}
+
+uint16_t otSrpServerServiceGetPort(const otSrpServerService *aService)
+{
+    return static_cast<const Srp::Server::Service *>(aService)->GetPort();
+}
+
+uint16_t otSrpServerServiceGetWeight(const otSrpServerService *aService)
+{
+    return static_cast<const Srp::Server::Service *>(aService)->GetWeight();
+}
+
+uint16_t otSrpServerServiceGetPriority(const otSrpServerService *aService)
+{
+    return static_cast<const Srp::Server::Service *>(aService)->GetPriority();
+}
+
+const uint8_t *otSrpServerServiceGetTxtData(const otSrpServerService *aService, uint16_t *aTxtLength)
+{
+    return static_cast<const Srp::Server::Service *>(aService)->GetTxtData(*aTxtLength);
+}
+
+const otSrpServerHost *otSrpServerServiceGetHost(const otSrpServerService *aService)
+{
+    return &static_cast<const Srp::Server::Service *>(aService)->GetHost();
 }
 
 #endif // OPENTHREAD_CONFIG_SRP_SERVER_ENABLE

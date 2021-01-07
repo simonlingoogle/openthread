@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019, The OpenThread Authors.
+ *  Copyright (c) 2020, The OpenThread Authors.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -116,8 +116,14 @@ otError SrpServer::ProcessHost(uint8_t aArgsLength, char *aArgs[])
     {
         const otIp6Address *addresses;
         uint8_t             addressesNum;
+        bool                isDeleted = otSrpServerHostIsDeleted(host);
 
         mInterpreter.OutputLine(otSrpServerHostGetFullName(host));
+        mInterpreter.OutputLine(Interpreter::kIndentSize, "deleted: %s", isDeleted ? "true" : "false");
+        if (isDeleted)
+        {
+            continue;
+        }
 
         mInterpreter.OutputSpaces(Interpreter::kIndentSize);
         mInterpreter.OutputFormat("addresses: ");
@@ -127,7 +133,10 @@ otError SrpServer::ProcessHost(uint8_t aArgsLength, char *aArgs[])
         for (uint8_t i = 0; i < addressesNum; ++i)
         {
             mInterpreter.OutputIp6Address(addresses[i]);
-            mInterpreter.OutputSpaces(2);
+            if (i < addressesNum - 1)
+            {
+                mInterpreter.OutputSpaces(2);
+            }
         }
 
         mInterpreter.OutputFormat("\r\n");
@@ -149,18 +158,27 @@ otError SrpServer::ProcessService(uint8_t aArgsLength, char *aArgs[])
     host = nullptr;
     while ((host = otSrpServerGetNextHost(mInterpreter.mInstance, host)) != nullptr)
     {
-        for (const otSrpServerService *service = otSrpServerHostGetServices(host); service != nullptr;
-             service                           = service->mNext)
+        const otSrpServerService *service = nullptr;
+
+        while ((service = otSrpServerHostGetNextService(host, service)) != nullptr)
         {
             const otIp6Address *addresses;
             uint8_t             addressesNum;
+            const uint8_t *     txtData;
+            uint16_t            txtLength;
+            bool                isDeleted = otSrpServerServiceIsDeleted(service);
 
-            mInterpreter.OutputLine(service->mFullName);
+            mInterpreter.OutputLine(otSrpServerServiceGetFullName(service));
+            mInterpreter.OutputLine(Interpreter::kIndentSize, "deleted: %s", isDeleted ? "true" : "false");
+            if (isDeleted)
+            {
+                continue;
+            }
+
+            mInterpreter.OutputLine(Interpreter::kIndentSize, "port: %hu", otSrpServerServiceGetPort(service));
+            mInterpreter.OutputLine(Interpreter::kIndentSize, "priority: %hu", otSrpServerServiceGetPriority(service));
+            mInterpreter.OutputLine(Interpreter::kIndentSize, "weight: %hu", otSrpServerServiceGetWeight(service));
             mInterpreter.OutputLine(Interpreter::kIndentSize, "host: %s", otSrpServerHostGetFullName(host));
-            mInterpreter.OutputLine(Interpreter::kIndentSize, "priority: %hu", service->mPriority);
-            mInterpreter.OutputLine(Interpreter::kIndentSize, "weight: %hu", service->mWeight);
-            mInterpreter.OutputLine(Interpreter::kIndentSize, "port: %hu", service->mPort);
-
             mInterpreter.OutputSpaces(Interpreter::kIndentSize);
             mInterpreter.OutputFormat("addresses: ");
 
@@ -168,15 +186,20 @@ otError SrpServer::ProcessService(uint8_t aArgsLength, char *aArgs[])
             for (uint8_t i = 0; i < addressesNum; ++i)
             {
                 mInterpreter.OutputIp6Address(addresses[i]);
-                mInterpreter.OutputSpaces(2);
+                if (i < addressesNum - 1)
+                {
+                    mInterpreter.OutputSpaces(2);
+                }
             }
             mInterpreter.OutputFormat("\r\n");
 
-            if (service->mTxtData != nullptr)
+            txtData = otSrpServerServiceGetTxtData(service, &txtLength);
+
+            if (txtLength > 0)
             {
                 mInterpreter.OutputSpaces(Interpreter::kIndentSize);
-                mInterpreter.OutputFormat("txt: ");
-                mInterpreter.OutputBytes(service->mTxtData, service->mTxtLength);
+                mInterpreter.OutputFormat("TXT: ");
+                mInterpreter.OutputBytes(txtData, txtLength);
                 mInterpreter.OutputFormat("\r\n");
             }
         }

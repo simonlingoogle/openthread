@@ -143,6 +143,7 @@ SOURCES_COMMON                                  = \
     api/random_noncrypto_api.cpp                  \
     api/server_api.cpp                            \
     api/sntp_api.cpp                              \
+    api/srp_server_api.cpp                        \
     api/tasklet_api.cpp                           \
     api/thread_api.cpp                            \
     api/thread_ftd_api.cpp                        \
