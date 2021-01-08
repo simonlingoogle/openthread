@@ -32,6 +32,7 @@ This page lists the available common switches with description. Unless stated ot
 | DEBUG_UART | not implemented | Enables the Debug UART platform feature. |
 | DEBUG_UART_LOG | not implemented | Enables the log output for the debug UART. Requires OPENTHREAD_CONFIG_ENABLE_DEBUG_UART to be enabled. |
 | DNS_CLIENT | OT_DNS_CLIENT | Enables support for DNS client. Enable this switch on a device that sends a DNS query for AAAA (IPv6) record. |
+| SERVICE_DISCOVERY_PROXY | OT_SERVICE_DISCOVERY_PROXY | Enables [DNS-SD Discovery Proxy](https://tools.ietf.org/html/rfc8766). | 
 | DUA | OT_DUA | Enables the Domain Unicast Address feature for Thread 1.2. |
 | DYNAMIC_LOG_LEVEL | not implemented | Enables the dynamic log level feature. Enable this switch if OpenThread log level is required to be set at runtime. See [Logging guide](https://openthread.io/guides/build/logs) to learn more. |
 | ECDSA | OT_ECDSA | Enables support for Elliptic Curve Digital Signature Algorithm. Enable this switch if ECDSA digital signature is used by application. |

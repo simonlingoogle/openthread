@@ -244,6 +244,10 @@ do_build_otbr_docker()
         otbr_options="${otbr_options} -DOT_SRP_SERVER=ON -DOT_SERVICE=ON -DOT_EXTERNAL_HEAP=ON -DOT_ECDSA=ON"
     fi
 
+    if [[ ${SERVICE_DISCOVERY_PROXY} == "1" ]]; then
+            otbr_options="${otbr_options} -DOT_SERVICE_DISCOVERY_PROXY=ON"
+    fi
+
     otbrdir=$(mktemp -d -t otbr_XXXXXX)
     otdir=$(pwd)
 

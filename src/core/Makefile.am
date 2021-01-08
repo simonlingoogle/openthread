@@ -221,6 +221,7 @@ SOURCES_COMMON                                  = \
     net/ip6_headers.cpp                           \
     net/ip6_mpl.cpp                               \
     net/netif.cpp                                 \
+    net/service_discovery_proxy.cpp               \
     net/sntp_client.cpp                           \
     net/srp_server.cpp                            \
     net/udp6.cpp                                  \

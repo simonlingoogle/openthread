@@ -162,6 +162,11 @@ if(OT_DNS_CLIENT)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE=1")
 endif()
 
+option(OT_SERVICE_DISCOVERY_PROXY "enable DNS-SD Discovery Proxy")
+if (OT_SERVICE_DISCOVERY_PROXY)
+    target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_SERVICE_DISCOVERY_PROXY_ENABLE=1")
+endif()
+
 option(OT_ECDSA "enable ECDSA support")
 if(OT_ECDSA)
     target_compile_definitions(ot-config INTERFACE "OPENTHREAD_CONFIG_ECDSA_ENABLE=1")

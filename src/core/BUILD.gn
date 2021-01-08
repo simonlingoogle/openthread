@@ -503,6 +503,8 @@ openthread_core_files = [
   "net/ip6_mpl.hpp",
   "net/netif.cpp",
   "net/netif.hpp",
+  "net/service_discovery_proxy.cpp",
+  "net/service_discovery_proxy.hpp",
   "net/sntp_client.cpp",
   "net/sntp_client.hpp",
   "net/socket.hpp",
