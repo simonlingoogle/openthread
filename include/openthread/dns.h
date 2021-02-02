@@ -38,6 +38,7 @@
 #include <stdint.h>
 
 #include <openthread/error.h>
+#include <openthread/ip6.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -139,6 +140,73 @@ void otDnsInitTxtEntryIterator(otDnsTxtEntryIterator *aIterator, const uint8_t *
  *
  */
 otError otDnsGetNextTxtEntry(otDnsTxtEntryIterator *aIterator, otDnsTxtEntry *aEntry);
+
+/**
+ * This function is called when a DNS-SD query subscribes a service or service instance.
+ *
+ * @param[in] aContext      A pointer to the application-specific context.
+ * @param[in] aFullName     The null-terminated full service name (e.g. "_ipps._tcp.default.service.arpa."), or
+ *                          full service instance name (e.g. "OpenThread._ipps._tcp.default.service.arpa.").
+ *
+ */
+typedef void (*otDnssdQuerySubscribe)(void *aContext, const char *aFullName);
+
+/**
+ * This function is called when a DNS-SD query unsubscribes a service or service instance.
+ *
+ * @param[in] aContext      A pointer to the application-specific context.
+ * @param[in] aFullName     The null-terminated full service name (e.g. "_ipps._tcp.default.service.arpa."), or
+ *                          full service instance name (e.g. "OpenThread._ipps._tcp.default.service.arpa.").
+ *
+ */
+typedef void (*otDnssdQueryUnsubscribe)(void *aContext, const char *aFullName);
+
+/**
+ * This structure represents information of a discovered service instance for a DNS-SD query.
+ *
+ */
+typedef struct otDnssdServiceInstanceInfo
+{
+    const char *   mFullName;  ///< Full instance name (e.g. "OpenThread._ipps._tcp.default.service.arpa.").
+    const char *   mHostName;  ///< Host name.
+    otIp6Address   mAddress;   ///< Host IPv6 address.
+    uint16_t       mPort;      ///< Service port.
+    uint16_t       mPriority;  ///< Service priority.
+    uint16_t       mWeight;    ///< Service weight.
+    uint16_t       mTxtLength; ///< Service TXT RDATA length.
+    const uint8_t *mTxtData;   ///< Service TXT RDATA.
+    uint32_t       mTtl;       ///< Service TTL (in seconds).
+} otDnssdServiceInstanceInfo;
+
+/**
+ * This function sets DNS-SD server query callbacks. The DNS-SD server calls @p aSubscribe to subscribe to a service or
+ * service instance to resolve a DNS-SD query and @p aUnsubscribe to unsubscribe when the query is resolved or timeout.
+ *
+ * @note @p aSubscribe and @p aUnsubscribe should be both set or unset.
+ *
+ * @param[in] aInstance     The OpenThread instance structure.
+ * @param[in] aContext      A pointer to the application-specific context.
+ * @param[in] aSubscribe    A pointer to the callback function to subscribe a service or service instance.
+ * @param[in] aUnsubscribe  A pointer to the callback function to unsubscribe a service or service instance.
+ *
+ */
+void otDnssdQuerySetCallbacks(otInstance *            aInstance,
+                              void *                  aContext,
+                              otDnssdQuerySubscribe   aSubscribe,
+                              otDnssdQueryUnsubscribe aUnsubscribe);
+
+/**
+ * This function notifies a discovered service instance. The external query resolver (e.g. Discovery Proxy) should call
+ * this function to notify OpenThread core of the subscribed services or service instances.
+ *
+ * @param[in] aInstance         The OpenThread instance structure.
+ * @param[in] aServiceFullName  The null-terminated full service name.
+ * @param[in] aInstanceInfo     A pointer to the discovered service instance information.
+ *
+ */
+void otDnssdQueryNotifyServiceInstance(otInstance *                aInstance,
+                                       const char *                aServiceFullName,
+                                       otDnssdServiceInstanceInfo *aInstanceInfo);
 
 /**
  * @}

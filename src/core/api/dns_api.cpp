@@ -39,6 +39,7 @@
 #include "common/locator-getters.hpp"
 #include "net/dns_client.hpp"
 #include "net/dns_types.hpp"
+#include "net/dnssd_server.hpp"
 
 using namespace ot;
 
@@ -209,3 +210,29 @@ otError otDnsServiceResponseGetHostAddress(const otDnsServiceResponse *aResponse
 #endif // OPENTHREAD_CONFIG_DNS_CLIENT_SERVICE_DISCOVERY_ENABLE
 
 #endif // OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
+
+#if OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
+
+void otDnssdQuerySetCallbacks(otInstance *            aInstance,
+                              void *                  aContext,
+                              otDnssdQuerySubscribe   aSubscribe,
+                              otDnssdQueryUnsubscribe aUnsubscribe)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    instance.Get<Dns::ServiceDiscovery::Server>().SetQueryCallbacks(aContext, aSubscribe, aUnsubscribe);
+}
+
+void otDnssdQueryNotifyServiceInstance(otInstance *                aInstance,
+                                       const char *                aServiceFullName,
+                                       otDnssdServiceInstanceInfo *aInstanceInfo)
+{
+    Instance &instance = *static_cast<Instance *>(aInstance);
+
+    OT_ASSERT(aServiceFullName != nullptr);
+    OT_ASSERT(aInstanceInfo != nullptr);
+
+    instance.Get<Dns::ServiceDiscovery::Server>().QueryNotifyServiceInstance(aServiceFullName, *aInstanceInfo);
+}
+
+#endif
