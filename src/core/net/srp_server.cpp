@@ -86,8 +86,8 @@ Server::Server(Instance &aInstance)
     , mMaxLease(kDefaultMaxLease)
     , mMinKeyLease(kDefaultMinKeyLease)
     , mMaxKeyLease(kDefaultMaxKeyLease)
-    , mLeaseTimer(aInstance, HandleLeaseTimer, this)
-    , mOutstandingUpdatesTimer(aInstance, HandleOutstandingUpdatesTimer, this)
+    , mLeaseTimer(aInstance, HandleLeaseTimer)
+    , mOutstandingUpdatesTimer(aInstance, HandleOutstandingUpdatesTimer)
     , mEnabled(false)
 {
     IgnoreError(SetDomain(kDefaultDomain));

@@ -699,7 +699,7 @@ void ActiveDataset::HandleTimer(Timer &aTimer)
 
 PendingDataset::PendingDataset(Instance &aInstance)
     : DatasetManager(aInstance, Dataset::kPending, PendingDataset::HandleTimer)
-    , mDelayTimer(aInstance, PendingDataset::HandleDelayTimer, this)
+    , mDelayTimer(aInstance, PendingDataset::HandleDelayTimer)
     , mResourceGet(UriPath::kPendingGet, &PendingDataset::HandleGet, this)
 #if OPENTHREAD_FTD
     , mResourceSet(UriPath::kPendingSet, &PendingDataset::HandleSet, this)

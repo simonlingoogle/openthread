@@ -92,7 +92,7 @@ QueryMetadata::QueryMetadata(otSntpResponseHandler aHandler, void *aContext)
 
 Client::Client(Instance &aInstance)
     : mSocket(aInstance)
-    , mRetransmissionTimer(aInstance, Client::HandleRetransmissionTimer, this)
+    , mRetransmissionTimer(aInstance, Client::HandleRetransmissionTimer)
     , mUnixEra(0)
 {
 }

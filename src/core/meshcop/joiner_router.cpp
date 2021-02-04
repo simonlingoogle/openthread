@@ -55,7 +55,7 @@ JoinerRouter::JoinerRouter(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mSocket(aInstance)
     , mRelayTransmit(UriPath::kRelayTx, &JoinerRouter::HandleRelayTransmit, this)
-    , mTimer(aInstance, JoinerRouter::HandleTimer, this)
+    , mTimer(aInstance, JoinerRouter::HandleTimer)
     , mJoinerUdpPort(0)
     , mIsJoinerPortConfigured(false)
 {

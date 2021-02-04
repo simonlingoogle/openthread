@@ -49,8 +49,8 @@ Link::Link(Instance &aInstance)
     , mRxChannel(0)
     , mPanId(Mac::kPanIdBroadcast)
     , mTxPacketNumber(0)
-    , mTxTasklet(aInstance, HandleTxTasklet, this)
-    , mTimer(aInstance, HandleTimer, this)
+    , mTxTasklet(aInstance, HandleTxTasklet)
+    , mTimer(aInstance, HandleTimer)
     , mInterface(aInstance)
 {
     memset(&mTxFrame, 0, sizeof(mTxFrame));

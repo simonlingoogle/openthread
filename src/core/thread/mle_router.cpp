@@ -56,7 +56,7 @@ namespace Mle {
 
 MleRouter::MleRouter(Instance &aInstance)
     : Mle(aInstance)
-    , mAdvertiseTimer(aInstance, MleRouter::HandleAdvertiseTimer, nullptr, this)
+    , mAdvertiseTimer(aInstance, MleRouter::HandleAdvertiseTimer, nullptr)
     , mAddressSolicit(UriPath::kAddressSolicit, &MleRouter::HandleAddressSolicit, this)
     , mAddressRelease(UriPath::kAddressRelease, &MleRouter::HandleAddressRelease, this)
     , mChildTable(aInstance)

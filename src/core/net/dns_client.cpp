@@ -50,7 +50,7 @@ namespace Dns {
 
 Client::Client(Instance &aInstance)
     : mSocket(aInstance)
-    , mRetransmissionTimer(aInstance, Client::HandleRetransmissionTimer, this)
+    , mRetransmissionTimer(aInstance, Client::HandleRetransmissionTimer)
 {
 }
 
