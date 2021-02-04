@@ -216,7 +216,7 @@ exit:
 
 bool Client::HandleTrickleTimer(TrickleTimer &aTrickleTimer)
 {
-    return aTrickleTimer.GetOwner<Client>().HandleTrickleTimer();
+    return aTrickleTimer.Get<Client>().HandleTrickleTimer();
 }
 
 bool Client::HandleTrickleTimer(void)

@@ -229,7 +229,7 @@ void MeshForwarder::ResumeMessageTransmissions(void)
 
 void MeshForwarder::ScheduleTransmissionTask(Tasklet &aTasklet)
 {
-    aTasklet.GetOwner<MeshForwarder>().ScheduleTransmissionTask();
+    aTasklet.Get<MeshForwarder>().ScheduleTransmissionTask();
 }
 
 void MeshForwarder::ScheduleTransmissionTask(void)

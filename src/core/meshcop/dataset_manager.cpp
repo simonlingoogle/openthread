@@ -694,7 +694,7 @@ void ActiveDataset::HandleGet(Coap::Message &aMessage, const Ip6::MessageInfo &a
 
 void ActiveDataset::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<ActiveDataset>().HandleTimer();
+    aTimer.Get<ActiveDataset>().HandleTimer();
 }
 
 PendingDataset::PendingDataset(Instance &aInstance)
@@ -785,7 +785,7 @@ void PendingDataset::StartDelayTimer(void)
 
 void PendingDataset::HandleDelayTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<PendingDataset>().HandleDelayTimer();
+    aTimer.Get<PendingDataset>().HandleDelayTimer();
 }
 
 void PendingDataset::HandleDelayTimer(void)
@@ -834,7 +834,7 @@ void PendingDataset::HandleGet(Coap::Message &aMessage, const Ip6::MessageInfo &
 
 void PendingDataset::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<PendingDataset>().HandleTimer();
+    aTimer.Get<PendingDataset>().HandleTimer();
 }
 
 } // namespace MeshCoP

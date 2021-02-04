@@ -594,7 +594,7 @@ exit:
 
 void BorderAgent::HandleTimeout(Timer &aTimer)
 {
-    aTimer.GetOwner<BorderAgent>().HandleTimeout();
+    aTimer.Get<BorderAgent>().HandleTimeout();
 }
 
 void BorderAgent::HandleTimeout(void)

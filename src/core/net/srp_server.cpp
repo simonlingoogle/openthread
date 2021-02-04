@@ -1145,7 +1145,7 @@ exit:
 
 void Server::HandleLeaseTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Server>().HandleLeaseTimer();
+    aTimer.Get<Server>().HandleLeaseTimer();
 }
 
 void Server::HandleLeaseTimer(void)
@@ -1265,7 +1265,7 @@ void Server::HandleLeaseTimer(void)
 
 void Server::HandleOutstandingUpdatesTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Server>().HandleOutstandingUpdatesTimer();
+    aTimer.Get<Server>().HandleOutstandingUpdatesTimer();
 }
 
 void Server::HandleOutstandingUpdatesTimer(void)

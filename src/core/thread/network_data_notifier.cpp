@@ -115,7 +115,7 @@ void Notifier::HandleNotifierEvents(Events aEvents)
 
 void Notifier::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Notifier>().HandleTimer();
+    aTimer.Get<Notifier>().HandleTimer();
 }
 
 void Notifier::HandleTimer(void)

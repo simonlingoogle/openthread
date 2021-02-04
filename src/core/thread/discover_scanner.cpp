@@ -258,7 +258,7 @@ void DiscoverScanner::HandleDiscoverComplete(void)
 
 void DiscoverScanner::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<DiscoverScanner>().HandleTimer();
+    aTimer.Get<DiscoverScanner>().HandleTimer();
 }
 
 void DiscoverScanner::HandleTimer(void)

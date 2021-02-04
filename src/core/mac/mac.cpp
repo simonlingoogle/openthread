@@ -755,7 +755,7 @@ void Mac::StartOperation(Operation aOperation)
 
 void Mac::HandleOperationTask(Tasklet &aTasklet)
 {
-    aTasklet.GetOwner<Mac>().PerformNextOperation();
+    aTasklet.Get<Mac>().PerformNextOperation();
 }
 
 void Mac::PerformNextOperation(void)
@@ -1681,7 +1681,7 @@ exit:
 
 void Mac::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Mac>().HandleTimer();
+    aTimer.Get<Mac>().HandleTimer();
 }
 
 void Mac::HandleTimer(void)

@@ -615,7 +615,7 @@ exit:
 
 void Joiner::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Joiner>().HandleTimer();
+    aTimer.Get<Joiner>().HandleTimer();
 }
 
 void Joiner::HandleTimer(void)

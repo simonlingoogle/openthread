@@ -106,7 +106,7 @@ exit:
 
 void EnergyScanServer::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<EnergyScanServer>().HandleTimer();
+    aTimer.Get<EnergyScanServer>().HandleTimer();
 }
 
 void EnergyScanServer::HandleTimer(void)

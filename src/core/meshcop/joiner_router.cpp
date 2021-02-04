@@ -249,7 +249,7 @@ exit:
 
 void JoinerRouter::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<JoinerRouter>().HandleTimer();
+    aTimer.Get<JoinerRouter>().HandleTimer();
 }
 
 void JoinerRouter::HandleTimer(void)

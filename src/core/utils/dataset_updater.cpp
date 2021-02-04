@@ -100,7 +100,7 @@ void DatasetUpdater::CancelUpdate(void)
 
 void DatasetUpdater::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<DatasetUpdater>().HandleTimer();
+    aTimer.Get<DatasetUpdater>().HandleTimer();
 }
 
 void DatasetUpdater::HandleTimer(void)

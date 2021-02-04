@@ -117,7 +117,7 @@ void Notifier::SignalIfFirst(Event aEvent)
 
 void Notifier::EmitEvents(Tasklet &aTasklet)
 {
-    aTasklet.GetOwner<Notifier>().EmitEvents();
+    aTasklet.Get<Notifier>().EmitEvents();
 }
 
 void Notifier::EmitEvents(void)

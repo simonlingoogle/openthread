@@ -210,7 +210,7 @@ void TimeSync::HandleTimeout(void)
 
 void TimeSync::HandleTimeout(Timer &aTimer)
 {
-    aTimer.GetOwner<TimeSync>().HandleTimeout();
+    aTimer.Get<TimeSync>().HandleTimeout();
 }
 
 void TimeSync::CheckAndHandleChanges(bool aTimeUpdated)

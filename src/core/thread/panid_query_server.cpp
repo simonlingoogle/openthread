@@ -140,7 +140,7 @@ exit:
 
 void PanIdQueryServer::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<PanIdQueryServer>().HandleTimer();
+    aTimer.Get<PanIdQueryServer>().HandleTimer();
 }
 
 void PanIdQueryServer::HandleTimer(void)

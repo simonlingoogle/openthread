@@ -153,7 +153,7 @@ void ChannelManager::HandleDatasetUpdateDone(otError aError)
 
 void ChannelManager::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<ChannelManager>().HandleTimer();
+    aTimer.Get<ChannelManager>().HandleTimer();
 }
 
 void ChannelManager::HandleTimer(void)

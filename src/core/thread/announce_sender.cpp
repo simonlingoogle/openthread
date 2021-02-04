@@ -116,7 +116,7 @@ AnnounceSender::AnnounceSender(Instance &aInstance)
 
 void AnnounceSender::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<AnnounceSender>().AnnounceSenderBase::HandleTimer();
+    aTimer.Get<AnnounceSender>().AnnounceSenderBase::HandleTimer();
 }
 
 void AnnounceSender::CheckState(void)

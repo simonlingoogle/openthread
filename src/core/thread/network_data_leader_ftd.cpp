@@ -1331,7 +1331,7 @@ void Leader::UpdateContextsAfterReset(void)
 
 void Leader::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Leader>().HandleTimer();
+    aTimer.Get<Leader>().HandleTimer();
 }
 
 void Leader::HandleTimer(void)

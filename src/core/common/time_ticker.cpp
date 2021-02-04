@@ -71,7 +71,7 @@ void TimeTicker::UnregisterReceiver(Receiver aReceiver)
 
 void TimeTicker::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<TimeTicker>().HandleTimer();
+    aTimer.Get<TimeTicker>().HandleTimer();
 }
 
 void TimeTicker::HandleTimer(void)

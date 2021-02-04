@@ -270,7 +270,7 @@ void Client::FinalizeDnsTransaction(Message &            aQuery,
 
 void Client::HandleRetransmissionTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Client>().HandleRetransmissionTimer();
+    aTimer.Get<Client>().HandleRetransmissionTimer();
 }
 
 void Client::HandleRetransmissionTimer(void)

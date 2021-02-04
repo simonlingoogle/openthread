@@ -1396,7 +1396,7 @@ bool Client::ShouldRenewEarly(const Service &aService) const
 
 void Client::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Client>().HandleTimer();
+    aTimer.Get<Client>().HandleTimer();
 }
 
 void Client::HandleTimer(void)

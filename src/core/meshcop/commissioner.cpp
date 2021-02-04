@@ -605,7 +605,7 @@ exit:
 
 void Commissioner::HandleTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Commissioner>().HandleTimer();
+    aTimer.Get<Commissioner>().HandleTimer();
 }
 
 void Commissioner::HandleTimer(void)
@@ -627,7 +627,7 @@ void Commissioner::HandleTimer(void)
 
 void Commissioner::HandleJoinerExpirationTimer(Timer &aTimer)
 {
-    aTimer.GetOwner<Commissioner>().HandleJoinerExpirationTimer();
+    aTimer.Get<Commissioner>().HandleJoinerExpirationTimer();
 }
 
 void Commissioner::HandleJoinerExpirationTimer(void)

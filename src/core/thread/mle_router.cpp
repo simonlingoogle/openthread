@@ -388,7 +388,7 @@ void MleRouter::SetStateLeader(uint16_t aRloc16)
 
 bool MleRouter::HandleAdvertiseTimer(TrickleTimer &aTimer)
 {
-    return aTimer.GetOwner<MleRouter>().HandleAdvertiseTimer();
+    return aTimer.Get<MleRouter>().HandleAdvertiseTimer();
 }
 
 bool MleRouter::HandleAdvertiseTimer(void)
