@@ -62,7 +62,7 @@ Joiner::Joiner(Instance &aInstance)
     , mContext(nullptr)
     , mJoinerRouterIndex(0)
     , mFinalizeMessage(nullptr)
-    , mTimer(aInstance, Joiner::HandleTimer, this)
+    , mTimer(aInstance, Joiner::HandleTimer)
     , mJoinerEntrust(UriPath::kJoinerEntrust, &Joiner::HandleJoinerEntrust, this)
 {
     SetIdFromIeeeEui64();

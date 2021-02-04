@@ -55,7 +55,7 @@ DatasetManager::DatasetManager(Instance &aInstance, Dataset::Type aType, Timer::
     , mLocal(aInstance, aType)
     , mTimestampValid(false)
     , mCoapPending(false)
-    , mTimer(aInstance, aTimerHandler, this)
+    , mTimer(aInstance, aTimerHandler)
 {
     mTimestamp.Init();
 }

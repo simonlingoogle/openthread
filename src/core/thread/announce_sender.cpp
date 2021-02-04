@@ -52,7 +52,7 @@ AnnounceSenderBase::AnnounceSenderBase(Instance &aInstance, Timer::Handler aHand
     , mJitter(0)
     , mCount(0)
     , mChannel(0)
-    , mTimer(aInstance, aHandler, this)
+    , mTimer(aInstance, aHandler)
 {
 }
 

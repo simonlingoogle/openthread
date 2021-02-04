@@ -43,7 +43,7 @@ namespace ot {
 
 Notifier::Notifier(Instance &aInstance)
     : InstanceLocator(aInstance)
-    , mTask(aInstance, Notifier::EmitEvents, this)
+    , mTask(aInstance, Notifier::EmitEvents)
 {
     for (ExternalCallback &callback : mExternalCallbacks)
     {

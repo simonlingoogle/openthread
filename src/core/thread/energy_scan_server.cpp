@@ -55,7 +55,7 @@ EnergyScanServer::EnergyScanServer(Instance &aInstance)
     , mCount(0)
     , mActive(false)
     , mScanResultsLength(0)
-    , mTimer(aInstance, EnergyScanServer::HandleTimer, this)
+    , mTimer(aInstance, EnergyScanServer::HandleTimer)
     , mEnergyScan(UriPath::kEnergyScan, &EnergyScanServer::HandleRequest, this)
 {
     Get<Tmf::TmfAgent>().AddResource(mEnergyScan);

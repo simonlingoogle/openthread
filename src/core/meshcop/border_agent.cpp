@@ -284,7 +284,7 @@ BorderAgent::BorderAgent(Instance &aInstance)
     , mPendingSet(UriPath::kPendingSet, BorderAgent::HandleRequest<&BorderAgent::mPendingSet>, this)
     , mProxyTransmit(UriPath::kProxyTx, BorderAgent::HandleRequest<&BorderAgent::mProxyTransmit>, this)
     , mUdpReceiver(BorderAgent::HandleUdpReceive, this)
-    , mTimer(aInstance, HandleTimeout, this)
+    , mTimer(aInstance, HandleTimeout)
     , mState(kStateStopped)
 {
     mCommissionerAloc.InitAsThreadOriginRealmLocalScope();

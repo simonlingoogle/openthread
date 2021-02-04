@@ -67,7 +67,7 @@ class TimerMilliScheduler;
  * This class implements a timer.
  *
  */
-class Timer : public InstanceLocator, public OwnerLocator, public LinkedListEntry<Timer>
+class Timer : public InstanceLocator, public LinkedListEntry<Timer>
 {
     friend class TimerScheduler;
     friend class LinkedListEntry<Timer>;
@@ -95,9 +95,8 @@ public:
      * @param[in]  aOwner      A pointer to owner of the `Timer` object.
      *
      */
-    Timer(Instance &aInstance, Handler aHandler, void *aOwner)
+    Timer(Instance &aInstance, Handler aHandler)
         : InstanceLocator(aInstance)
-        , OwnerLocator(aOwner)
         , mHandler(aHandler)
         , mFireTime()
         , mNext(this)
@@ -156,8 +155,8 @@ public:
      * @param[in]  aOwner      A pointer to the owner of the `TimerMilli` object.
      *
      */
-    TimerMilli(Instance &aInstance, Handler aHandler, void *aOwner)
-        : Timer(aInstance, aHandler, aOwner)
+    TimerMilli(Instance &aInstance, Handler aHandler)
+        : Timer(aInstance, aHandler)
     {
     }
 
@@ -231,7 +230,7 @@ public:
      *
      */
     TimerMilliContext(Instance &aInstance, Handler aHandler, void *aContext)
-        : TimerMilli(aInstance, aHandler, aContext)
+        : TimerMilli(aInstance, aHandler)
         , mContext(aContext)
     {
     }
@@ -375,11 +374,10 @@ public:
      *
      * @param[in]  aInstance   A reference to the OpenThread instance.
      * @param[in]  aHandler    A pointer to a function that is called when the timer expires.
-     * @param[in]  aOwner      A pointer to owner of the `TimerMicro` object.
      *
      */
-    TimerMicro(Instance &aInstance, Handler aHandler, void *aOwner)
-        : Timer(aInstance, aHandler, aOwner)
+    TimerMicro(Instance &aInstance, Handler aHandler)
+        : Timer(aInstance, aHandler)
     {
     }
 

@@ -50,7 +50,7 @@ PanIdQueryServer::PanIdQueryServer(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mChannelMask(0)
     , mPanId(Mac::kPanIdBroadcast)
-    , mTimer(aInstance, PanIdQueryServer::HandleTimer, this)
+    , mTimer(aInstance, PanIdQueryServer::HandleTimer)
     , mPanIdQuery(UriPath::kPanIdQuery, &PanIdQueryServer::HandleQuery, this)
 {
     Get<Tmf::TmfAgent>().AddResource(mPanIdQuery);

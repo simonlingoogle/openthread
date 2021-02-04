@@ -65,14 +65,14 @@ SubMac::SubMac(Instance &aInstance)
     , mPcapCallbackContext(nullptr)
     , mFrameCounter(0)
     , mKeyId(0)
-    , mTimer(aInstance, SubMac::HandleTimer, this)
+    , mTimer(aInstance, SubMac::HandleTimer)
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
     , mCslTimeout(OPENTHREAD_CONFIG_CSL_TIMEOUT)
     , mCslPeriod(0)
     , mCslChannel(0)
     , mIsCslChannelSpecified(false)
     , mCslState(kCslIdle)
-    , mCslTimer(aInstance, SubMac::HandleCslTimer, this)
+    , mCslTimer(aInstance, SubMac::HandleCslTimer)
 #endif
 {
     mExtAddress.Clear();

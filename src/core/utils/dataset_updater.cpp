@@ -51,7 +51,7 @@ DatasetUpdater::DatasetUpdater(Instance &aInstance)
     , mWaitInterval(kWaitInterval)
     , mCallback(nullptr)
     , mCallbackContext(nullptr)
-    , mTimer(aInstance, DatasetUpdater::HandleTimer, this)
+    , mTimer(aInstance, DatasetUpdater::HandleTimer)
     , mDataset(nullptr)
 {
 }

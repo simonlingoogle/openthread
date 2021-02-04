@@ -54,7 +54,7 @@ ChannelManager::ChannelManager(Instance &aInstance)
     , mDelay(kMinimumDelay)
     , mChannel(0)
     , mState(kStateIdle)
-    , mTimer(aInstance, ChannelManager::HandleTimer, this)
+    , mTimer(aInstance, ChannelManager::HandleTimer)
     , mAutoSelectInterval(kDefaultAutoSelectInterval)
     , mAutoSelectEnabled(false)
 {

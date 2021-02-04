@@ -45,7 +45,7 @@ namespace ot {
 TimeTicker::TimeTicker(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mReceivers(0)
-    , mTimer(aInstance, HandleTimer, this)
+    , mTimer(aInstance, HandleTimer)
 {
 }
 

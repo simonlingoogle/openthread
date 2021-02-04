@@ -56,7 +56,7 @@ Leader::Leader(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mPetition(UriPath::kLeaderPetition, Leader::HandlePetition, this)
     , mKeepAlive(UriPath::kLeaderKeepAlive, Leader::HandleKeepAlive, this)
-    , mTimer(aInstance, HandleTimer, this)
+    , mTimer(aInstance, HandleTimer)
     , mDelayTimerMinimal(DelayTimerTlv::kDelayTimerMinimal)
     , mSessionId(Random::NonCrypto::GetUint16())
 {

@@ -62,7 +62,7 @@ TimeSync::TimeSync(Instance &aInstance)
     , mNetworkTimeOffset(0)
     , mTimeSyncCallback(nullptr)
     , mTimeSyncCallbackContext(nullptr)
-    , mTimer(aInstance, HandleTimeout, this)
+    , mTimer(aInstance, HandleTimeout)
     , mCurrentStatus(OT_NETWORK_TIME_UNSYNCHRONIZED)
 {
     CheckAndHandleChanges(false);

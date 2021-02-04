@@ -144,7 +144,7 @@ Client::Client(Instance &aInstance)
     , mCallback(nullptr)
     , mCallbackContext(nullptr)
     , mDomainName(kDefaultDomainName)
-    , mTimer(aInstance, Client::HandleTimer, this)
+    , mTimer(aInstance, Client::HandleTimer)
 {
     mHostInfo.Init();
 
