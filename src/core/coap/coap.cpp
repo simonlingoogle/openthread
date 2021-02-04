@@ -1427,7 +1427,7 @@ void CoapBase::Metadata::UpdateIn(Message &aMessage) const
 }
 
 ResponsesQueue::ResponsesQueue(Instance &aInstance)
-    : mTimer(aInstance, ResponsesQueue::HandleTimer)
+    : mTimer(aInstance, ResponsesQueue::HandleTimer, this)
 {
 }
 

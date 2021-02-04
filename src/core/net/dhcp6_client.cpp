@@ -50,7 +50,7 @@ namespace Dhcp6 {
 Client::Client(Instance &aInstance)
     : InstanceLocator(aInstance)
     , mSocket(aInstance)
-    , mTrickleTimer(aInstance, Client::HandleTrickleTimer, nullptr, this)
+    , mTrickleTimer(aInstance, Client::HandleTrickleTimer, nullptr)
     , mStartTime(0)
     , mIdentityAssociationCurrent(nullptr)
 {
