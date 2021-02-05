@@ -183,13 +183,13 @@ private:
                                     uint8_t            aNewOmrPrefixNum,
                                     const Ip6::Prefix *aNewOnLinkPrefix);
 
-    static void HandleRouterAdvertisementTimer(Timer &aTimer);
+    static void HandleRouterAdvertisementTimer(TimerMilli &aTimer);
     void        HandleRouterAdvertisementTimer(void);
 
-    static void HandleRouterSolicitTimer(Timer &aTimer);
+    static void HandleRouterSolicitTimer(TimerMilli &aTimer);
     void        HandleRouterSolicitTimer(void);
 
-    static void HandleDiscoveredPrefixInvalidTimer(Timer &aTimer);
+    static void HandleDiscoveredPrefixInvalidTimer(TimerMilli &aTimer);
     void        HandleDiscoveredPrefixInvalidTimer(void);
 
     void HandleRouterSolicit(const Ip6::Address &aSrcAddress, const uint8_t *aBuffer, uint16_t aBufferLength);

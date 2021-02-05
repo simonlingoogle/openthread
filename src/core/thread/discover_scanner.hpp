@@ -170,7 +170,7 @@ private:
     void HandleDiscoveryResponse(const Message &aMessage, const Ip6::MessageInfo &aMessageInfo) const;
 
     void        HandleDiscoverComplete(void);
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
 
     Handler          mHandler;

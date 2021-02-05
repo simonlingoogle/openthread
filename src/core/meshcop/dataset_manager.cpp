@@ -692,7 +692,7 @@ void ActiveDataset::HandleGet(Coap::Message &aMessage, const Ip6::MessageInfo &a
     DatasetManager::HandleGet(aMessage, aMessageInfo);
 }
 
-void ActiveDataset::HandleTimer(Timer &aTimer)
+void ActiveDataset::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<ActiveDataset>().HandleTimer();
 }
@@ -783,7 +783,7 @@ void PendingDataset::StartDelayTimer(void)
     }
 }
 
-void PendingDataset::HandleDelayTimer(Timer &aTimer)
+void PendingDataset::HandleDelayTimer(TimerMilli &aTimer)
 {
     aTimer.Get<PendingDataset>().HandleDelayTimer();
 }
@@ -832,7 +832,7 @@ void PendingDataset::HandleGet(Coap::Message &aMessage, const Ip6::MessageInfo &
     DatasetManager::HandleGet(aMessage, aMessageInfo);
 }
 
-void PendingDataset::HandleTimer(Timer &aTimer)
+void PendingDataset::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<PendingDataset>().HandleTimer();
 }

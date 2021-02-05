@@ -112,7 +112,7 @@ exit:
     return occupancy;
 }
 
-void ChannelMonitor::HandleTimer(Timer &aTimer)
+void ChannelMonitor::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<ChannelMonitor>().HandleTimer();
 }

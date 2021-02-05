@@ -592,7 +592,7 @@ exit:
     return error;
 }
 
-void BorderAgent::HandleTimeout(Timer &aTimer)
+void BorderAgent::HandleTimeout(TimerMilli &aTimer)
 {
     aTimer.Get<BorderAgent>().HandleTimeout();
 }

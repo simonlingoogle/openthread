@@ -75,7 +75,7 @@ private:
     static void HandleScanResult(Mac::EnergyScanResult *aResult, void *aContext);
     void        HandleScanResult(Mac::EnergyScanResult *aResult);
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
 
     void HandleNotifierEvents(Events aEvents);

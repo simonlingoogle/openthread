@@ -1679,7 +1679,7 @@ exit:
     return;
 }
 
-void Mac::HandleTimer(Timer &aTimer)
+void Mac::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Mac>().HandleTimer();
 }

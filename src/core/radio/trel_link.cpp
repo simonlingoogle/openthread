@@ -246,7 +246,7 @@ void Link::InvokeSendDone(otError aError, Mac::RxFrame *aAckFrame)
     Get<Mac::Mac>().HandleTransmitDone(mTxFrame, aAckFrame, aError);
 }
 
-void Link::HandleTimer(Timer &aTimer)
+void Link::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Link>().HandleTimer();
 }

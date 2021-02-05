@@ -151,7 +151,7 @@ void ChannelManager::HandleDatasetUpdateDone(otError aError)
     StartAutoSelectTimer();
 }
 
-void ChannelManager::HandleTimer(Timer &aTimer)
+void ChannelManager::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<ChannelManager>().HandleTimer();
 }
@@ -323,7 +323,7 @@ otError ChannelManager::SetAutoChannelSelectionInterval(uint32_t aInterval)
     otError  error        = OT_ERROR_NONE;
     uint32_t prevInterval = mAutoSelectInterval;
 
-    VerifyOrExit((aInterval != 0) && (aInterval <= Time::MsecToSec(Timer::kMaxDelay)), error = OT_ERROR_INVALID_ARGS);
+    VerifyOrExit((aInterval != 0) && (aInterval <= Time::MsecToSec(TimerMilli::kMaxDelay)), error = OT_ERROR_INVALID_ARGS);
 
     mAutoSelectInterval = aInterval;
 

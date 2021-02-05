@@ -208,7 +208,7 @@ void TimeSync::HandleTimeout(void)
     CheckAndHandleChanges(false);
 }
 
-void TimeSync::HandleTimeout(Timer &aTimer)
+void TimeSync::HandleTimeout(TimerMilli &aTimer)
 {
     aTimer.Get<TimeSync>().HandleTimeout();
 }

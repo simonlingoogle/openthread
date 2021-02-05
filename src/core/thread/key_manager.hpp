@@ -528,7 +528,7 @@ private:
 #endif
 
     void        StartKeyRotationTimer(void);
-    static void HandleKeyRotationTimer(Timer &aTimer);
+    static void HandleKeyRotationTimer(TimerMilli &aTimer);
     void        HandleKeyRotationTimer(void);
 
     static const uint8_t kThreadString[];

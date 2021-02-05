@@ -114,7 +114,7 @@ AnnounceSender::AnnounceSender(Instance &aInstance)
 {
 }
 
-void AnnounceSender::HandleTimer(Timer &aTimer)
+void AnnounceSender::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<AnnounceSender>().AnnounceSenderBase::HandleTimer();
 }

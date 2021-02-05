@@ -204,7 +204,7 @@ private:
     static void HandleServerData(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
     void        HandleServerData(Coap::Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
 
     void RegisterNetworkData(uint16_t aRloc16, const uint8_t *aTlvs, uint8_t aTlvsLength);

@@ -132,7 +132,7 @@ exit:
     TimerMilli::Start(mTimeInInterval);
 }
 
-void TrickleTimer::HandleTimer(Timer &aTimer)
+void TrickleTimer::HandleTimer(TimerMilli &aTimer)
 {
     static_cast<TrickleTimer *>(&aTimer)->HandleTimer();
 }

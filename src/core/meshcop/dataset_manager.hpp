@@ -480,7 +480,7 @@ public:
 #endif
 
 private:
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void) { DatasetManager::HandleTimer(); }
 
     static void HandleGet(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
@@ -592,10 +592,10 @@ public:
 private:
     void StartDelayTimer(void);
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void) { DatasetManager::HandleTimer(); }
 
-    static void HandleDelayTimer(Timer &aTimer);
+    static void HandleDelayTimer(TimerMilli &aTimer);
     void        HandleDelayTimer(void);
 
     static void HandleGet(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);

@@ -199,7 +199,7 @@ private:
         kMaxOccupancy      = 0xffff,
     };
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
     static void HandleEnergyScanResult(Mac::EnergyScanResult *aResult, void *aContext);
     void        HandleEnergyScanResult(Mac::EnergyScanResult *aResult);

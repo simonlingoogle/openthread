@@ -98,7 +98,7 @@ void DatasetUpdater::CancelUpdate(void)
     }
 }
 
-void DatasetUpdater::HandleTimer(Timer &aTimer)
+void DatasetUpdater::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<DatasetUpdater>().HandleTimer();
 }

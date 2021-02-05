@@ -112,7 +112,7 @@ private:
         kTimeoutLeaderPetition = 50, ///< TIMEOUT_LEAD_PET (seconds)
     };
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
 
     static void HandlePetition(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);

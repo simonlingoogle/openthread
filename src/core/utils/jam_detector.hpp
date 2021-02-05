@@ -189,7 +189,7 @@ private:
 
     void        CheckState(void);
     void        SetJamState(bool aNewState);
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
     void        UpdateHistory(bool aDidExceedThreshold);
     void        UpdateJamState(void);

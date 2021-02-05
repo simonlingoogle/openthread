@@ -159,7 +159,7 @@ exit:
     return error;
 }
 
-void JamDetector::HandleTimer(Timer &aTimer)
+void JamDetector::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<JamDetector>().HandleTimer();
 }

@@ -2996,7 +2996,7 @@ exit:
     return error;
 }
 
-void Interpreter::HandlePingTimer(Timer &aTimer)
+void Interpreter::HandlePingTimer(TimerMilli &aTimer)
 {
     GetOwner(aTimer).SendPing();
 }

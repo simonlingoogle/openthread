@@ -613,7 +613,7 @@ exit:
     FreeMessageOnError(message, error);
 }
 
-void Joiner::HandleTimer(Timer &aTimer)
+void Joiner::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Joiner>().HandleTimer();
 }

@@ -1620,7 +1620,7 @@ exit:
 }
 #endif
 
-void Mle::HandleAttachTimer(Timer &aTimer)
+void Mle::HandleAttachTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Mle>().HandleAttachTimer();
 }
@@ -1856,7 +1856,7 @@ exit:
     return delay;
 }
 
-void Mle::HandleDelayedResponseTimer(Timer &aTimer)
+void Mle::HandleDelayedResponseTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Mle>().HandleDelayedResponseTimer();
 }
@@ -2172,7 +2172,7 @@ exit:
     }
 }
 
-void Mle::HandleMessageTransmissionTimer(Timer &aTimer)
+void Mle::HandleMessageTransmissionTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Mle>().HandleMessageTransmissionTimer();
 }
@@ -3962,7 +3962,7 @@ exit:
 #endif // OPENTHREAD_CONFIG_MLE_INFORM_PREVIOUS_PARENT_ON_REATTACH
 
 #if OPENTHREAD_CONFIG_PARENT_SEARCH_ENABLE
-void Mle::HandleParentSearchTimer(Timer &aTimer)
+void Mle::HandleParentSearchTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Mle>().HandleParentSearchTimer();
 }

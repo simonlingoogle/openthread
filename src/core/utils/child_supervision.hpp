@@ -254,7 +254,7 @@ private:
     };
 
     void        RestartTimer(void);
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
 
     uint16_t   mTimeout;

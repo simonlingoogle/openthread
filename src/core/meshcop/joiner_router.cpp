@@ -247,7 +247,7 @@ exit:
     LogError("schedule joiner entrust", error);
 }
 
-void JoinerRouter::HandleTimer(Timer &aTimer)
+void JoinerRouter::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<JoinerRouter>().HandleTimer();
 }

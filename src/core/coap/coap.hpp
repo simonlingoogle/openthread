@@ -348,7 +348,7 @@ private:
     void           DequeueResponse(Message &aMessage);
     void           UpdateQueue(void);
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilliContext &aTimer);
     void        HandleTimer(void);
 
     MessageQueue      mQueue;
@@ -728,7 +728,7 @@ private:
 #endif
     };
 
-    static void HandleRetransmissionTimer(Timer &aTimer);
+    static void HandleRetransmissionTimer(TimerMilliContext &aTimer);
     void        HandleRetransmissionTimer(void);
 
     void     ClearRequests(const Ip6::Address *aAddress);

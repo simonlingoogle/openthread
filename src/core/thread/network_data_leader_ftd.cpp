@@ -1329,7 +1329,7 @@ void Leader::UpdateContextsAfterReset(void)
     }
 }
 
-void Leader::HandleTimer(Timer &aTimer)
+void Leader::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Leader>().HandleTimer();
 }

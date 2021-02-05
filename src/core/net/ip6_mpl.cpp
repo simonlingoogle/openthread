@@ -262,7 +262,7 @@ exit:
     return error;
 }
 
-void Mpl::HandleSeedSetTimer(Timer &aTimer)
+void Mpl::HandleSeedSetTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Mpl>().HandleSeedSetTimer();
 }
@@ -335,7 +335,7 @@ exit:
     FreeMessageOnError(messageCopy, error);
 }
 
-void Mpl::HandleRetransmissionTimer(Timer &aTimer)
+void Mpl::HandleRetransmissionTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Mpl>().HandleRetransmissionTimer();
 }

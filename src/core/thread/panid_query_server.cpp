@@ -138,7 +138,7 @@ exit:
     MeshCoP::LogError("send panid conflict", error);
 }
 
-void PanIdQueryServer::HandleTimer(Timer &aTimer)
+void PanIdQueryServer::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<PanIdQueryServer>().HandleTimer();
 }

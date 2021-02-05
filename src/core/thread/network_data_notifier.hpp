@@ -79,7 +79,7 @@ private:
 
     void HandleNotifierEvents(Events aEvents);
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
 
     static void HandleCoapResponse(void *               aContext,

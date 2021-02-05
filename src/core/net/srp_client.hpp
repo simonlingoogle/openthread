@@ -542,7 +542,7 @@ private:
         kLeaseRenewGuardInterval = OPENTHREAD_CONFIG_SRP_CLIENT_LEASE_RENEW_GUARD_INTERVAL, // in seconds.
 
         // Max allowed lease time to avoid timer roll-over (~24.8 days).
-        kMaxLease = (Timer::kMaxDelay / 1000) - 1,
+        kMaxLease = (TimerMilli::kMaxDelay / 1000) - 1,
 
         // Opportunistic early refresh: When sending an SRP update, the
         // services that are not yet expired but are close, are allowed
@@ -669,7 +669,7 @@ private:
     void           GrowRetryWaitInterval(void);
     uint32_t       GetBoundedLeaseInterval(uint32_t aInterval, uint32_t aDefaultInterval) const;
     bool           ShouldRenewEarly(const Service &aService) const;
-    static void    HandleTimer(Timer &aTimer);
+    static void    HandleTimer(TimerMilli &aTimer);
     void           HandleTimer(void);
 
 #if (OPENTHREAD_CONFIG_LOG_LEVEL >= OT_LOG_LEVEL_INFO) && (OPENTHREAD_CONFIG_LOG_SRP == 1)

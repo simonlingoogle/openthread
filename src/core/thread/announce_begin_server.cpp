@@ -90,7 +90,7 @@ exit:
     return;
 }
 
-void AnnounceBeginServer::HandleTimer(Timer &aTimer)
+void AnnounceBeginServer::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<AnnounceBeginServer>().AnnounceSenderBase::HandleTimer();
 }

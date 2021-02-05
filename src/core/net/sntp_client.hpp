@@ -574,7 +574,7 @@ private:
     Message *FindRelatedQuery(const Header &aResponseHeader, QueryMetadata &aQueryMetadata);
     void FinalizeSntpTransaction(Message &aQuery, const QueryMetadata &aQueryMetadata, uint64_t aTime, otError aResult);
 
-    static void HandleRetransmissionTimer(Timer &aTimer);
+    static void HandleRetransmissionTimer(TimerMilli &aTimer);
     void        HandleRetransmissionTimer(void);
 
     static void HandleUdpReceive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);

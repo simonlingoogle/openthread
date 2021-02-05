@@ -749,7 +749,7 @@ int Dtls::HandleMbedtlsExportKeys(const unsigned char *aMasterSecret,
     return 0;
 }
 
-void Dtls::HandleTimer(Timer &aTimer)
+void Dtls::HandleTimer(TimerMilli &aTimer)
 {
     static_cast<Dtls *>(static_cast<TimerMilliContext &>(aTimer).GetContext())->HandleTimer();
 }

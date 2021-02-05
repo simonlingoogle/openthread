@@ -770,7 +770,7 @@ bool RoutingManager::IsValidOnLinkPrefix(const Ip6::Prefix &aOnLinkPrefix)
            (aOnLinkPrefix.mLength >= 3 && (aOnLinkPrefix.GetBytes()[0] & 0xE0) == 0x20);
 }
 
-void RoutingManager::HandleRouterAdvertisementTimer(Timer &aTimer)
+void RoutingManager::HandleRouterAdvertisementTimer(TimerMilli &aTimer)
 {
     aTimer.Get<RoutingManager>().HandleRouterAdvertisementTimer();
 }
@@ -782,7 +782,7 @@ void RoutingManager::HandleRouterAdvertisementTimer(void)
     EvaluateRoutingPolicy();
 }
 
-void RoutingManager::HandleRouterSolicitTimer(Timer &aTimer)
+void RoutingManager::HandleRouterSolicitTimer(TimerMilli &aTimer)
 {
     aTimer.Get<RoutingManager>().HandleRouterSolicitTimer();
 }
@@ -822,7 +822,7 @@ void RoutingManager::HandleRouterSolicitTimer(void)
     }
 }
 
-void RoutingManager::HandleDiscoveredPrefixInvalidTimer(Timer &aTimer)
+void RoutingManager::HandleDiscoveredPrefixInvalidTimer(TimerMilli &aTimer)
 {
     aTimer.Get<RoutingManager>().HandleDiscoveredPrefixInvalidTimer();
 }

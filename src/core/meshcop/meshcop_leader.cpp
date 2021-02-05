@@ -264,7 +264,7 @@ uint32_t Leader::GetDelayTimerMinimal(void) const
     return mDelayTimerMinimal;
 }
 
-void Leader::HandleTimer(Timer &aTimer)
+void Leader::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Leader>().HandleTimer();
 }

@@ -69,7 +69,7 @@ void TimeTicker::UnregisterReceiver(Receiver aReceiver)
     }
 }
 
-void TimeTicker::HandleTimer(Timer &aTimer)
+void TimeTicker::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<TimeTicker>().HandleTimer();
 }

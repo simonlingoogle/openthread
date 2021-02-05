@@ -179,7 +179,7 @@ private:
     static void HandleTxTasklet(Tasklet &aTasklet);
     void        HandleTxTasklet(void);
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
 
     static const char *StateToString(State aState);

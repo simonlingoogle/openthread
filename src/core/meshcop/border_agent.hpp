@@ -134,7 +134,7 @@ private:
     template <Coap::Resource BorderAgent::*aResource>
     static void HandleRequest(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
 
-    static void HandleTimeout(Timer &aTimer);
+    static void HandleTimeout(TimerMilli &aTimer);
     void        HandleTimeout(void);
 
     static void HandleCoapResponse(void *               aContext,

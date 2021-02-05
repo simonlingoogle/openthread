@@ -267,7 +267,7 @@ private:
     void        StartDatasetUpdate(void);
     static void HandleDatasetUpdateDone(otError aError, void *aContext);
     void        HandleDatasetUpdateDone(otError aError);
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
     void        StartAutoSelectTimer(void);
 

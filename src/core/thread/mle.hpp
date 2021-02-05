@@ -1704,11 +1704,11 @@ private:
     } OT_TOOL_PACKED_END;
 
     void        HandleNotifierEvents(Events aEvents);
-    static void HandleAttachTimer(Timer &aTimer);
+    static void HandleAttachTimer(TimerMilli &aTimer);
     void        HandleAttachTimer(void);
-    static void HandleDelayedResponseTimer(Timer &aTimer);
+    static void HandleDelayedResponseTimer(TimerMilli &aTimer);
     void        HandleDelayedResponseTimer(void);
-    static void HandleMessageTransmissionTimer(Timer &aTimer);
+    static void HandleMessageTransmissionTimer(TimerMilli &aTimer);
     void        HandleMessageTransmissionTimer(void);
     static void HandleUdpReceive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
     void        HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
@@ -1770,7 +1770,7 @@ private:
 #endif
 
 #if OPENTHREAD_CONFIG_PARENT_SEARCH_ENABLE
-    static void HandleParentSearchTimer(Timer &aTimer);
+    static void HandleParentSearchTimer(TimerMilli &aTimer);
     void        HandleParentSearchTimer(void);
     void        StartParentSearchTimer(void);
     void        UpdateParentSearchState(void);

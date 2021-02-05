@@ -113,7 +113,7 @@ void Notifier::HandleNotifierEvents(Events aEvents)
     }
 }
 
-void Notifier::HandleTimer(Timer &aTimer)
+void Notifier::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Notifier>().HandleTimer();
 }

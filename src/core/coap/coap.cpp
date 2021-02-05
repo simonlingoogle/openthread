@@ -407,7 +407,7 @@ exit:
     return error;
 }
 
-void CoapBase::HandleRetransmissionTimer(Timer &aTimer)
+void CoapBase::HandleRetransmissionTimer(TimerMilliContext &aTimer)
 {
     static_cast<Coap *>(static_cast<TimerMilliContext &>(aTimer).GetContext())->HandleRetransmissionTimer();
 }
@@ -1544,7 +1544,7 @@ void ResponsesQueue::DequeueAllResponses(void)
     }
 }
 
-void ResponsesQueue::HandleTimer(Timer &aTimer)
+void ResponsesQueue::HandleTimer(TimerMilliContext &aTimer)
 {
     static_cast<ResponsesQueue *>(static_cast<TimerMilliContext &>(aTimer).GetContext())->HandleTimer();
 }

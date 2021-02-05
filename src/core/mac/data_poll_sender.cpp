@@ -497,7 +497,7 @@ uint32_t DataPollSender::CalculatePollPeriod(void) const
     return period;
 }
 
-void DataPollSender::HandlePollTimer(Timer &aTimer)
+void DataPollSender::HandlePollTimer(TimerMilli &aTimer)
 {
     IgnoreError(aTimer.Get<DataPollSender>().SendDataPoll());
 }

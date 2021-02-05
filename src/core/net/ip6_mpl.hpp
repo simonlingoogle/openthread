@@ -293,7 +293,7 @@ private:
         uint8_t  mLifetime;
     };
 
-    static void HandleSeedSetTimer(Timer &aTimer);
+    static void HandleSeedSetTimer(TimerMilli &aTimer);
     void        HandleSeedSetTimer(void);
 
     otError UpdateSeedSet(uint16_t aSeedId, uint8_t aSequence);
@@ -320,7 +320,7 @@ private:
         uint8_t   mIntervalOffset;
     };
 
-    static void HandleRetransmissionTimer(Timer &aTimer);
+    static void HandleRetransmissionTimer(TimerMilli &aTimer);
     void        HandleRetransmissionTimer(void);
 
     void AddBufferedMessage(Message &aMessage, uint16_t aSeedId, uint8_t aSequence, bool aIsOutbound);

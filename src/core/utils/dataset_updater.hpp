@@ -142,7 +142,7 @@ private:
         kMaxTimestampIncrease = 128,  // Maximum increase of Pending/Active Timestamp during Dataset Update.
     };
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
     void        PreparePendingDataset(void);
     void        Finish(otError aError);

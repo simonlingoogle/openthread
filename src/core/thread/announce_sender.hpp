@@ -60,7 +60,7 @@ protected:
      * @param[in]  aHandler    A timer handler provided by sub-class.
      *
      */
-    AnnounceSenderBase(Instance &aInstance, Timer::Handler aHandler);
+    AnnounceSenderBase(Instance &aInstance, TimerMilli::Handler aHandler);
 
     /**
      * This method schedules the MLE Announce transmissions.
@@ -158,7 +158,7 @@ private:
 
     void        CheckState(void);
     void        Stop(void);
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleNotifierEvents(Events aEvents);
 };
 

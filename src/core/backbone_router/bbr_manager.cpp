@@ -141,7 +141,7 @@ void Manager::HandleNotifierEvents(Events aEvents)
     }
 }
 
-void Manager::HandleTimer(Timer &aTimer)
+void Manager::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Manager>().HandleTimer();
 }

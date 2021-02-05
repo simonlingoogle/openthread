@@ -842,7 +842,7 @@ private:
     void     BeginTransmit(void);
     bool     HandleMacCommand(RxFrame &aFrame);
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
     static void HandleOperationTask(Tasklet &aTasklet);
 

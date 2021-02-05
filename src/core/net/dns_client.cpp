@@ -268,7 +268,7 @@ void Client::FinalizeDnsTransaction(Message &            aQuery,
     }
 }
 
-void Client::HandleRetransmissionTimer(Timer &aTimer)
+void Client::HandleRetransmissionTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Client>().HandleRetransmissionTimer();
 }

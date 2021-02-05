@@ -1128,7 +1128,7 @@ exit:
     }
 }
 
-void Server::HandleLeaseTimer(Timer &aTimer)
+void Server::HandleLeaseTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Server>().HandleLeaseTimer();
 }
@@ -1248,7 +1248,7 @@ void Server::HandleLeaseTimer(void)
     }
 }
 
-void Server::HandleOutstandingUpdatesTimer(Timer &aTimer)
+void Server::HandleOutstandingUpdatesTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Server>().HandleOutstandingUpdatesTimer();
 }

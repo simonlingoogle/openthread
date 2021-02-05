@@ -655,7 +655,7 @@ void SubMac::HandleEnergyScanDone(int8_t aMaxRssi)
     mCallbacks.EnergyScanDone(aMaxRssi);
 }
 
-void SubMac::HandleTimer(Timer &aTimer)
+void SubMac::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<SubMac>().HandleTimer();
 }
@@ -969,7 +969,7 @@ void SubMac::SetCslTimeout(uint32_t aTimeout)
     mCslTimeout = aTimeout;
 }
 
-void SubMac::HandleCslTimer(Timer &aTimer)
+void SubMac::HandleCslTimer(TimerMilli &aTimer)
 {
     aTimer.Get<SubMac>().HandleCslTimer();
 }

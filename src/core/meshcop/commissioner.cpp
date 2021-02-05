@@ -603,7 +603,7 @@ exit:
     return error;
 }
 
-void Commissioner::HandleTimer(Timer &aTimer)
+void Commissioner::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Commissioner>().HandleTimer();
 }
@@ -625,7 +625,7 @@ void Commissioner::HandleTimer(void)
     }
 }
 
-void Commissioner::HandleJoinerExpirationTimer(Timer &aTimer)
+void Commissioner::HandleJoinerExpirationTimer(TimerMilli &aTimer)
 {
     aTimer.Get<Commissioner>().HandleJoinerExpirationTimer();
 }

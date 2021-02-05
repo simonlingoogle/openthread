@@ -503,7 +503,7 @@ public:
 
 private:
 #if OPENTHREAD_CONFIG_MAC_CSL_RECEIVER_ENABLE
-    static void HandleCslTimer(Timer &aTimer);
+    static void HandleCslTimer(TimerMilli &aTimer);
     void        HandleCslTimer(void);
 #endif
 
@@ -590,7 +590,7 @@ private:
     void UpdateFrameCounterOnTxDone(const TxFrame &aFrame);
     void HandleEnergyScanDone(int8_t aMaxRssi);
 
-    static void HandleTimer(Timer &aTimer);
+    static void HandleTimer(TimerMilli &aTimer);
     void        HandleTimer(void);
 
     void               SetState(State aState);

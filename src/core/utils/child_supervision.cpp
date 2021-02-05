@@ -204,7 +204,7 @@ void SupervisionListener::RestartTimer(void)
     }
 }
 
-void SupervisionListener::HandleTimer(Timer &aTimer)
+void SupervisionListener::HandleTimer(TimerMilli &aTimer)
 {
     aTimer.Get<SupervisionListener>().HandleTimer();
 }

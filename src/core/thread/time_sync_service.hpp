@@ -175,7 +175,7 @@ private:
      * @param[in] aTimer The corresponding timer.
      *
      */
-    static void HandleTimeout(Timer &aTimer);
+    static void HandleTimeout(TimerMilli &aTimer);
 
     /**
      * Check and handle any status change, and notify observers if applicable.

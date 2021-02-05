@@ -596,9 +596,9 @@ private:
                              const Ip6::MessageInfo & aMessageInfo);
     static void HandleUdpReceive(void *aContext, otMessage *aMessage, const otMessageInfo *aMessageInfo);
     void        HandleUdpReceive(Message &aMessage, const Ip6::MessageInfo &aMessageInfo);
-    static void HandleLeaseTimer(Timer &aTimer);
+    static void HandleLeaseTimer(TimerMilli &aTimer);
     void        HandleLeaseTimer(void);
-    static void HandleOutstandingUpdatesTimer(Timer &aTimer);
+    static void HandleOutstandingUpdatesTimer(TimerMilli &aTimer);
     void        HandleOutstandingUpdatesTimer(void);
 
     void                  HandleAdvertisingResult(UpdateMetadata *aUpdate, otError aError);
