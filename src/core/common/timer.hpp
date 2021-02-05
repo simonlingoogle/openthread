@@ -427,9 +427,11 @@ class TimerMicroScheduler;
  * This class implements the microsecond timer.
  *
  */
-class TimerMicro : public Timer
+template <typename TimerType> class TimerMicroImpl : public TimerImpl<TimerType>
 {
 public:
+    using Handler = typename TimerImpl<TimerType>::Handler;
+
     /**
      * This constructor creates a timer instance.
      *
@@ -437,8 +439,8 @@ public:
      * @param[in]  aHandler    A pointer to a function that is called when the timer expires.
      *
      */
-    TimerMicro(Instance &aInstance, Handler aHandler)
-        : Timer(aInstance, aHandler)
+    TimerMicroImpl(Instance &aInstance, Handler aHandler)
+        : TimerImpl<TimerType>(aInstance, aHandler)
     {
     }
 
