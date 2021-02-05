@@ -41,8 +41,9 @@
 
 namespace ot {
 
-const TimerScheduler::AlarmApi TimerMilliScheduler::sAlarmMilliApi = {&otPlatAlarmMilliStartAt, &otPlatAlarmMilliStop,
-                                                                      &otPlatAlarmMilliGetNow};
+template <>
+const TimerMilliScheduler::AlarmApi TimerMilliScheduler::sAlarmMilliApi = {
+    &otPlatAlarmMilliStartAt, &otPlatAlarmMilliStop, &otPlatAlarmMilliGetNow};
 
 template <typename TimerType> bool TimerImpl<TimerType>::DoesFireBefore(const TimerType &aSecondTimer, Time aNow) const
 {

@@ -229,7 +229,7 @@ public:
  * using a timer object. `TimerMilliContext` will store a context `void *` information.
  *
  */
-class TimerMilliContext : public TimerMilli
+class TimerMilliContext : public InstanceLocator, public TimerMilliImpl<TimerMilliContext>
 {
 public:
     /**
@@ -241,7 +241,8 @@ public:
      *
      */
     TimerMilliContext(Instance &aInstance, Handler aHandler, void *aContext)
-        : TimerMilli(aInstance, aHandler)
+        : InstanceLocator(aInstance)
+        , TimerMilliImpl<TimerMilliContext>(aHandler)
         , mContext(aContext)
     {
     }
@@ -323,6 +324,9 @@ protected:
     void SetAlarm(const AlarmApi &aAlarmApi);
 
     LinkedList<TimerType> mTimerList;
+
+private:
+    static const AlarmApi sAlarmMilliApi;
 };
 
 /**
