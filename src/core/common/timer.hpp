@@ -64,43 +64,17 @@ class TimerMilliScheduler;
  */
 
 /**
- * This class implements a timer.
+ * This class implements a timer handle.
  *
  */
-class Timer : public InstanceLocator, public LinkedListEntry<Timer>
+template <typename TimerType> class TimerImpl : public LinkedListEntry<TimerType>
 {
-    friend class TimerScheduler;
-    friend class LinkedListEntry<Timer>;
-
 public:
     /**
      * This constant defines maximum delay allowed when starting a timer.
      *
      */
     static const uint32_t kMaxDelay = (Time::kMaxDuration >> 1);
-
-    /**
-     * This type defines a function reference which is invoked when the timer expires.
-     *
-     * @param[in]  aTimer    A reference to the expired timer instance.
-     *
-     */
-    typedef void (&Handler)(Timer &aTimer);
-
-    /**
-     * This constructor creates a timer instance.
-     *
-     * @param[in]  aInstance   A reference to the OpenThread instance.
-     * @param[in]  aHandler    A pointer to a function that is called when the timer expires.
-     *
-     */
-    Timer(Instance &aInstance, Handler aHandler)
-        : InstanceLocator(aInstance)
-        , mHandler(aHandler)
-        , mFireTime()
-        , mNext(this)
-    {
-    }
 
     /**
      * This method returns the fire time of the timer.
@@ -119,7 +93,28 @@ public:
      */
     bool IsRunning(void) const { return (mNext != this); }
 
+    /**
+     * This type defines a function reference which is invoked when the timer expires.
+     *
+     * @param[in]  aTimer    A reference to the expired timer instance.
+     *
+     */
+    typedef void (&Handler)(TimerType &aTimer);
+
 protected:
+    /**
+     * This constructor creates a timer handle instance.
+     *
+     * @param[in]  aHandler    A pointer to a function that is called when the timer expires.
+     *
+     */
+    explicit TimerImpl(Handler aHandler)
+        : mHandler(aHandler)
+        , mFireTime()
+        , mNext(this)
+    {
+    }
+
     /**
      * This method indicates if the fire time of this timer is strictly before the fire time of a second given timer.
      *
@@ -130,20 +125,87 @@ protected:
      * @retval FALSE If the fire time of this timer object is the same or after aTimer's fire time.
      *
      */
-    bool DoesFireBefore(const Timer &aSecondTimer, Time aNow) const;
+    bool DoesFireBefore(const TimerType &aSecondTimer, Time aNow) const;
 
-    void Fired(void) { mHandler(*this); }
+    void Fired(void) { mHandler(*static_cast<TimerType *>(this)); }
 
-    Handler mHandler;
-    Time    mFireTime;
-    Timer * mNext;
+    Handler    mHandler;
+    Time       mFireTime;
+    TimerImpl *mNext;
 };
 
 /**
  * This class implements the millisecond timer.
  *
  */
-class TimerMilli : public Timer
+template <typename TimerType> class TimerMilliImpl : public TimerImpl<TimerType>
+{
+public:
+    /**
+     * This constructor creates a millisecond timer instance.
+     *
+     * @param[in]  aHandler    A pointer to a function that is called when the timer expires.
+     *
+     */
+    TimerMilliImpl(typename TimerImpl<TimerType>::Handler aHandler)
+        : TimerImpl<TimerType>(aHandler)
+    {
+    }
+
+    /**
+     * This method schedules the timer to fire after a given delay (in milliseconds) from now.
+     *
+     * @param[in]  aDelay   The delay in milliseconds. It must not be longer than `kMaxDelay`.
+     *
+     */
+    void Start(uint32_t aDelay);
+
+    /**
+     * This method schedules the timer to fire after a given delay (in milliseconds) from a given start time.
+     *
+     * @param[in]  aStartTime  The start time.
+     * @param[in]  aDelay      The delay in milliseconds. It must not be longer than `kMaxDelay`.
+     *
+     */
+    void StartAt(TimeMilli aStartTime, uint32_t aDelay);
+
+    /**
+     * This method schedules the timer to fire at a given fire time.
+     *
+     * @param[in]  aFireTime  The fire time.
+     *
+     */
+    void FireAt(TimeMilli aFireTime);
+
+    /**
+     * This method (re-)schedules the timer with a given a fire time only if the timer is not running or the new given
+     * fire time is earlier than the current fire time.
+     *
+     * @param[in]  aFireTime  The fire time.
+     *
+     */
+    void FireAtIfEarlier(TimeMilli aFireTime);
+
+    /**
+     * This method stops the timer.
+     *
+     */
+    void Stop(void);
+
+    /**
+     * This static method returns the current time in milliseconds.
+     *
+     * @returns The current time in milliseconds.
+     *
+     */
+    static TimeMilli GetNow(void) { return TimeMilli(otPlatAlarmMilliGetNow()); }
+};
+
+/**
+ * This class implements the millisecond timer.
+ *
+ */
+class TimerMilli : public InstanceLocator, public TimerMilliImpl<TimerMilli>
 {
 public:
     /**
@@ -154,7 +216,8 @@ public:
      *
      */
     TimerMilli(Instance &aInstance, Handler aHandler)
-        : Timer(aInstance, aHandler)
+        : InstanceLocator(aInstance)
+        , TimerMilliImpl<TimerMilli>(aHandler)
     {
     }
 
@@ -249,7 +312,7 @@ private:
  * This class implements the base timer scheduler.
  *
  */
-class TimerScheduler : public InstanceLocator, private NonCopyable
+template <typename TimerType> class TimerScheduler : public InstanceLocator, private NonCopyable
 {
     friend class Timer;
 
@@ -283,7 +346,7 @@ protected:
      * @param[in]  aAlarmApi  A reference to the Alarm APIs.
      *
      */
-    void Add(Timer &aTimer, const AlarmApi &aAlarmApi);
+    void Add(TimerType &aTimer, const AlarmApi &aAlarmApi);
 
     /**
      * This method removes a timer instance to the timer scheduler.
@@ -292,7 +355,7 @@ protected:
      * @param[in]  aAlarmApi  A reference to the Alarm APIs.
      *
      */
-    void Remove(Timer &aTimer, const AlarmApi &aAlarmApi);
+    void Remove(TimerType &aTimer, const AlarmApi &aAlarmApi);
 
     /**
      * This method processes the running timers.
@@ -310,14 +373,14 @@ protected:
      */
     void SetAlarm(const AlarmApi &aAlarmApi);
 
-    LinkedList<Timer> mTimerList;
+    LinkedList<TimerType> mTimerList;
 };
 
 /**
  * This class implements the millisecond timer scheduler.
  *
  */
-class TimerMilliScheduler : public TimerScheduler
+class TimerMilliScheduler : public TimerScheduler<TimerMilli>
 {
 public:
     /**

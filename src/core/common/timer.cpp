@@ -44,7 +44,7 @@ namespace ot {
 const TimerScheduler::AlarmApi TimerMilliScheduler::sAlarmMilliApi = {&otPlatAlarmMilliStartAt, &otPlatAlarmMilliStop,
                                                                       &otPlatAlarmMilliGetNow};
 
-bool Timer::DoesFireBefore(const Timer &aSecondTimer, Time aNow) const
+template <typename TimerType> bool TimerImpl<TimerType>::DoesFireBefore(const TimerType &aSecondTimer, Time aNow) const
 {
     bool retval;
     bool isBeforeNow = (GetFireTime() < aNow);
@@ -68,14 +68,14 @@ bool Timer::DoesFireBefore(const Timer &aSecondTimer, Time aNow) const
     return retval;
 }
 
-void TimerMilli::Start(uint32_t aDelay)
+template <typename TimerType> void TimerMilliImpl<TimerType>::Start(uint32_t aDelay)
 {
     StartAt(GetNow(), aDelay);
 }
 
-void TimerMilli::StartAt(TimeMilli aStartTime, uint32_t aDelay)
+template <typename TimerType> void TimerMilliImpl<TimerType>::StartAt(TimeMilli aStartTime, uint32_t aDelay)
 {
-    OT_ASSERT(aDelay <= kMaxDelay);
+    OT_ASSERT(aDelay <= TimerMilliImpl<TimerType>::kMaxDelay);
     FireAt(aStartTime + aDelay);
 }
 
