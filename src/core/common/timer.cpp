@@ -41,8 +41,9 @@
 
 namespace ot {
 
-const TimerScheduler::AlarmApi TimerMilliScheduler::sAlarmMilliApi = {&otPlatAlarmMilliStartAt, &otPlatAlarmMilliStop,
-                                                                      &otPlatAlarmMilliGetNow};
+template <>
+const TimerScheduler<TimeMilli>::AlarmApi TimerScheduler<TimeMilli>::mAlarmApi = {
+    &otPlatAlarmMilliStartAt, &otPlatAlarmMilliStop, &otPlatAlarmMilliGetNow};
 
 bool Timer::DoesFireBefore(const Timer &aSecondTimer, Time aNow) const
 {
@@ -98,12 +99,12 @@ void TimerMilli::Stop(void)
     Get<TimerMilliScheduler>().Remove(*this);
 }
 
-void TimerScheduler::Add(Timer &aTimer, const AlarmApi &aAlarmApi)
+template <typename TimeType> void TimerScheduler<TimeType>::Add(Timer &aTimer)
 {
     Timer *prev = nullptr;
-    Time   now(aAlarmApi.AlarmGetNow());
+    Time   now(mAlarmApi.AlarmGetNow());
 
-    Remove(aTimer, aAlarmApi);
+    Remove(aTimer);
 
     for (Timer *cur = mTimerList.GetHead(); cur; prev = cur, cur = cur->GetNext())
     {
@@ -116,7 +117,7 @@ void TimerScheduler::Add(Timer &aTimer, const AlarmApi &aAlarmApi)
     if (prev == nullptr)
     {
         mTimerList.Push(aTimer);
-        SetAlarm(aAlarmApi);
+        SetAlarm();
     }
     else
     {
@@ -124,14 +125,14 @@ void TimerScheduler::Add(Timer &aTimer, const AlarmApi &aAlarmApi)
     }
 }
 
-void TimerScheduler::Remove(Timer &aTimer, const AlarmApi &aAlarmApi)
+template <typename TimeType> void TimerScheduler<TimeType>::Remove(Timer &aTimer)
 {
     VerifyOrExit(aTimer.IsRunning());
 
     if (mTimerList.GetHead() == &aTimer)
     {
         mTimerList.Pop();
-        SetAlarm(aAlarmApi);
+        SetAlarm();
     }
     else
     {
@@ -144,41 +145,41 @@ exit:
     return;
 }
 
-void TimerScheduler::SetAlarm(const AlarmApi &aAlarmApi)
+template <typename TimeType> void TimerScheduler<TimeType>::SetAlarm(void)
 {
     if (mTimerList.IsEmpty())
     {
-        aAlarmApi.AlarmStop(&GetInstance());
+        mAlarmApi.AlarmStop(&GetInstance());
     }
     else
     {
         Timer *  timer = mTimerList.GetHead();
-        Time     now(aAlarmApi.AlarmGetNow());
+        Time     now(mAlarmApi.AlarmGetNow());
         uint32_t remaining;
 
         remaining = (now < timer->mFireTime) ? (timer->mFireTime - now) : 0;
 
-        aAlarmApi.AlarmStartAt(&GetInstance(), now.GetValue(), remaining);
+        mAlarmApi.AlarmStartAt(&GetInstance(), now.GetValue(), remaining);
     }
 }
 
-void TimerScheduler::ProcessTimers(const AlarmApi &aAlarmApi)
+template <typename TimeType> void TimerScheduler<TimeType>::ProcessTimers(void)
 {
     Timer *timer = mTimerList.GetHead();
 
     if (timer)
     {
-        Time now(aAlarmApi.AlarmGetNow());
+        Time now(mAlarmApi.AlarmGetNow());
 
         if (now >= timer->mFireTime)
         {
-            Remove(*timer, aAlarmApi); // `Remove()` will `SetAlarm` for next timer if there is any.
+            Remove(*timer); // `Remove()` will `SetAlarm` for next timer if there is any.
             timer->Fired();
             ExitNow();
         }
     }
 
-    SetAlarm(aAlarmApi);
+    SetAlarm();
 
 exit:
     return;
@@ -196,9 +197,9 @@ exit:
 }
 
 #if OPENTHREAD_CONFIG_PLATFORM_USEC_TIMER_ENABLE
-const TimerScheduler::AlarmApi TimerMicroScheduler::sAlarmMicroApi = {&otPlatAlarmMicroStartAt, &otPlatAlarmMicroStop,
+const TimerMilliScheduler::AlarmApi TimerMilliScheduler::mAlarmApi = {&otPlatAlarmMicroStartAt, &otPlatAlarmMicroStop,
                                                                       &otPlatAlarmMicroGetNow};
-void                           TimerMicro::Start(uint32_t aDelay)
+void                                TimerMicro::Start(uint32_t aDelay)
 {
     StartAt(GetNow(), aDelay);
 }
