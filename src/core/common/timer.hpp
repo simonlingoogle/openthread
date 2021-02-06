@@ -65,7 +65,7 @@ namespace ot {
  * This class implements a timer handle.
  *
  */
-template <typename TimerType> class TimerImpl : public LinkedListEntry<TimerType>
+template <typename TimerType, typename TimeType> class TimerImpl : public LinkedListEntry<TimerType>
 {
 public:
     /**
@@ -98,6 +98,54 @@ public:
      *
      */
     typedef void (&Handler)(TimerType &aTimer);
+
+    /**
+     * This method schedules the timer to fire after a given delay (in milliseconds) from now.
+     *
+     * @param[in]  aDelay   The delay in milliseconds. It must not be longer than `kMaxDelay`.
+     *
+     */
+    void Start(uint32_t aDelay);
+
+    /**
+     * This method schedules the timer to fire after a given delay (in milliseconds) from a given start time.
+     *
+     * @param[in]  aStartTime  The start time.
+     * @param[in]  aDelay      The delay in milliseconds. It must not be longer than `kMaxDelay`.
+     *
+     */
+    void StartAt(TimeType aStartTime, uint32_t aDelay);
+
+    /**
+     * This method schedules the timer to fire at a given fire time.
+     *
+     * @param[in]  aFireTime  The fire time.
+     *
+     */
+    void FireAt(TimeType aFireTime);
+
+    /**
+     * This method (re-)schedules the timer with a given a fire time only if the timer is not running or the new given
+     * fire time is earlier than the current fire time.
+     *
+     * @param[in]  aFireTime  The fire time.
+     *
+     */
+    void FireAtIfEarlier(TimeType aFireTime);
+
+    /**
+     * This method stops the timer.
+     *
+     */
+    void Stop(void);
+
+    /**
+     * This static method returns the current time in milliseconds.
+     *
+     * @returns The current time in milliseconds.
+     *
+     */
+    static TimeType GetNow(void) { return TimeType(otPlatAlarmMilliGetNow()); }
 
 protected:
     /**
@@ -136,67 +184,20 @@ protected:
  * This class implements the millisecond timer.
  *
  */
-template <typename TimerType> class TimerMilliImpl : public TimerImpl<TimerType>
+template <typename TimerType> class TimerMilliImpl : public TimerImpl<TimerType, TimeMilli>
 {
 public:
+    using Handler = typename TimerImpl<TimerType, TimeMilli>::Handler;
     /**
      * This constructor creates a millisecond timer instance.
      *
      * @param[in]  aHandler    A pointer to a function that is called when the timer expires.
      *
      */
-    TimerMilliImpl(typename TimerImpl<TimerType>::Handler aHandler)
-        : TimerImpl<TimerType>(aHandler)
+    TimerMilliImpl(Handler aHandler)
+        : TimerImpl<TimerType, TimeMilli>(aHandler)
     {
     }
-
-    /**
-     * This method schedules the timer to fire after a given delay (in milliseconds) from now.
-     *
-     * @param[in]  aDelay   The delay in milliseconds. It must not be longer than `kMaxDelay`.
-     *
-     */
-    void Start(uint32_t aDelay);
-
-    /**
-     * This method schedules the timer to fire after a given delay (in milliseconds) from a given start time.
-     *
-     * @param[in]  aStartTime  The start time.
-     * @param[in]  aDelay      The delay in milliseconds. It must not be longer than `kMaxDelay`.
-     *
-     */
-    void StartAt(TimeMilli aStartTime, uint32_t aDelay);
-
-    /**
-     * This method schedules the timer to fire at a given fire time.
-     *
-     * @param[in]  aFireTime  The fire time.
-     *
-     */
-    void FireAt(TimeMilli aFireTime);
-
-    /**
-     * This method (re-)schedules the timer with a given a fire time only if the timer is not running or the new given
-     * fire time is earlier than the current fire time.
-     *
-     * @param[in]  aFireTime  The fire time.
-     *
-     */
-    void FireAtIfEarlier(TimeMilli aFireTime);
-
-    /**
-     * This method stops the timer.
-     *
-     */
-    void Stop(void);
-
-    /**
-     * This static method returns the current time in milliseconds.
-     *
-     * @returns The current time in milliseconds.
-     *
-     */
-    static TimeMilli GetNow(void) { return TimeMilli(otPlatAlarmMilliGetNow()); }
 };
 
 /**
@@ -341,10 +342,10 @@ using TimerMilliScheduler = TimerScheduler<TimerMilli>;
  * This class implements the microsecond timer.
  *
  */
-template <typename TimerType> class TimerMicroImpl : public TimerImpl<TimerType>
+template <typename TimerType> class TimerMicroImpl : public TimerImpl<TimerType, TimeMicro>
 {
 public:
-    using Handler = typename TimerImpl<TimerType>::Handler;
+    using Handler = typename TimerImpl<TimerType, TimeMicro>::Handler;
 
     /**
      * This constructor creates a timer instance.
@@ -354,7 +355,7 @@ public:
      *
      */
     TimerMicroImpl(Handler aHandler)
-        : TimerImpl<TimerType>(aHandler)
+        : TimerImpl<TimerType, TimeMicro>(aHandler)
     {
     }
 

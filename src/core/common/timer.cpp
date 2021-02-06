@@ -45,7 +45,8 @@ template <>
 const TimerMilliScheduler::AlarmApi TimerMilliScheduler::sAlarmMilliApi = {
     &otPlatAlarmMilliStartAt, &otPlatAlarmMilliStop, &otPlatAlarmMilliGetNow};
 
-template <typename TimerType> bool TimerImpl<TimerType>::DoesFireBefore(const TimerType &aSecondTimer, Time aNow) const
+template <typename TimerType, typename TimeType>
+bool TimerImpl<TimerType, TimeType>::DoesFireBefore(const TimerType &aSecondTimer, Time aNow) const
 {
     bool retval;
     bool isBeforeNow = (GetFireTime() < aNow);
@@ -69,18 +70,18 @@ template <typename TimerType> bool TimerImpl<TimerType>::DoesFireBefore(const Ti
     return retval;
 }
 
-template <typename TimerType> void TimerMilliImpl<TimerType>::Start(uint32_t aDelay)
+template <typename TimerType, typename TimeType> void TimerImpl<TimerType, TimeType>::Start(uint32_t aDelay)
 {
     StartAt(GetNow(), aDelay);
 }
 
-template <typename TimerType> void TimerMilliImpl<TimerType>::StartAt(TimeMilli aStartTime, uint32_t aDelay)
+template <typename TimerType, typename TimeType>
+void TimerImpl<TimerType, TimeType>::StartAt(TimeType aStartTime, uint32_t aDelay)
 {
-    OT_ASSERT(aDelay <= TimerMilliImpl<TimerType>::kMaxDelay);
+    OT_ASSERT(aDelay <= kMaxDelay);
     FireAt(aStartTime + aDelay);
 }
-
-void TimerMilli::FireAt(TimeMilli aFireTime)
+template <typename TimerType, typename TimeType> void TimerImpl<TimerType, TimeType>::FireAt(TimeType aFireTime)
 {
     mFireTime = aFireTime;
     Get<TimerMilliScheduler>().Add(*this);
