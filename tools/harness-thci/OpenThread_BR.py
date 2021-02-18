@@ -118,13 +118,6 @@ def SerialHandle(object):
 
         self.bash('stty cols 256')
 
-    def log(self, fmt, *args):
-        try:
-            msg = fmt % args
-            logging.info('%s - %s', self.port, msg)
-        except Exception:
-            pass
-
     def close(self):
         self.__handle.close()
 
@@ -266,6 +259,10 @@ class OpenThread_BR(OpenThreadTHCI, IThci):
             self.__handle.close()
             self.__handle = None
 
+    def _onReset(self):
+        self.__dumpSyslog()
+        self.__truncateSyslog()
+
     @watched
     def bash(self, cmd, timeout=DEFAULT_COMMAND_TIMEOUT):
         return self.__handle.bash(cmd, timeout=timeout)
@@ -322,3 +319,8 @@ class OpenThread_BR(OpenThreadTHCI, IThci):
 
     def __truncateSyslog(self):
         self.bash('sudo truncate -s 0 /var/log/syslog')
+
+    def __dumpSyslog(self):
+        output = self.bash('sudo grep "otbr-agent" /var/log/syslog')
+        for line in output:
+            self.log('%s', line)
