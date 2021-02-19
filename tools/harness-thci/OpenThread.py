@@ -263,7 +263,7 @@ class OpenThreadTHCI(object):
     def log(self, fmt, *args):
         try:
             msg = fmt % args
-            print('%s - %s' % (self.port, msg))
+            print('%s - %s - %s' % (self.port, time.strftime('%b %d %H:%M:%S'), msg))
         except Exception:
             pass
 

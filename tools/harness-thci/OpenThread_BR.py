@@ -61,6 +61,7 @@ class SSHHandle(object):
 
     def __init__(self, ip, port, username, password):
         import paramiko
+        self.port = '%s:%d' % (ip, port)
         self.__handle = paramiko.SSHClient()
         self.__handle.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.__handle.connect(ip, port=int(port), username=username, password=password)
@@ -263,7 +264,6 @@ class OpenThread_BR(OpenThreadTHCI, IThci):
         self.__dumpSyslog()
         self.__truncateSyslog()
 
-    @watched
     def bash(self, cmd, timeout=DEFAULT_COMMAND_TIMEOUT):
         return self.__handle.bash(cmd, timeout=timeout)
 
