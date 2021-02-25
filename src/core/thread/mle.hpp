@@ -115,7 +115,7 @@ public:
      * @retval OT_ERROR_ALREADY  MLE was already enabled.
      *
      */
-    otError Enable(void);
+    void Enable(void);
 
     /**
      * This method disables MLE.
@@ -123,7 +123,7 @@ public:
      * @retval OT_ERROR_NONE     Successfully disabled MLE.
      *
      */
-    otError Disable(void);
+    void Disable(void);
 
     /**
      * This method starts the MLE protocol operation.

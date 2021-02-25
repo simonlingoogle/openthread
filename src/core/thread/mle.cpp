@@ -160,19 +160,15 @@ Mle::Mle(Instance &aInstance)
     // to the Link- and Realm-Local All Thread Nodes multicast addresses.
 }
 
-otError Mle::Enable(void)
+void Mle::Enable(void)
 {
-    otError error = OT_ERROR_NONE;
-
     UpdateLinkLocalAddress();
-    SuccessOrExit(error = mSocket.Open(&Mle::HandleUdpReceive, this));
-    SuccessOrExit(error = mSocket.Bind(kUdpPort));
+    MustSuccess(mSocket.Open(&Mle::HandleUdpReceive, this));
+    MustSuccess(mSocket.Bind(kUdpPort));
 
 #if OPENTHREAD_CONFIG_PARENT_SEARCH_ENABLE
     StartParentSearchTimer();
 #endif
-exit:
-    return error;
 }
 
 void Mle::ScheduleChildUpdateRequest(void)
@@ -181,16 +177,11 @@ void Mle::ScheduleChildUpdateRequest(void)
     ScheduleMessageTransmissionTimer();
 }
 
-otError Mle::Disable(void)
+void Mle::Disable(void)
 {
-    otError error = OT_ERROR_NONE;
-
     Stop(false);
-    SuccessOrExit(error = mSocket.Close());
+    MustSuccess(mSocket.Close());
     Get<ThreadNetif>().RemoveUnicastAddress(mLinkLocal64);
-
-exit:
-    return error;
 }
 
 otError Mle::Start(bool aAnnounceAttach)

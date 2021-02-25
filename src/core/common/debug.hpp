@@ -39,6 +39,8 @@
 #include <ctype.h>
 #include <stdio.h>
 
+#include <openthread/error.h>
+
 #if OPENTHREAD_CONFIG_ASSERT_ENABLE
 
 #if OPENTHREAD_CONFIG_PLATFORM_ASSERT_MANAGEMENT
@@ -91,5 +93,12 @@
 #define OT_ASSERT(cond)
 
 #endif // OPENTHREAD_CONFIG_ASSERT_ENABLE
+
+static inline void MustSuccess(otError aError)
+{
+    OT_UNUSED_VARIABLE(aError);
+
+    OT_ASSERT(aError == OT_ERROR_NONE);
+}
 
 #endif // DEBUG_HPP_

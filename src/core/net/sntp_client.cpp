@@ -101,8 +101,8 @@ otError Client::Start(void)
 {
     otError error;
 
-    SuccessOrExit(error = mSocket.Open(&Client::HandleUdpReceive, this));
-    SuccessOrExit(error = mSocket.Bind());
+    MustSuccess(error = mSocket.Open(&Client::HandleUdpReceive, this));
+    MustSuccess(error = mSocket.Bind());
 
 exit:
     return error;

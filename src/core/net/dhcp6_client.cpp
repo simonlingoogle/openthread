@@ -167,8 +167,8 @@ void Client::Start(void)
 {
     VerifyOrExit(!mSocket.IsBound());
 
-    IgnoreError(mSocket.Open(&Client::HandleUdpReceive, this));
-    IgnoreError(mSocket.Bind(kDhcpClientPort));
+    MustSuccess(mSocket.Open(&Client::HandleUdpReceive, this));
+    MustSuccess(mSocket.Bind(kDhcpClientPort));
 
     ProcessNextIdentityAssociation();
 
@@ -178,7 +178,7 @@ exit:
 
 void Client::Stop(void)
 {
-    IgnoreError(mSocket.Close());
+    MustSuccess(mSocket.Close());
 }
 
 bool Client::ProcessNextIdentityAssociation(void)
