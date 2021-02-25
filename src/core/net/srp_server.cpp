@@ -440,7 +440,7 @@ void Server::Stop(void)
     mOutstandingUpdatesTimer.Stop();
 
     otLogInfoSrp("[server] stop listening on %hu", mSocket.GetSockName().mPort);
-    IgnoreError(mSocket.Close());
+    MustSuccess(mSocket.Close());
 
 exit:
     return;

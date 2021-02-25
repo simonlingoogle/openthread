@@ -231,7 +231,7 @@ void Client::Stop(Requester aRequester)
 
     ChangeHostAndServiceStates(kNewStateOnStop);
 
-    IgnoreError(mSocket.Close());
+    MustSuccess(mSocket.Close());
     mShouldRemoveKeyLease = false;
     mTxFailureRetryCount  = 0;
     ResetRetryWaitInterval();

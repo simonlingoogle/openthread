@@ -1195,7 +1195,7 @@ void CoapBase::ProcessReceivedResponse(Message &aMessage, const Ip6::MessageInfo
                     break;
                 }
             }
-#else  // OPENTHREAD_CONFIG_COAP_BLOCKWISE_TRANSFER_ENABLE
+#else // OPENTHREAD_CONFIG_COAP_BLOCKWISE_TRANSFER_ENABLE
             {
                 FinalizeCoapTransaction(*request, metadata, &aMessage, &aMessageInfo, OT_ERROR_NONE);
             }
@@ -1674,7 +1674,7 @@ otError Coap::Start(uint16_t aPort, otNetifIdentifier aNetifIdentifier)
 exit:
     if (error != OT_ERROR_NONE && socketOpened)
     {
-        IgnoreError(mSocket.Close());
+        MustSuccess(mSocket.Close());
     }
 
     return error;

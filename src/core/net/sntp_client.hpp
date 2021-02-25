@@ -501,7 +501,7 @@ public:
      * @retval OT_ERROR_NONE     Successfully started the SNTP client.
      * @retval OT_ERROR_ALREADY  The socket is already open.
      */
-    otError Start(void);
+    void Start(void);
 
     /**
      * This method stops the SNTP client.
@@ -509,7 +509,7 @@ public:
      * @retval OT_ERROR_NONE  Successfully stopped the SNTP client.
      *
      */
-    otError Stop(void);
+    void Stop(void);
 
     /**
      * This method returns the unix era number.

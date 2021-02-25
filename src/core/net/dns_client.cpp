@@ -445,15 +445,14 @@ Client::Client(Instance &aInstance)
 #endif
 }
 
-otError Client::Start(void)
+void Client::Start(void)
 {
-    otError error;
+    VerifyOrExit(!mSocket.IsBound());
 
-    SuccessOrExit(error = mSocket.Open(&Client::HandleUdpReceive, this));
-    SuccessOrExit(error = mSocket.Bind());
-
+    MustSuccess(mSocket.Open(&Client::HandleUdpReceive, this));
+    MustSuccess(mSocket.Bind());
 exit:
-    return error;
+    return;
 }
 
 void Client::Stop(void)
@@ -465,7 +464,7 @@ void Client::Stop(void)
         FinalizeQuery(*query, OT_ERROR_ABORT);
     }
 
-    IgnoreError(mSocket.Close());
+    MustSuccess(mSocket.Close());
 }
 
 void Client::SetDefaultConfig(const QueryConfig &aQueryConfig)

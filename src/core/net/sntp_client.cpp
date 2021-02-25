@@ -97,18 +97,18 @@ Client::Client(Instance &aInstance)
 {
 }
 
-otError Client::Start(void)
+void Client::Start(void)
 {
-    otError error;
+    VerifyOrExit(!mSocket.IsBound());
 
-    MustSuccess(error = mSocket.Open(&Client::HandleUdpReceive, this));
-    MustSuccess(error = mSocket.Bind());
+    MustSuccess(mSocket.Open(&Client::HandleUdpReceive, this));
+    MustSuccess(mSocket.Bind());
 
 exit:
-    return error;
+    return;
 }
 
-otError Client::Stop(void)
+void Client::Stop(void)
 {
     Message *     message = mPendingQueries.GetHead();
     Message *     messageToRemove;
@@ -124,7 +124,7 @@ otError Client::Stop(void)
         FinalizeSntpTransaction(*messageToRemove, queryMetadata, 0, OT_ERROR_ABORT);
     }
 
-    return mSocket.Close();
+    MustSuccess(mSocket.Close());
 }
 
 otError Client::Query(const otSntpQuery *aQuery, otSntpResponseHandler aHandler, void *aContext)

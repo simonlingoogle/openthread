@@ -163,13 +163,13 @@ void ThreadNetif::Up(void)
     Get<Mle::MleRouter>().Enable();
     IgnoreError(Get<Tmf::TmfAgent>().Start());
 #if OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
-    IgnoreError(Get<Dns::ServiceDiscovery::Server>().Start());
+    Get<Dns::ServiceDiscovery::Server>().Start();
 #endif
 #if OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE
-    IgnoreError(Get<Dns::Client>().Start());
+    Get<Dns::Client>().Start();
 #endif
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
-    IgnoreError(Get<Sntp::Client>().Start());
+    Get<Sntp::Client>().Start();
 #endif
     Get<Notifier>().Signal(kEventThreadNetifStateChanged);
 
@@ -185,7 +185,7 @@ void ThreadNetif::Down(void)
     Get<Dns::Client>().Stop();
 #endif
 #if OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE
-    IgnoreError(Get<Sntp::Client>().Stop());
+    Get<Sntp::Client>().Stop();
 #endif
 #if OPENTHREAD_CONFIG_DNSSD_SERVER_ENABLE
     Get<Dns::ServiceDiscovery::Server>().Stop();

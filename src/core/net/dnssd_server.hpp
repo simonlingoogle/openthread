@@ -74,7 +74,7 @@ public:
      * @retval OT_ERROR_FAILED   If failed to open or bind the UDP socket.
      *
      */
-    otError Start(void);
+    void Start(void);
 
     /**
      * This method stops the DNS-SD server.

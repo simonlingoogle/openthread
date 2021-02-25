@@ -80,8 +80,8 @@ void JoinerRouter::Start(void)
 
         VerifyOrExit(!mSocket.IsBound());
 
-        IgnoreError(mSocket.Open(&JoinerRouter::HandleUdpReceive, this));
-        IgnoreError(mSocket.Bind(port));
+        MustSuccess(mSocket.Open(&JoinerRouter::HandleUdpReceive, this));
+        MustSuccess(mSocket.Bind(port));
         IgnoreError(Get<Ip6::Filter>().AddUnsecurePort(port));
         otLogInfoMeshCoP("Joiner Router: start");
     }
@@ -91,7 +91,7 @@ void JoinerRouter::Start(void)
 
         IgnoreError(Get<Ip6::Filter>().RemoveUnsecurePort(mSocket.GetSockName().mPort));
 
-        IgnoreError(mSocket.Close());
+        MustSuccess(mSocket.Close());
     }
 
 exit:

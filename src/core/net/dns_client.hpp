@@ -500,7 +500,7 @@ public:
      * @retval OT_ERROR_ALREADY  The socket is already open.
      *
      */
-    otError Start(void);
+    void Start(void);
 
     /**
      * This method stops the DNS client.

@@ -410,7 +410,7 @@ void Dtls::Close(void)
     mTransportContext  = nullptr;
     mTimerSet          = false;
 
-    IgnoreError(mSocket.Close());
+    MustSuccess(mSocket.Close());
     mTimer.Stop();
 }
 

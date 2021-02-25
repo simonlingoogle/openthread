@@ -59,23 +59,21 @@ Server::Server(Instance &aInstance)
 {
 }
 
-otError Server::Start(void)
+void Server::Start(void)
 {
-    otError error = OT_ERROR_NONE;
-
     VerifyOrExit(!IsRunning());
 
-    SuccessOrExit(error = mSocket.Open(&Server::HandleUdpReceive, this));
-    SuccessOrExit(error = mSocket.Bind(kPort));
+    MustSuccess(mSocket.Open(&Server::HandleUdpReceive, this));
+    MustSuccess(mSocket.Bind(kPort));
 
+    otLogInfoDns("[server] started");
 exit:
-    otLogInfoDns("[server] started: %s", otThreadErrorToString(error));
-    return error;
+    return;
 }
 
 void Server::Stop(void)
 {
-    IgnoreError(mSocket.Close());
+    MustSuccess(mSocket.Close());
     otLogInfoDns("[server] stopped");
 }
 

@@ -132,13 +132,17 @@ otError Server::UpdateService(void)
 
 void Server::Start(void)
 {
-    IgnoreError(mSocket.Open(&Server::HandleUdpReceive, this));
-    IgnoreError(mSocket.Bind(kDhcpServerPort));
+    VerifyOrExit(!mSocket.IsBound());
+
+    MustSuccess(mSocket.Open(&Server::HandleUdpReceive, this));
+    MustSuccess(mSocket.Bind(kDhcpServerPort));
+exit:
+    return;
 }
 
 void Server::Stop(void)
 {
-    IgnoreError(mSocket.Close());
+    MustSuccess(mSocket.Close());
 }
 
 void Server::AddPrefixAgent(const Ip6::Prefix &aIp6Prefix, const Lowpan::Context &aContext)
