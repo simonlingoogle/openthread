@@ -954,6 +954,22 @@ Server::DnsQueryType Server::GetQueryType(const Header & aHeader,
         }
     }
 
+    for (uint16_t i = 0, readOffset = sizeof(Header); i < aHeader.GetQuestionCount(); i++)
+    {
+        Question question;
+
+        IgnoreError(Name::ReadName(aMessage, readOffset, aName, sizeof(aName)));
+        IgnoreError(aMessage.Read(readOffset, question));
+        readOffset += sizeof(question);
+
+        switch (question.GetType())
+        {
+        case ResourceRecord::kTypeAaaa:
+        case ResourceRecord::kTypeA:
+            ExitNow(sdType = kDnsQueryResolveHost);
+        }
+    }
+
 exit:
     return sdType;
 }

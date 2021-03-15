@@ -271,6 +271,7 @@ private:
         kDnsQueryNone,
         kDnsQueryBrowse,
         kDnsQueryResolve,
+        kDnsQueryResolveHost,
     };
 
     bool                    IsRunning(void) const { return mSocket.IsBound(); }
