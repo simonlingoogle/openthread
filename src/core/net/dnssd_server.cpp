@@ -832,6 +832,7 @@ bool Server::CanAnswerQueryTransaction(const QueryTransaction &          aQuery,
     case kDnsQueryResolve:
         canAnswer = (strcmp(name, aInstanceInfo.mFullName) == 0);
         break;
+    case kDnsQueryResolveHost:
     case kDnsQueryNone:
         break;
     }
